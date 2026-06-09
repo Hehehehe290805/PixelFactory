@@ -27,6 +27,7 @@ export function createBlock(type = 'base') {
     echoAge: 0,
     focusColor: null,
     overflowTimer: 0,
+    waveDir: 'up',
   }
 }
 
@@ -143,6 +144,31 @@ export const useGameStore = create((set, get) => ({
     set({ grid, inventory, pixelInventory: newInv, colorCheckerReductions: reductions })
   },
 
+  // Apply a template layout to a block, deducting pixels from inventory
+  applyTemplate(blockId, pixelLayout) {
+    const state = get()
+    const block = findBlockInState(state, blockId)
+    if (!block) return false
+
+    const newInv = { ...state.pixelInventory }
+    // Deduct cost
+    for (const row of pixelLayout) {
+      for (const color of row) {
+        if (!color) continue
+        if ((newInv[color] ?? 0) <= 0) return false  // not enough
+        newInv[color]--
+      }
+    }
+    const pixelCount = pixelLayout.flat().filter(c => c !== null).length
+    const { grid, inventory } = applyBlockUpdate(
+      { grid: state.grid, inventory: state.inventory },
+      blockId,
+      b => ({ ...b, pixelLayout: pixelLayout.map(r => [...r]), pixelCount })
+    )
+    set({ grid, inventory, pixelInventory: newInv })
+    return true
+  },
+
   clearBlock(blockId) {
     const state = get()
     const block = findBlockInState(state, blockId)
@@ -200,6 +226,11 @@ export const useGameStore = create((set, get) => ({
   },
 
   setSelectedBlock(blockId) { set({ selectedBlockId: blockId }) },
+
+  setWaveDir(blockId, dir) {
+    const { grid, inventory } = applyBlockUpdate(get(), blockId, b => ({ ...b, waveDir: dir }))
+    set({ grid, inventory })
+  },
 
   addPixels(amount) {
     set(state => ({ totalPixelsProduced: state.totalPixelsProduced + amount }))

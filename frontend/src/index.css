@@ -114,13 +114,38 @@ body {
   transition: width 0.12s linear;
 }
 
-/* ── Block fill-up cycle animation ─────────────── */
+/* ── Block pixel-wave animations (8 directions) ─── */
+/* Vertical axis: scaleY with varying transform-origin */
+@keyframes pixelWaveV {
+  0%   { transform: scaleY(0);  opacity: 0;    }
+  7%   { opacity: 0.65; }
+  78%  { transform: scaleY(1);  opacity: 0.50; }
+  90%  { transform: scaleY(1);  opacity: 0.90; }
+  100% { transform: scaleY(0);  opacity: 0;    }
+}
+/* Horizontal axis: scaleX */
+@keyframes pixelWaveH {
+  0%   { transform: scaleX(0);  opacity: 0;    }
+  7%   { opacity: 0.65; }
+  78%  { transform: scaleX(1);  opacity: 0.50; }
+  90%  { transform: scaleX(1);  opacity: 0.90; }
+  100% { transform: scaleX(0);  opacity: 0;    }
+}
+/* Diagonal axis: uniform scale from corner */
+@keyframes pixelWaveD {
+  0%   { transform: scale(0);   opacity: 0;    }
+  7%   { opacity: 0.65; }
+  78%  { transform: scale(1);   opacity: 0.50; }
+  90%  { transform: scale(1);   opacity: 0.90; }
+  100% { transform: scale(0);   opacity: 0;    }
+}
+/* Legacy name kept so BlockSlot move-target still works */
 @keyframes blockFillUp {
-  0%   { transform: scaleY(0);  opacity: 0;   }
-  6%   { transform: scaleY(0);  opacity: 0.5; }
+  0%   { transform: scaleY(0);  opacity: 0;    }
+  6%   { transform: scaleY(0);  opacity: 0.5;  }
   80%  { transform: scaleY(1);  opacity: 0.45; }
   90%  { transform: scaleY(1);  opacity: 0.85; }
-  100% { transform: scaleY(0);  opacity: 0;   }
+  100% { transform: scaleY(0);  opacity: 0;    }
 }
 
 /* ── Scrollbar ──────────────────────────────────── */

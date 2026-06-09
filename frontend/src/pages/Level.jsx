@@ -15,6 +15,7 @@ import TutorialOverlay from '../components/ui/TutorialOverlay'
 import TemplateSaveModal from '../components/ui/TemplateSaveModal'
 import InventoryPanel from '../components/game/InventoryPanel'
 import ShopSidebar from '../components/game/ShopSidebar'
+import TemplatePicker from '../components/ui/TemplatePicker'
 
 const GOLD_BY_STARS = { 3: 100, 2: 70, 1: 50, 0: 0 }
 
@@ -52,6 +53,9 @@ export default function Level() {
   // Template save prompt state
   const [templatePrompt, setTemplatePrompt] = useState(null) // { block, setName }
   const shownSetPrompts = useRef(new Set()) // avoid double-prompting same set
+
+  // Template picker: shown when an empty block is placed/selected
+  const [pickerBlockId, setPickerBlockId] = useState(null)
 
   const effectiveRequired = config
     ? Math.floor(config.requiredOutput * Math.pow(0.95, colorCheckerReductions))
@@ -150,7 +154,21 @@ export default function Level() {
     setResultShown(true); setStars(0); setGoldEarned(0)
   }
 
-  // Close the editor — if the block was placed empty and still has 0 pixels, cancel the placement
+  // Called by Grid/BlockSlot when a block with 0 pixels is focused — show template picker first
+  function handleOpenForBlock(blockId) {
+    const state = useGameStore.getState()
+    const block = [
+      ...state.inventory,
+      ...state.grid.flat().filter(Boolean),
+    ].find(b => b.id === blockId)
+    if (block && block.pixelCount === 0) {
+      setPickerBlockId(blockId)  // show template picker first
+    } else {
+      setSelectedBlock(blockId)  // go straight to editor
+    }
+  }
+
+  // Close the editor — if the block still has 0 pixels, cancel the placement
   function handleCloseEditor() {
     const state = useGameStore.getState()
     for (let r = 0; r < 12; r++) {
@@ -189,7 +207,7 @@ export default function Level() {
 
         {/* Grid — center */}
         <div className="flex-1 flex items-start justify-center overflow-auto px-2 py-2">
-          <Grid selectedBlockId={selectedBlockId} onBlockSelect={setSelectedBlock} />
+          <Grid selectedBlockId={selectedBlockId} onBlockSelect={handleOpenForBlock} />
         </div>
 
         {/* Stats — right side */}
@@ -205,6 +223,34 @@ export default function Level() {
 
       {/* Inventory — bottom bar */}
       <InventoryPanel selectedBlockId={selectedBlockId} onBlockSelect={setSelectedBlock} />
+
+      {/* Template picker — shown before editor when block is empty */}
+      {pickerBlockId && (
+        <TemplatePicker
+          blockId={pickerBlockId}
+          onPick={layout => {
+            useGameStore.getState().applyTemplate(pickerBlockId, layout)
+            setPickerBlockId(null)
+            // Open editor so player can touch up if they want
+            setSelectedBlock(pickerBlockId)
+          }}
+          onBlank={() => {
+            setPickerBlockId(null)
+            setSelectedBlock(pickerBlockId)
+          }}
+          onClose={() => {
+            // Cancel: remove the block if it was placed empty
+            const state = useGameStore.getState()
+            for (let r = 0; r < 12; r++) {
+              for (let c = 0; c < 12; c++) {
+                const b = state.grid[r][c]
+                if (b && b.id === pickerBlockId && b.pixelCount === 0) { removeBlock(r, c); break }
+              }
+            }
+            setPickerBlockId(null)
+          }}
+        />
+      )}
 
       {/* BlockEditor — centered modal overlay */}
       {selectedBlockId && (

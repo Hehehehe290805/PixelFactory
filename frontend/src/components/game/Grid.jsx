@@ -6,8 +6,19 @@ import Block from './Block'
 import RadialWheel from './RadialWheel'
 import { GRID_SIZE, TICK_MS } from '../../lib/constants'
 
+const WAVE_DIRS = [
+  { dir: 'up',         icon: '↑', label: 'Up' },
+  { dir: 'up-right',   icon: '↗', label: 'UR' },
+  { dir: 'right',      icon: '→', label: 'Right' },
+  { dir: 'down-right', icon: '↘', label: 'DR' },
+  { dir: 'down',       icon: '↓', label: 'Down' },
+  { dir: 'down-left',  icon: '↙', label: 'DL' },
+  { dir: 'left',       icon: '←', label: 'Left' },
+  { dir: 'up-left',    icon: '↖', label: 'UL' },
+]
+
 export default function Grid({ selectedBlockId, onBlockSelect }) {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock } = useGameStore()
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir } = useGameStore()
   const cellSize = useGridCellSize()
 
   const [pulsingSlots, setPulsingSlots] = useState(new Set())
@@ -107,6 +118,14 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
           },
         },
         {
+          icon: '〰',
+          label: 'Wave',
+          color: '#a066f0',
+          onClick: () => {
+            setWheel({ type: 'wave', row: wheel.row, col: wheel.col, x: wheel.x, y: wheel.y })
+          },
+        },
+        {
           icon: '✕',
           label: 'Remove',
           color: '#f03e4e',
@@ -116,6 +135,22 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
           },
         },
       ]
+    }
+
+    // Wave direction picker
+    if (wheel.type === 'wave') {
+      const occupant = grid[wheel.row]?.[wheel.col]
+      if (!occupant) return []
+      const cur = occupant.waveDir ?? 'up'
+      return WAVE_DIRS.map(({ dir, icon, label }) => ({
+        icon,
+        label,
+        color: dir === cur ? '#ffd166' : '#a066f0',
+        onClick: () => {
+          setWaveDir(occupant.id, dir)
+          dismiss()
+        },
+      }))
     }
 
     return []

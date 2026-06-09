@@ -5,7 +5,22 @@ const CELL = 3
 
 const SET_COLORS = {
   PRIMARY: '#e63946', MIDNIGHT: '#9b5de5', PHILIPPINES: '#ffd166',
-  GRASS: '#06d6a0',   SUNSET: '#f4a261',
+  GRASS: '#06d6a0',   SUNSET: '#f4a261',   SILVER_MIST: '#9db4cc',
+  NEON_RUSH: '#39ff14', AURORA: '#a0c4ff',  SUNRISE: '#ffc000',
+  OCEAN: '#1499cc',   FIRE: '#f03e4e',     ROYAL: '#a066f0',
+  EMBER: '#f59342',   TROPICS: '#00d49a',  CORAL: '#f87171',
+}
+
+// Maps waveDir to CSS animation name + transform-origin
+const WAVE_MAP = {
+  up:         { anim: 'pixelWaveV', origin: 'bottom center' },
+  down:       { anim: 'pixelWaveV', origin: 'top center' },
+  left:       { anim: 'pixelWaveH', origin: 'right center' },
+  right:      { anim: 'pixelWaveH', origin: 'left center' },
+  'up-left':  { anim: 'pixelWaveD', origin: 'bottom right' },
+  'up-right': { anim: 'pixelWaveD', origin: 'bottom left' },
+  'down-left':{ anim: 'pixelWaveD', origin: 'top right' },
+  'down-right':{ anim: 'pixelWaveD', origin: 'top left' },
 }
 
 function getDominantColor(pixelLayout, pixelCount) {
@@ -37,11 +52,6 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
     }
   }, [showPulse])
 
-  // Cycle duration = time to produce ~1 pixel (37.5 / pixelCount), clamped to 0.4–8s
-  const cycleDuration = block.pixelCount > 0
-    ? Math.max(0.4, Math.min(8, 37.5 / block.pixelCount))
-    : 3
-
   function drawCanvas() {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -59,11 +69,17 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
     }
   }
 
-  const canvasSize = BLOCK_CANVAS_SIZE * CELL
-  const fillRatio  = Math.min(1, block.pixelCount / (BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE))
-  const domColor   = getDominantColor(block.pixelLayout, block.pixelCount)
-  const fillHex    = domColor ? (PIXEL_COLORS[domColor]?.hex ?? '#118ab2') : '#118ab2'
-  const isActive   = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
+  const canvasSize   = BLOCK_CANVAS_SIZE * CELL
+  const fillRatio    = Math.min(1, block.pixelCount / (BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE))
+  const domColor     = getDominantColor(block.pixelLayout, block.pixelCount)
+  const fillHex      = domColor ? (PIXEL_COLORS[domColor]?.hex ?? '#118ab2') : '#118ab2'
+  const isActive     = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
+  const waveDir      = block.waveDir ?? 'up'
+  const waveConf     = WAVE_MAP[waveDir] ?? WAVE_MAP.up
+  // Cycle duration: 37.5 / pixelCount seconds (1 pixel per cycle at base rate), clamped
+  const cycleDuration = block.pixelCount > 0
+    ? Math.max(0.4, Math.min(8, 37.5 / block.pixelCount))
+    : 3
 
   return (
     <div
@@ -82,26 +98,32 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
         style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
       />
 
-      {/* Static pixel-count fill overlay */}
+      {/* Pixel-fill indicator — subtle static overlay showing how full the block is */}
       {fillRatio > 0 && (
         <div
           className="absolute bottom-0 left-0 right-0 pointer-events-none"
           style={{
             height: `${fillRatio * 100}%`,
-            backgroundColor: `${fillHex}12`,
+            backgroundColor: `${fillHex}10`,
             transition: 'height 0.2s ease-out',
           }}
         />
       )}
 
-      {/* Production cycle fill animation — rises bottom-to-top */}
+      {/* Directional wave — brightens painted pixels as if they're surging with energy */}
       {isActive && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(to top, ${fillHex}55 0%, ${fillHex}20 60%, transparent 100%)`,
-            transformOrigin: 'bottom center',
-            animation: `blockFillUp ${cycleDuration.toFixed(2)}s ease-in-out infinite`,
+            background: `linear-gradient(
+              ${waveDir === 'right' || waveDir === 'left' ? '90deg' : '0deg'},
+              transparent 0%,
+              rgba(255,255,255,0.55) 50%,
+              transparent 100%
+            )`,
+            mixBlendMode: 'screen',
+            transformOrigin: waveConf.origin,
+            animation: `${waveConf.anim} ${cycleDuration.toFixed(2)}s ease-in-out infinite`,
           }}
         />
       )}
@@ -119,8 +141,20 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
       {block.type === 'color_checker' && block.colorCheckerColor && (
         <div
           className="absolute top-0 left-0 w-2 h-2 rounded-br-sm"
-          style={{ backgroundColor: PIXEL_COLORS[block.colorCheckerColor]?.hex ?? '#fff', opacity: block.colorCheckerTriggered ? 1 : 0.5 }}
+          style={{
+            backgroundColor: PIXEL_COLORS[block.colorCheckerColor]?.hex ?? '#fff',
+            opacity: block.colorCheckerTriggered ? 1 : 0.5,
+          }}
           title={`Target: ${block.colorCheckerColor}${block.colorCheckerTriggered ? ' ✓' : ''}`}
+        />
+      )}
+
+      {/* Focus color indicator (top-left, for focus blocks) */}
+      {block.type === 'focus' && block.focusColor && (
+        <div
+          className="absolute top-0 left-0 w-2 h-2 rounded-br-sm"
+          style={{ backgroundColor: PIXEL_COLORS[block.focusColor]?.hex ?? '#fff', opacity: 0.8 }}
+          title={`Focus: ${block.focusColor}`}
         />
       )}
 

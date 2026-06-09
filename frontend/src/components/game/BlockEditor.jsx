@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { PIXEL_COLORS, BLOCK_CANVAS_SIZE } from '../../lib/constants'
+import { useUnlocks } from '../../lib/unlocks'
 
 const CELL_PX = 20
 
 export default function BlockEditor({ blockId, onClose }) {
   const { grid, inventory, pixelInventory, paintPixel, clearBlock, fillBlock } = useGameStore()
+  const { isPixelUnlocked } = useUnlocks()
 
   const block =
     inventory.find(b => b.id === blockId) ??
@@ -83,9 +85,10 @@ export default function BlockEditor({ blockId, onClose }) {
         {block.pixelCount} / {BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE} pixels
       </div>
 
-      {/* Palette */}
+      {/* Palette — only show unlocked pixel colors */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {Object.entries(PIXEL_COLORS).map(([key, meta]) => {
+          if (!isPixelUnlocked(key)) return null
           const available = pixelInventory[key] ?? 0
           return (
             <button
