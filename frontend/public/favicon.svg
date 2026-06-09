@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="5" fill="#0d0d22"/>
+  <!-- Subtle border -->
+  <rect width="32" height="32" rx="5" fill="none" stroke="#36366a" stroke-width="1.5"/>
+
+  <!-- 4 pixel blocks — game's primary set colors -->
+  <rect x="3" y="3"   width="12" height="12" rx="2" fill="#f03e4e"/>  <!-- red   -->
+  <rect x="17" y="3"  width="12" height="12" rx="2" fill="#1499cc"/>  <!-- blue  -->
+  <rect x="3" y="17"  width="12" height="12" rx="2" fill="#ffd166"/>  <!-- yellow-->
+  <rect x="17" y="17" width="12" height="12" rx="2" fill="#00d49a"/>  <!-- green -->
+
+  <!-- Center glint — suggests a shared production grid -->
+  <rect x="14" y="14" width="4" height="4" rx="1" fill="#ffffff" opacity="0.25"/>
+</svg>
