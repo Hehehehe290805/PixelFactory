@@ -7,7 +7,7 @@ A browser-based **idle/strategy game** about parallel programming. Each block on
 ## Play It
 
 Deployed on GitHub Pages:  
-**https://GITHUB_USERNAME.github.io/pixelfactory/**
+**https://Hehehehe290805.github.io/pixelfactory/**
 
 ---
 
