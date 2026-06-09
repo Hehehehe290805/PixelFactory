@@ -1,13 +1,12 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { PIXEL_COLORS, BLOCK_CANVAS_SIZE } from '../../lib/constants'
 
-const CELL_PX = 16 // each pixel cell in the editor
+const CELL_PX = 20
 
 export default function BlockEditor({ blockId, onClose }) {
-  const { grid, inventory, updateBlockPixels } = useGameStore()
+  const { grid, inventory, pixelInventory, paintPixel, clearBlock, fillBlock } = useGameStore()
 
-  // Find block in either grid or inventory
   const block =
     inventory.find(b => b.id === blockId) ??
     grid.flat().find(b => b && b.id === blockId)
@@ -18,54 +17,40 @@ export default function BlockEditor({ blockId, onClose }) {
 
   if (!block) return null
 
-  const layout = block.pixelLayout
+  const activeColor = isErasing ? null : selectedColor
 
-  function paint(r, c) {
-    const newLayout = layout.map(row => [...row])
-    newLayout[r][c] = isErasing ? null : selectedColor
-    updateBlockPixels(blockId, newLayout)
-  }
-
-  function handleMouseDown(r, c) {
-    painting.current = true
-    paint(r, c)
-  }
-
-  function handleMouseEnter(r, c) {
-    if (painting.current) paint(r, c)
-  }
-
-  function handleMouseUp() {
-    painting.current = false
-  }
-
-  function clearAll() {
-    const empty = Array.from({ length: BLOCK_CANVAS_SIZE }, () =>
-      Array(BLOCK_CANVAS_SIZE).fill(null)
-    )
-    updateBlockPixels(blockId, empty)
-  }
-
-  function fillAll() {
-    if (isErasing) return
-    const filled = Array.from({ length: BLOCK_CANVAS_SIZE }, () =>
-      Array(BLOCK_CANVAS_SIZE).fill(selectedColor)
-    )
-    updateBlockPixels(blockId, filled)
-  }
-
-  const colorList = Object.entries(PIXEL_COLORS)
+  function doPaint(r, c) { paintPixel(blockId, r, c, activeColor) }
+  function handleMouseDown(r, c, e) { e.preventDefault(); painting.current = true; doPaint(r, c) }
+  function handleMouseEnter(r, c) { if (painting.current) doPaint(r, c) }
+  function handleMouseUp() { painting.current = false }
 
   return (
-    <div className="bg-game-card border border-game-border rounded-xl p-3 select-none">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400 uppercase tracking-widest">Pixel Editor</span>
-        <button onClick={onClose} className="text-gray-600 hover:text-white text-xs transition">✕</button>
+    <div className="card" style={{ padding: '0.875rem' }}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-black uppercase tracking-widest text-gray-400">Pixel Editor</span>
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-300 text-xs font-semibold transition">✕ esc</button>
       </div>
 
-      {/* 16×16 painting canvas */}
+      {/* Color Checker banner */}
+      {block.type === 'color_checker' && block.colorCheckerColor && (
+        <div
+          className="mb-3 text-xs rounded-xl px-3 py-2 flex items-center gap-2 border-2 font-semibold"
+          style={{
+            backgroundColor: `${PIXEL_COLORS[block.colorCheckerColor]?.hex}15`,
+            borderColor: `${PIXEL_COLORS[block.colorCheckerColor]?.hex}55`,
+          }}
+        >
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PIXEL_COLORS[block.colorCheckerColor]?.hex }} />
+          <span className="text-gray-300">
+            Target: <b style={{ color: PIXEL_COLORS[block.colorCheckerColor]?.hex }}>{block.colorCheckerColor}</b>
+            {block.colorCheckerTriggered ? ' ✓ Triggered!' : ' — need 50%+'}
+          </span>
+        </div>
+      )}
+
+      {/* 16×16 grid */}
       <div
-        className="border border-game-border rounded overflow-hidden cursor-crosshair"
+        className="rounded-xl overflow-hidden cursor-crosshair border-2 border-game-border"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{
@@ -76,18 +61,17 @@ export default function BlockEditor({ blockId, onClose }) {
       >
         {Array.from({ length: BLOCK_CANVAS_SIZE }, (_, r) =>
           Array.from({ length: BLOCK_CANVAS_SIZE }, (_, c) => {
-            const color = layout[r]?.[c]
+            const color = block.pixelLayout[r]?.[c]
             return (
               <div
                 key={`${r}-${c}`}
-                onMouseDown={() => handleMouseDown(r, c)}
+                onMouseDown={e => handleMouseDown(r, c, e)}
                 onMouseEnter={() => handleMouseEnter(r, c)}
                 style={{
-                  width: CELL_PX,
-                  height: CELL_PX,
-                  backgroundColor: color ? PIXEL_COLORS[color]?.hex : '#0f0f1a',
-                  borderRight: '1px solid #1a1a2e',
-                  borderBottom: '1px solid #1a1a2e',
+                  width: CELL_PX, height: CELL_PX,
+                  backgroundColor: color ? PIXEL_COLORS[color]?.hex : '#0a0a18',
+                  borderRight: '1px solid #111128',
+                  borderBottom: '1px solid #111128',
                 }}
               />
             )
@@ -95,47 +79,59 @@ export default function BlockEditor({ blockId, onClose }) {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="text-xs text-gray-500 mt-1 mb-2">
-        {block.pixelCount} / {BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE} pixels filled
+      <div className="text-xs font-bold text-gray-600 mt-2 mb-3">
+        {block.pixelCount} / {BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE} pixels
       </div>
 
-      {/* Color palette */}
-      <div className="flex flex-wrap gap-1 mb-2">
-        {colorList.map(([key, meta]) => (
-          <button
-            key={key}
-            title={meta.label}
-            onClick={() => { setSelectedColor(key); setIsErasing(false) }}
-            className={`rounded transition ${selectedColor === key && !isErasing ? 'ring-2 ring-white' : ''}`}
-            style={{ width: 18, height: 18, backgroundColor: meta.hex }}
-          />
-        ))}
+      {/* Palette */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {Object.entries(PIXEL_COLORS).map(([key, meta]) => {
+          const available = pixelInventory[key] ?? 0
+          return (
+            <button
+              key={key}
+              title={`${meta.label} (${available} left)`}
+              onClick={() => { setSelectedColor(key); setIsErasing(false) }}
+              disabled={available <= 0}
+              className={`relative rounded-lg transition-transform ${selectedColor === key && !isErasing ? 'ring-2 ring-white scale-110' : ''} ${available <= 0 ? 'opacity-20' : ''}`}
+              style={{ width: 22, height: 22, backgroundColor: meta.hex, border: '2px solid rgba(0,0,0,0.3)' }}
+            >
+              {available > 0 && available <= 9 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-game-bg text-white rounded-full font-black leading-none" style={{ fontSize: 7, padding: '1px 3px', border: '1px solid #36366a' }}>
+                  {available}
+                </span>
+              )}
+            </button>
+          )
+        })}
         <button
-          title="Eraser"
-          onClick={() => setIsErasing(e => !e)}
-          className={`rounded border text-xs flex items-center justify-center transition ${isErasing ? 'border-white text-white' : 'border-game-border text-gray-500 hover:border-gray-400'}`}
-          style={{ width: 18, height: 18, fontSize: 10 }}
+          onClick={() => setIsErasing(v => !v)}
+          className={`rounded-lg border-2 flex items-center justify-center font-black transition text-xs ${isErasing ? 'border-white text-white bg-white/10' : 'border-game-border text-gray-500 hover:border-game-border2'}`}
+          style={{ width: 22, height: 22 }}
         >
           ✕
         </button>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 mb-3">
         <button
-          onClick={fillAll}
-          className="flex-1 text-xs bg-game-bg hover:bg-game-border text-gray-400 hover:text-white py-1 rounded border border-game-border transition"
+          onClick={() => fillBlock(blockId, selectedColor)}
+          disabled={isErasing || (pixelInventory[selectedColor] ?? 0) <= 0}
+          className="btn btn-secondary flex-1 text-xs py-2 disabled:opacity-30"
         >
-          Fill All
+          Fill
         </button>
         <button
-          onClick={clearAll}
-          className="flex-1 text-xs bg-game-bg hover:bg-red-900/30 text-gray-400 hover:text-red-400 py-1 rounded border border-game-border transition"
+          onClick={() => clearBlock(blockId)}
+          className="btn btn-danger flex-1 text-xs py-2"
         >
           Clear
         </button>
       </div>
+
+      <button onClick={onClose} className="btn btn-primary w-full text-sm">
+        Done
+      </button>
     </div>
   )
 }

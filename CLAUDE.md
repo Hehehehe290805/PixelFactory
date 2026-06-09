@@ -10,9 +10,9 @@
 
 | Layer | Technology |
 |---|---|
-| Frontend | React (Vite) |
+| Frontend | React (Vite) — lives in `frontend/` |
 | Styling | Tailwind CSS + custom pixel-accent components |
-| Backend / Auth / DB | Supabase (Auth, PostgreSQL, Realtime) |
+| Backend / Auth / DB | Supabase (Auth, PostgreSQL) — Edge Functions in `backend/` |
 | State Management | Zustand |
 | Animation | Framer Motion |
 | Routing | React Router v6 |
@@ -25,58 +25,72 @@
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
-pixelfactory/
-├── public/
-├── src/
-│   ├── assets/               # Pixel art icons, grid textures
-│   ├── components/
-│   │   ├── game/
-│   │   │   ├── Grid.jsx              # 12x12 main game grid
-│   │   │   ├── Block.jsx             # Individual block component (16x16 canvas)
-│   │   │   ├── BlockEditor.jsx       # 16x16 pixel painting interface
-│   │   │   ├── BlockSlot.jsx         # Grid cell that holds a block
-│   │   │   ├── PixelCounter.jsx      # Live stats: px/s, remaining, total
-│   │   │   ├── ProductionEngine.jsx  # Parallel production simulation logic
-│   │   │   └── LevelHUD.jsx          # Timer, progress bar, star indicator
-│   │   ├── ui/
-│   │   │   ├── MainMenu.jsx
-│   │   │   ├── ShopModal.jsx
-│   │   │   ├── SettingsModal.jsx
-│   │   │   ├── BlockTemplates.jsx    # Template manager (home screen)
-│   │   │   ├── AchievementToast.jsx
-│   │   │   └── StarResult.jsx        # End-of-level star screen
-│   │   └── auth/
-│   │       ├── LoginModal.jsx
-│   │       └── RegisterModal.jsx
-│   ├── pages/
-│   │   ├── Home.jsx           # Main menu: Campaign, Endless, Shop, Settings, Block Templates
-│   │   ├── Campaign.jsx       # Level select (10 levels, star ratings shown)
-│   │   ├── Level.jsx          # Core gameplay screen
-│   │   ├── Endless.jsx        # Endless mode with highscore
-│   │   ├── Shop.jsx
-│   │   └── Profile.jsx        # Achievements, stats
-│   ├── store/
-│   │   ├── gameStore.js       # Zustand: grid state, blocks, pixel counts
-│   │   ├── userStore.js       # Zustand: gold, inventory, templates, achievements
-│   │   └── settingsStore.js
-│   ├── engine/
-│   │   ├── productionEngine.js   # Core parallel output calculation loop
-│   │   ├── blockEffects.js       # All block type effect logic
-│   │   ├── setDetector.js        # Detects pixel sets (MIDNIGHT, PRIMARY, etc.)
-│   │   ├── synergyEngine.js      # Adjacent block synergy calculations
-│   │   ├── dominanceChecker.js   # Color dominance logic (25% boost)
-│   │   └── levelConfig.js        # All 10 level definitions
-│   ├── lib/
-│   │   ├── supabase.js           # Supabase client
-│   │   └── constants.js          # Pixel colors, block types, pricing
-│   └── main.jsx
+PixelFactory/                    ← repo root
+├── frontend/                    ← Vite + React app (run: npm run dev)
+│   ├── public/
+│   │   └── 404.html             # GitHub Pages SPA redirect fix
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── game/
+│   │   │   │   ├── Grid.jsx              # 12x12 grid, drag-and-drop
+│   │   │   │   ├── Block.jsx             # Block canvas + fill/pulse animation
+│   │   │   │   ├── BlockEditor.jsx       # 16x16 pixel painting, inventory-aware
+│   │   │   │   ├── BlockSlot.jsx         # Single grid cell (drag target)
+│   │   │   │   ├── PixelCounter.jsx      # px/s, total, remaining stats
+│   │   │   │   ├── ProductionEngine.jsx  # Game tick interval component
+│   │   │   │   └── LevelHUD.jsx          # Timer, progress bar, stars
+│   │   │   ├── ui/
+│   │   │   │   ├── AchievementToast.jsx
+│   │   │   │   └── StarResult.jsx
+│   │   │   └── auth/
+│   │   │       ├── LoginModal.jsx        # Supabase email/password login
+│   │   │       └── RegisterModal.jsx     # Validated: username/email/password
+│   │   ├── pages/
+│   │   │   ├── Home.jsx          # Main menu
+│   │   │   ├── Campaign.jsx      # Level select (stars shown, locked levels)
+│   │   │   ├── Level.jsx         # Core gameplay: grid + HUD + editor
+│   │   │   ├── Endless.jsx       # Endless wave mode
+│   │   │   ├── Shop.jsx          # Shop (UI complete, inventory wiring Phase 5+)
+│   │   │   ├── Profile.jsx       # Block Templates
+│   │   │   └── Settings.jsx      # Volume, tutorial toggle
+│   │   ├── store/
+│   │   │   ├── gameStore.js      # Grid, pixel inventory, paint/erase, cooldowns
+│   │   │   ├── userStore.js      # Auth, gold, campaign progress, achievements
+│   │   │   └── settingsStore.js  # Volume, tutorial toggle
+│   │   ├── engine/
+│   │   │   ├── productionEngine.js   # Full tick: base + sets + synergy + dominance + effects
+│   │   │   ├── blockEffects.js       # Doubler, CrossAmp, Greedy calculations
+│   │   │   ├── setDetector.js        # Detects all 5 pixel sets
+│   │   │   ├── synergyEngine.js      # Set bonuses + synergy multipliers
+│   │   │   ├── dominanceChecker.js   # Color dominance map builder
+│   │   │   ├── achievementEngine.js  # Achievement condition checks
+│   │   │   └── levelConfig.js        # All 10 level definitions
+│   │   ├── lib/
+│   │   │   ├── supabase.js           # Supabase client (VITE_ env vars only)
+│   │   │   ├── constants.js          # Pixel colors, block types, sets, grid size
+│   │   │   ├── validate.js           # Input sanitization, password/email regex
+│   │   │   └── officialTemplates.js  # Prebuilt pixel designs for each set
+│   │   ├── hooks/
+│   │   │   └── useGridCellSize.js    # Responsive cell size by viewport
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── .env                     # NEVER commit — VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+│   ├── package.json
+│   └── vite.config.js           # base: '/pixelfactory/'
+├── backend/                     ← Supabase Edge Functions (server-side only)
+│   ├── functions/
+│   │   └── validate-user/       # Username uniqueness check using service role key
+│   ├── .env                     # NEVER commit — SUPABASE_SERVICE_ROLE_KEY + BREVO_API_KEY
+│   └── README.md
 ├── supabase/
-│   └── schema.sql                # DB schema
-├── CLAUDE.md
-└── package.json
+│   └── schema.sql               # Run once in Supabase SQL Editor
+├── .gitignore                   # Blocks frontend/.env, backend/.env, node_modules, dist
+└── CLAUDE.md
 ```
 
 ---
@@ -125,91 +139,150 @@ White dominance has **no effect**.
 - **Cost:** 50 gold (shop) / 20 px (in-level)
 - **Base Output:** Scales with pixel count. Formula: `Math.floor(pixelCount * 0.8)` px/s
 - No special effect
-- Cheapest block type
 
 ### Doubler Block
 - **Cost:** 150 gold / 60 px
-- **Effect:** Doubles its own output **if ALL 4 orthogonal neighbors (top, right, bottom, left) each have fewer than half the Doubler's pixel count**
-- Reward for isolation strategy
+- **Effect:** Doubles its own output **if ALL 4 orthogonal neighbors each have fewer than half the Doubler's pixel count**
 
 ### Cross Amplifier Block
 - **Cost:** 120 gold / 50 px
-- **Effect:** Adds `Math.floor(ownPixelCount / 10)` px/s to each of its 4 diagonal neighbors (top-left, top-right, bottom-left, bottom-right)
-- Reward for diagonal placement strategy
+- **Effect:** Adds `Math.floor(ownPixelCount / 10)` px/s to each of its 4 diagonal neighbors
 
 ### Color Checker Block
 - **Cost:** 100 gold / 40 px
-- **Effect:** Assigned a random color at placement. If ≥50% of its pixels match that color, reduces the level's **remaining required output** by 5% (one-time trigger per level)
-- Encourages color-intentional design
+- **Effect:** Assigned a random color at placement. If ≥50% of its pixels match that color, reduces the level's **remaining required output** by 5% (one-time trigger)
 
 ### Greedy Block
 - **Cost:** 200 gold / 80 px
-- **Effect:** On level completion, adds bonus gold: `(greedyPixelCount - sum of all 8 surrounding blocks' pixel counts) × 10` gold
-- Only activates if Greedy block has more pixels than all 8 neighbors combined
-- Reward for isolating one dense block
+- **Effect:** On level completion: `(greedyPixelCount - sum of all 8 neighbors' pixel counts) × 10` gold bonus
+
+### Overflow Block *(unlockable)*
+- **Cost:** 300 gold / 100 px
+- **Effect:** Cycles a 15s burst loop: charges for 10s, then produces **3×** for 5s (via `overflowTimer` 0–149)
+
+### Mirror Block *(unlockable)*
+- **Cost:** 250 gold / 90 px
+- **Effect:** Copies the output rate of its highest-producing orthogonal neighbor (uses pre-effect rateMap)
+
+### Catalyst Block *(unlockable)*
+- **Cost:** 350 gold / 120 px
+- **Effect:** All synergy bonuses for blocks in the **same row** are multiplied by **×1.5**
+
+### Void Block *(unlockable)*
+- **Cost:** 200 gold / 70 px
+- **Effect:** Produces 0 px itself; gives **+15%** to each of its 8 surrounding blocks
+
+### Amplifier Block *(unlockable)*
+- **Cost:** 180 gold / 70 px
+- **Effect:** +8% output per occupied neighbor cell (all 8); max +64% with full surroundings
+
+### Resonator Block *(unlockable)*
+- **Cost:** 220 gold / 85 px
+- **Effect:** +50% output if any orthogonal neighbor is also a Resonator
+
+### Reactor Block *(unlockable)*
+- **Cost:** 400 gold / 140 px
+- **Effect:** Starts at 50% output; ramps to 200% max over 15s. Resets on move
+
+### Conductor Block *(unlockable)*
+- **Cost:** 300 gold / 110 px
+- **Effect:** Borrows the highest set output bonus from any adjacent block
+
+### Prism Block *(unlockable)*
+- **Cost:** 250 gold / 90 px
+- **Effect:** +5% output per unique non-white/silver color in its pixels (max +30%)
+
+### Echo Block *(unlockable)*
+- **Cost:** 180 gold / 70 px
+- **Effect:** Gains +4% output for each 10s it remains stationary (max +80% at ~3.5 min); resets on move
+
+### Splitter Block *(unlockable)*
+- **Cost:** 280 gold / 100 px
+- **Effect:** Gives each orthogonal neighbor a flat +20% of this block's base rate as a px/s bonus
+
+### Focus Block *(unlockable)*
+- **Cost:** 160 gold / 65 px
+- **Effect:** Assigned a random color at placement; output scales from ×1 (0% match) to ×2 (100% match)
+
+### Cluster Block *(unlockable)*
+- **Cost:** 230 gold / 85 px
+- **Effect:** +12% output per occupied neighbor (all 8, excluding void blocks); max +96%
+
+### Forge Block *(unlockable)*
+- **Cost:** 320 gold / 120 px
+- **Effect:** Produces 0 px/s; on level complete: **+3 gold per pixel held**
 
 ---
 
 ## Pixel Sets (Title Blocks)
 
-A **Title Block** is a block whose pixel composition matches a defined set. Sets require:
-1. Correct color composition (dominance of specific colors)
-2. Minimum pixel count threshold
+### Original Sets
+| Set Name | Colors Required | Min Pixels | Own Bonus | Neighbor Effect |
+|---|---|---|---|---|
+| PRIMARY | Red, Blue, Yellow only | 40 | +20% output | — |
+| MIDNIGHT | Blue and Violet only | 35 | +15% output | Orthogonal +10% |
+| PHILIPPINES | Red, Blue, Yellow, White | 45 | +10% output | Orthogonal +5% |
+| GRASS | Yellow and Green only | 30 | +12% output | Diagonal +8% |
+| SUNSET | Red, Yellow, Orange only | 38 | +18% output | — |
 
-Sets can be purchased in the Shop (comes with a base template the player can edit), OR discovered in-level (triggers an achievement + bonus gold).
+### Special-Pixel Sets *(require unlockable pixels)*
+| Set Name | Colors Required | Min Pixels | Own Bonus | Neighbor Effect |
+|---|---|---|---|---|
+| SILVER_MIST | Silver and White only | 40 | +22% output | Orthogonal +6% |
+| NEON_RUSH | Neon, Yellow, Green only | 35 | +20% output | Orthogonal +10% |
+| AURORA | Green, Blue, Violet only | 38 | +25% output | All-8 +12% |
+| SUNRISE | Orange and Yellow only | 45 | +26% output | Diagonal +10% |
 
-| Set Name | Colors Required | Min Pixels | Effect |
-|---|---|---|---|
-| PRIMARY | Red, Blue, Yellow only | 40 | +20% output for own block |
-| MIDNIGHT | Blue and Violet only | 35 | +15% output + adjacent blocks (orthogonal) get +10% |
-| PHILIPPINES | Red, Blue, Yellow, White | 45 | +10% output, orthogonal neighbors get +5% |
-| GRASS | Yellow and Green only | 30 | +12% output, diagonal neighbors get +8% |
-| SUNSET | Red, Yellow, Orange only | 38 | +18% output for own block |
+### Standard-Color Sets *(white, red, orange, yellow, green, blue, violet)*
+| Set Name | Colors Required | Min Pixels | Own Bonus | Neighbor Effect |
+|---|---|---|---|---|
+| OCEAN | Blue and Green only | 32 | +18% output | Orthogonal +8% |
+| FIRE | Red and Orange only | 28 | +20% output | Diagonal +10% |
+| ROYAL | Violet, Blue, Red only | 38 | +24% output | Orthogonal +12% |
+| EMBER | Red, Orange, Violet only | 42 | +28% output | Diagonal +12% |
+| TROPICS | Orange, Green, Blue only | 42 | +26% output | All-8 +8% |
+| CORAL | Red, Orange, Green only | 36 | +22% output | Orthogonal +6% |
 
-**Synergy Bonus:** If two orthogonally adjacent blocks both have the **same set**, each gets an additional **+15% production boost** on top of their set bonus.
+**Synergy Bonus:** Two orthogonally adjacent blocks with the **same set** each get an additional **+15%**.
 
 ---
 
 ## Shop Items
 
-### Grid Styles (Permanent upgrades, one active at a time)
+### Grid Styles (Permanent, one active at a time)
 | Style | Cost | Effect |
 |---|---|---|
 | Base Grid | Free | No bonus |
 | Gold Rush | 500 gold | +15% gold gain after each level |
 | Overclock | 800 gold | +10% pixel output across all blocks |
-| Efficiency | 600 gold | +20% time limit, -10% required output |
+| Efficiency | 600 gold | +20% time limit, −10% required output |
 | Bargain | 700 gold | Blocks and pixels 20% cheaper in-level |
+| Quantum | 1000 gold | Every 30s all blocks produce 2× for 5s |
+| Neural | 700 gold | Color Checker trigger reduces −8% required (not −5%) |
+| Industrial | 600 gold | +3% output per 10 placed blocks on the grid |
+| Synergy+ | 900 gold | Same-set adjacency synergy bonus is +25% (not +15%) |
+| Cascade | 750 gold | Rows 6–11 produce more: +4% per row below row 5 (up to +24%) |
+| Overcharge | 850 gold | +25% output for all blocks |
+| Lattice | 650 gold | Blocks with exactly 4 occupied orthogonal neighbors get +35% |
 
-### Special Blocks (unlockable, then buyable in-level)
-| Block | Shop Unlock | In-Level Cost | Effect |
-|---|---|---|---|
-| Overflow Block | 300 gold | 100 px | Stores excess pixels per tick; releases a burst every 10s equal to 5s worth of production |
-| Mirror Block | 250 gold | 90 px | Copies the output rate of the highest-producing orthogonal neighbor (does not stack) |
-| Catalyst Block | 350 gold | 120 px | Multiplies synergy bonuses in its row by 1.5x |
-| Void Block | 200 gold | 70 px | Produces 0 pixels itself, but removes adjacency penalties from all neighbors |
+### Special Blocks (unlock in Shop, buy in-level)
+See Block Types section above for full list of unlockable blocks.
 
-### Other Shop Items
+### Other
 | Item | Cost | Notes |
 |---|---|---|
-| Rainbow Pixel (unlock) | 1000 gold | Permanently unlocks rainbow pixels; in-level cost = white pixel price |
-| Block Template Slot +1 | 200 gold | Increases saved template slots (base: 5 slots) |
-| Pixel Pack (10) | 30 gold | 10 colored pixels of player's choice |
-| Pixel Pack (25) | 70 gold | |
-| Pixel Pack (50) | 130 gold | |
-| Pixel Pack (100) | 240 gold | |
+| Rainbow Pixel (unlock) | 1000 gold | Unlocks rainbow; in-level cost = white price |
+| Template Slot +1 | 200 gold | Base: 5 slots |
+| Pixel Pack (10/25/50/100) | 30/70/130/240 gold | Colored pixels of choice |
 
 ---
 
 ## Block Templates
 
-Accessible from the **Home screen** via the "Block Templates" button.
-
-- Players can pre-design blocks (16x16 canvas) and save them as named templates
-- Templates store pixel layout and color
-- In-level, players can purchase a template block directly from the in-level shop (pays pixel cost for all pixels inside it)
-- If a design activates a Title Set (e.g., MIDNIGHT) in-level and the player hasn't saved that set template yet, they are prompted to save it
-- Prebuilt templates provided by the game (labeled "Official") cannot be edited but can be purchased as a base
+- Players pre-design blocks (16×16) and save as named templates
+- In-level: purchase a template block from in-level shop (pays pixel cost for all pixels inside)
+- On set discovery in-level → prompt to save as template
+- Prebuilt "Official" templates (one per set) included, cannot be edited
 - Base template slots: 5 (expandable via Shop)
 
 ---
@@ -219,377 +292,219 @@ Accessible from the **Home screen** via the "Block Templates" button.
 ### Scoring
 | Performance | Stars | Gold Reward |
 |---|---|---|
-| Completed in ≤30% of time limit | 3 stars | 100% gold |
-| Completed in 31–70% of time limit | 2 stars | 70% gold |
-| Completed in >70% of time limit | 1 star | 50% gold |
+| ≤30% of time limit | 3 stars | 100 gold |
+| 31–70% of time limit | 2 stars | 70 gold |
+| >70% of time limit | 1 star | 50 gold |
 
 ### Level Definitions
-
-| Level | Required Output | Time Limit | Blocks Given | Notes |
-|---|---|---|---|---|
-| 1 (Tutorial) | 500 px | 120s | 1 Base Block, 20 white pixels | Tutorial: handholding, step-by-step |
-| 2 | 1,200 px | 150s | 2 Base Blocks, 30 pixels | Intro to color pixels |
-| 3 | 2,500 px | 180s | 3 Blocks (mixed), 50 pixels | Introduce Doubler Block |
-| 4 | 4,000 px | 200s | 4 Blocks, 60 pixels | Introduce Cross Amplifier |
-| 5 | 7,000 px | 220s | 5 Blocks, 80 pixels | Introduce Color Checker |
-| 6 | 12,000 px | 240s | 6 Blocks, 100 pixels | Introduce Greedy Block |
-| 7 | 20,000 px | 260s | 7 Blocks, 120 pixels | First set puzzle (GRASS hint) |
-| 8 | 35,000 px | 280s | 8 Blocks, 140 pixels | Synergy introduced |
-| 9 | 60,000 px | 300s | 10 Blocks, 160 pixels | Dominance mechanic highlighted |
-| 10 | 100,000 px | 330s | 12 Blocks, 200 pixels | All mechanics in play |
+| Level | Required Output | Time | Notes |
+|---|---|---|---|
+| 1 (Tutorial) | 500 px | 120s | 1 Base Block, 20 white pixels |
+| 2 | 1,200 px | 150s | Intro color pixels |
+| 3 | 2,500 px | 180s | Doubler introduced |
+| 4 | 4,000 px | 200s | Cross Amplifier introduced |
+| 5 | 7,000 px | 220s | Color Checker introduced |
+| 6 | 12,000 px | 240s | Greedy Block introduced |
+| 7 | 20,000 px | 260s | First set puzzle (GRASS hint) |
+| 8 | 35,000 px | 280s | Synergy introduced |
+| 9 | 60,000 px | 300s | Dominance mechanic highlighted |
+| 10 | 100,000 px | 330s | All mechanics in play |
 
 ---
 
 ## Endless Mode
 
-- No time limit
-- Starts at 500 px required output
-- Each wave: `requiredOutput = previousOutput * 1.6`
-- Player keeps their grid between waves (blocks persist)
-- In-level shop available between waves
-- Highscore = highest wave reached, synced to **Supabase leaderboard**
-- Leaderboard shows: Username, Highest Wave, Total Pixels Produced
+- No time limit; starts at 500 px required output
+- Each wave: `requiredOutput = previousOutput × 1.6`
+- Grid persists between waves; in-level shop available between waves
+- Highscore = highest wave reached, synced to Supabase leaderboard
 
 ---
 
-## In-Level Stats HUD
+## Level System — 200 Levels
 
-Always visible during gameplay:
-- **Pixels/second** (live, updates every tick)
-- **Total pixels produced** (never decreases)
-- **Pixels spent** (tracked separately)
-- **Progress bar** (based on total produced vs required; spending does not reduce bar)
-- **Remaining pixels needed** (required - total produced)
-- **Timer** (countdown for Campaign; stopwatch for Endless)
-- **Star indicator** (live preview of current star rating based on time elapsed)
+| Tier | Levels | Theme |
+|---|---|---|
+| Tutorial | 1–10 | Hand-crafted, introduce every mechanic |
+| Apprentice | 11–30 | Spark → Core |
+| Craftsman | 31–60 | Circuit → Queue |
+| Expert | 61–100 | Thread → Unroll |
+| Master | 101–150 | Kernel → Nsight |
+| Grandmaster | 151–200 | Exascale → Threshold |
+
+Levels 11–200 are generated programmatically in `levelConfig.js` with:
+- **Required output:** `100k × (level/10)^2.3` — smooth power curve
+- **Time limit:** 330s at level 10, +1.45s/level, capped at 600s
+- **Blocks:** Scale from 6 to 36, type mix shifts toward Doubler/CA/Greedy in later tiers
+- **Pixels:** `50 + level × 8` total, split evenly across 7 colors, capped at 2500
+
+Campaign page shows tier accordions (click to expand) with a mini progress bar per tier.
+
+## Achievements (36 total)
+
+### Campaign Progress
+| Key | Name | Condition |
+|---|---|---|
+| `first_level` | Factory Floor | Complete Level 1 |
+| `level_25` | Getting Serious | Complete Level 25 |
+| `level_50` | Halfway There | Complete Level 50 |
+| `level_100` | Century Run | Complete Level 100 |
+| `level_150` | Deep Factory | Complete Level 150 |
+| `level_200` | Grand Master | Complete all 200 levels |
+
+### Stars
+| Key | Name | Condition |
+|---|---|---|
+| `three_star_any` | Perfectionist | 3 stars on any level |
+| `three_star_10` | Flawless Ten | 3 stars on first 10 levels |
+| `three_star_50` | Stellar Run | 3 stars on 50 levels |
+| `three_star_all` | Pixel Perfect | 3 stars on all 200 levels |
+
+### Sets
+`discover_midnight`, `discover_primary`, `discover_grass`, `discover_sunset`, `discover_phils`, `discover_all_sets`, `synergy_double`
+
+### Production
+`dominate_color`, `dominate_full`, `px_100k`, `px_1m`, `px_10m`, `rate_1000`, `rate_10000`
+
+### Gold & Blocks
+`greedy_10k`, `greedy_100k`, `doubler_trigger`, `full_grid`
+
+### Endless
+`endless_wave_10`, `endless_wave_25`, `endless_wave_50`, `endless_wave_100`
+
+### Shop & Templates
+`rainbow_unlock`, `templates_maxed`, `save_template`
 
 ---
 
-## Visual Design
+## Production Engine Logic
 
-**Theme:** Clean modern UI with pixel accents.
+```js
+// Runs every 100ms (10 ticks/second) — frontend/src/engine/productionEngine.js
+function computeTick(grid) {
+  const setMap       = buildSetMap(grid)         // setDetector.js
+  const dominanceMap = buildDominanceMap(grid)   // dominanceChecker.js
 
-- Grid background: subtle dot-grid or clean tile lines
-- Blocks: rounded tiles with visible 16x16 pixel art inside at all times
-- **Production animation:** Block fills up with a colored overlay (matching dominant color or white), then **pulses outward** on each output tick
-- Active synergy lines: faint glowing lines between synergized blocks
-- Dominance aura: soft glow radiating from dominant blocks to their 8 neighbors
-- Font: Clean sans-serif (Inter or similar) with pixel-style headers
-- Color palette: Dark background (#0f0f1a), light card surfaces, vibrant pixel colors
+  for each [row, col] in grid {
+    let rate = floor(block.pixelCount * 0.8)     // base px/s
+
+    rate *= getSetBonusMultiplier(row, col, setMap)   // own set + neighbor radiation
+    rate *= getSynergyMultiplier(row, col, setMap)    // +15% if matching adjacent set
+    rate += getCrossAmplifierBonus(row, col, grid)    // flat px/s from diagonal CA blocks
+    rate *= getDoublerMultiplier(block, row, col, grid) // ×2 if all neighbors < half
+    if dominanceMap.has(row, col): rate *= 1.25       // +25% from dominant neighbor
+
+    total += rate / 10   // per 100ms tick
+  }
+}
+```
+
+---
+
+## Key Implementation Notes
+
+1. **Never decrease the progress bar.** `totalPixelsProduced` is append-only. Spending pixels tracked in separate `pixelsSpent`.
+
+2. **Pixel inventory is authoritative.** All painting/erasing/fill/clear goes through `gameStore` actions (`paintPixel`, `clearBlock`, `fillBlock`) which check and update `pixelInventory`. Never directly mutate `pixelLayout`.
+
+3. **Block move cooldown.** `placeBlock` on an occupied slot is rejected. `moveBlock` sets `pauseTimer = 5000`. `tickCooldowns(TICK_MS)` called every game tick.
+
+4. **Color dominance check.** `buildDominanceMap` runs every tick. A block is dominant if one non-white color > 50% of ALL its filled pixels (including white in denominator).
+
+5. **Set detection.** `buildSetMap` runs every tick. "Only" sets (PRIMARY, MIDNIGHT, GRASS, SUNSET) reject any pixel outside the allowed color list. PHILIPPINES allows white explicitly.
+
+6. **Color Checker trigger.** Fires in `paintPixel`/`fillBlock` when ≥50% of the block's pixels match `colorCheckerColor`. Sets `colorCheckerTriggered = true` and increments `colorCheckerReductions` in gameStore. Level.jsx reads reductions to compute `effectiveRequired`.
+
+7. **Greedy gold.** Calculated via `totalGreedyBonus(grid)` on level complete. Added to user gold via `addGold()`.
+
+8. **Achievement checks.** `achievementEngine.js` exports pure check functions. Called from Level.jsx (on complete), Endless.jsx (on wave), and ProductionEngine.jsx (on set discovery). Unlock via `userStore.unlockAchievement(key)`.
+
+9. **Supabase only used for:** auth, profile gold, campaign_progress, achievements, endless_scores. All simulation is client-side.
+
+10. **Env vars:** Frontend uses only `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (in `frontend/.env`). Service role key lives only in `backend/.env`, never in frontend code.
+
+---
+
+## Environment Variables
+
+| File | Committed | Contains |
+|---|---|---|
+| `frontend/.env` | Never | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| `backend/.env` | Never | `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY` |
 
 ---
 
 ## Database Schema (Supabase)
 
-```sql
--- Users (handled by Supabase Auth, extended below)
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
-  gold INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+See `supabase/schema.sql` — run once in Supabase SQL Editor.
 
--- Inventory: pixels and blocks owned outside of levels
-CREATE TABLE inventory (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  item_type TEXT NOT NULL, -- 'pixel', 'block', 'grid_style', 'special_unlock'
-  item_key TEXT NOT NULL,  -- e.g. 'pixel_red', 'block_doubler', 'style_overclock'
-  quantity INTEGER DEFAULT 0
-);
-
--- Block Templates
-CREATE TABLE block_templates (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  name TEXT NOT NULL,
-  pixel_layout JSONB NOT NULL, -- 16x16 array of color values
-  set_type TEXT,               -- e.g. 'MIDNIGHT', null if no set
-  is_official BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Campaign Progress
-CREATE TABLE campaign_progress (
-  user_id UUID REFERENCES profiles(id),
-  level_number INTEGER,
-  stars INTEGER DEFAULT 0,
-  best_time_seconds INTEGER,
-  PRIMARY KEY (user_id, level_number)
-);
-
--- Endless Highscores (leaderboard)
-CREATE TABLE endless_scores (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  username TEXT NOT NULL,
-  highest_wave INTEGER NOT NULL,
-  total_pixels_produced BIGINT NOT NULL,
-  achieved_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Achievements
-CREATE TABLE achievements (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  achievement_key TEXT NOT NULL,
-  unlocked_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, achievement_key)
-);
-```
-
----
-
-## Achievements
-
-| Key | Name | Condition |
-|---|---|---|
-| `first_level` | Factory Floor | Complete Level 1 |
-| `three_star_any` | Perfectionist | Get 3 stars on any level |
-| `three_star_all` | Pixel Perfect | Get 3 stars on all 10 levels |
-| `discover_midnight` | Night Shift | Discover MIDNIGHT set in-level |
-| `discover_primary` | Color Theory | Discover PRIMARY set in-level |
-| `discover_all_sets` | Set Master | Discover all 5 sets in-level |
-| `greedy_10k` | Gold Digger | Earn 10,000 bonus gold from Greedy Blocks total |
-| `endless_wave_10` | Infinite Factory | Reach Wave 10 in Endless |
-| `endless_wave_25` | Overclocker | Reach Wave 25 in Endless |
-| `rainbow_unlock` | Spectrum | Purchase Rainbow Pixel unlock |
-| `templates_maxed` | Blueprint Master | Fill all template slots |
-| `dominate_color` | Dominant | Trigger color dominance on 8 blocks simultaneously |
-
----
-
-## Production Engine Logic (pseudocode)
-
-```js
-// Runs every 100ms (10 ticks/second)
-function gameTick(grid) {
-  let totalThisTick = 0;
-
-  for each block in grid.placedBlocks {
-    if (block.pauseTimer > 0) {
-      block.pauseTimer -= 100;
-      continue; // skip production during 5s move cooldown
-    }
-
-    let rate = baseRate(block);               // pixelCount * 0.8
-    rate *= setBonus(block);                   // Title set multiplier
-    rate *= synergyBonus(block, grid);         // Adjacent same-set bonus
-    rate += crossAmplifierBonus(block, grid);  // Diagonal CA block contributions
-    rate *= doublerCheck(block, grid);         // 2x if neighbors all < half
-    rate *= dominanceBoost(block, grid);       // 25% if neighbor is dominant
-
-    totalThisTick += rate / 10; // divide by 10 since we tick 10x/sec
-  }
-
-  gameState.totalPixelsProduced += totalThisTick;
-  gameState.displayPixels = gameState.totalPixelsProduced; // never decreases
-}
-```
-
----
-
-## Key Implementation Notes for Claude Code
-
-1. **Never decrease the progress bar.** `totalPixelsProduced` is append-only. Spending pixels in-level is tracked in a separate `pixelsSpent` counter. The progress bar always uses `totalPixelsProduced`.
-
-2. **Block move cooldown.** When a block is dragged to a new slot, set `block.pauseTimer = 5000`. Retain all other block state (pixel layout, accumulated set bonuses, etc.).
-
-3. **Color dominance check.** Run after every block edit. A block is dominant if one non-white color ≥ 50% of its filled pixels. Dominant blocks add a `dominanceBoost = 1.25` multiplier to all 8 orthogonal+diagonal neighbors.
-
-4. **Set detection.** Run `setDetector.js` whenever a block's pixel layout changes. Check color composition and pixel count against all set definitions. Assign `block.activeSet` accordingly. If set is newly discovered (not in user's template library and not purchased), trigger achievement flow.
-
-5. **Greedy block gold.** Calculate only on level completion. `bonus = (greedyBlock.pixelCount - sumOf8Neighbors.pixelCount) * 10`. Only apply if result is positive.
-
-6. **Doubler block.** Check all 4 orthogonal neighbors. Each neighbor must have `pixelCount < greedyBlock.pixelCount / 2`. If ALL pass, output × 2.
-
-7. **Template save prompt.** After a level ends, check all blocks that activated a set. If `user.templates` does not contain that set type, show a modal: "You discovered [SET NAME]! Save this as a template?"
-
-8. **Supabase Realtime** is not needed for core gameplay (all simulation is client-side). Only use Supabase for: auth, save/load progress, leaderboard writes, achievement unlocks.
-
-9. **Game state persistence.** Auto-save grid state to Supabase on level exit and wave completion in Endless. On load, restore from last saved state.
-
-10. **Endless mode between waves.** Pause the timer, show the in-level shop, let player buy blocks/pixels/templates, then continue. Grid state fully persists between waves.
+Tables: `profiles`, `inventory`, `block_templates`, `campaign_progress`, `endless_scores`, `achievements`.
+All tables have Row Level Security enabled. Users can only access their own rows.
 
 ---
 
 ## Deployment — GitHub Pages
 
-### Why GitHub Pages needs special setup with Vite + React Router
-GitHub Pages serves static files from a single URL. React Router uses client-side routing, which means refreshing any page other than `/` will return a 404. We fix this with a redirect trick. Supabase auth also needs the correct redirect URL configured.
-
-### One-Time Setup
-
-**1. Create the GitHub repo**
-```bash
-git init
-git remote add origin https://github.com/YOUR_USERNAME/pixelfactory.git
-```
-
-**2. Install the GitHub Pages deploy plugin**
-```bash
-npm install --save-dev gh-pages
-```
-
-**3. Set the base path in `vite.config.js`**
-```js
-export default defineConfig({
-  base: '/pixelfactory/', // must match your repo name exactly
-  plugins: [react()],
-})
-```
-
-**4. Add deploy scripts to `package.json`**
-```json
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d dist"
-}
-```
-
-**5. Fix React Router for GitHub Pages**
-
-Create `public/404.html` with this content — it redirects all 404s back to `index.html` with the path preserved:
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <script>
-      const path = window.location.pathname;
-      window.location.replace(
-        window.location.origin + '/?p=' + encodeURIComponent(path)
-      );
-    </script>
-  </head>
-</html>
-```
-
-Then in your `main.jsx`, add this before rendering:
-```js
-// Restore path from GitHub Pages 404 redirect
-const params = new URLSearchParams(window.location.search);
-const redirectPath = params.get('p');
-if (redirectPath) {
-  window.history.replaceState(null, '', redirectPath);
-}
-```
-
-**6. Configure Supabase Auth redirect URLs**
-
-In your Supabase dashboard → Authentication → URL Configuration:
-- **Site URL:** `https://YOUR_USERNAME.github.io/pixelfactory`
-- **Redirect URLs:** `https://YOUR_USERNAME.github.io/pixelfactory/**`
-
-**7. Environment variables**
-
-Create `.env` in project root (never commit this):
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-Add `.env` to `.gitignore`. For GitHub Pages to use these, you must add them as **GitHub Actions secrets** (see below).
-
-### Deploying
-
-**Manual deploy (simple):**
-```bash
-npm run deploy
-```
-This builds the project and pushes the `dist/` folder to the `gh-pages` branch automatically.
-
-Your live URL will be:
-```
-https://YOUR_USERNAME.github.io/pixelfactory/
-```
-
-### Automatic Deploy via GitHub Actions (recommended)
-
-Create `.github/workflows/deploy.yml`:
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - run: npm install
-      - run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-```
-
-Add your Supabase keys in: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
-
-### Important GitHub Pages Limitations to Know
-- **No server-side code.** All logic must be client-side (this is fine — our engine is already fully client-side).
-- **Supabase calls go directly from browser to Supabase.** Never put your Supabase service role key in the frontend — only use the `anon` key.
-- **Custom domain** is possible later (Settings → Pages → Custom domain) if you want `pixelfactory.gg` or similar.
+1. `frontend/vite.config.js` has `base: '/pixelfactory/'`
+2. `frontend/public/404.html` handles SPA redirect
+3. `frontend/src/main.jsx` restores path from `?p=` param
+4. Deploy: `cd frontend && npm run deploy` (pushes `dist/` to `gh-pages` branch)
+5. Or use GitHub Actions (auto-deploy on push to `main`) — add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repo secrets
+6. Supabase Auth → URL Configuration → Site URL: `https://YOUR_USERNAME.github.io/pixelfactory`
 
 ---
 
 ## Development Phases
 
-### Phase 1 — Core Loop
-- [ ] Vite + React + Supabase setup
-- [ ] Auth (register, login, profile)
-- [ ] 12x12 grid with drag-and-drop block placement
-- [ ] 16x16 block pixel editor
-- [ ] Production engine (game tick, base output)
-- [ ] Level 1 (tutorial) fully playable
-- [ ] Progress bar + HUD stats
+### Phase 1 — Core Loop ✅
+- [x] Vite + React + Supabase setup (`frontend/` folder)
+- [x] Auth (register, login) — input sanitized, password regex enforced
+- [x] 12×12 grid with drag-and-drop block placement
+- [x] 16×16 block pixel editor with pixel inventory
+- [x] Production engine (game tick, base output)
+- [x] Level 1 (tutorial) fully playable
+- [x] Progress bar + HUD stats
 
-### Phase 2 — Block Types & Effects
-- [ ] All 5 block types implemented
-- [ ] Doubler, Cross Amplifier, Color Checker, Greedy logic
-- [ ] Block move cooldown (5s pause)
-- [ ] Block fill + pulse animation
+### Phase 2 — Block Types & Effects ✅
+- [x] All 5 block types: Base, Doubler, Cross Amplifier, Color Checker, Greedy
+- [x] Pixel inventory — spend on paint, refund on erase/clear/remove block
+- [x] Block move cooldown (5s pause timer)
+- [x] Block fill overlay + glow pulse animation
 
-### Phase 3 — Sets & Synergies
-- [ ] Set detector (all 5 sets)
-- [ ] Synergy engine (adjacent same-set bonus)
-- [ ] Color dominance checker
-- [ ] Achievement triggers for set discovery
+### Phase 3 — Sets & Synergies ✅
+- [x] Set detector — all 5 sets (PRIMARY, MIDNIGHT, PHILIPPINES, GRASS, SUNSET)
+- [x] Synergy engine — set bonuses + neighbor radiations + +15% same-set adjacency
+- [x] Color dominance checker — +25% to all 8 neighbors
+- [x] Set badge dot shown on Block component
 
-### Phase 4 — Campaign & Levels
-- [ ] All 10 levels configured
-- [ ] Star rating system
-- [ ] Gold reward calculation
-- [ ] Level select screen with star display
+### Phase 4 — Campaign & Levels ✅
+- [x] All 10 levels configured in `levelConfig.js`
+- [x] Star rating system (live preview + final result)
+- [x] Gold reward calculation (base + Greedy bonus)
+- [x] Level select with star display and unlock gating
 
-### Phase 5 — Shop & Templates
-- [ ] Shop UI (grid styles, special blocks, pixel packs, rainbow unlock)
-- [ ] Block Template manager (home screen)
-- [ ] In-level shop (buy templates, pixels, blocks)
-- [ ] Template save prompt on set discovery
+### Phase 5 — Shop & Templates ✅
+- [x] Shop page UI with all items, pricing, purchase toasts, owned state
+- [x] Block Templates page with pixel preview and official templates
+- [x] Pixel inventory shown in-level (left panel)
+- [x] Color Checker info banner in editor
+- [x] In-level shop — buy pixel packs (mixed or per-color) with gold during a level
+- [x] Template save prompt — shown when a new set is detected on a placed block
 
-### Phase 6 — Endless & Leaderboard
-- [ ] Endless mode wave system
-- [ ] Highscore tracking
-- [ ] Supabase leaderboard
+### Phase 6 — Endless & Leaderboard ✅
+- [x] Endless mode — wave system (×1.6 scaling), stopwatch
+- [x] Grid persists between waves; between-wave overlay with Shop button
+- [x] Pixel/block counts scale with wave number
+- [x] Supabase leaderboard submission on each wave complete (logged-in users)
 
-### Phase 7 — Polish
-- [ ] All achievements
-- [ ] Settings (volume, tutorial toggle, etc.)
-- [ ] Responsive layout
-- [ ] Prebuilt official templates
+### Phase 7 — Polish ✅
+- [x] Achievement engine (`achievementEngine.js`) — 12 achievements, pure check functions
+- [x] Achievement toast — global queue in userStore, auto-dismiss, click to skip
+- [x] Settings page — SFX/music volume sliders, tutorial toggle, achievement list
+- [x] Responsive grid — `useGridCellSize` hook: 48px → 36px → 28px by viewport width
+- [x] Official prebuilt templates — one per set (MIDNIGHT, PRIMARY, PHILIPPINES, GRASS, SUNSET)
+- [x] Tutorial overlay — step-by-step guidance for Level 1, advances automatically on player actions
+- [x] Modern thick UI — `.btn`, `.card`, `.input` CSS classes; border-2, font-black, chunky progress bars
+- [x] In-level shop accessible via "Shop" link in inventory panel
+- [x] Template save prompt on new set discovery mid-level
+- [x] Supabase leaderboard + template save wired to DB

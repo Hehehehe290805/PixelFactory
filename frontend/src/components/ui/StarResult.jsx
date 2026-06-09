@@ -1,70 +1,59 @@
 import { motion } from 'framer-motion'
 
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+function fmt(s) {
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
-const GOLD_BY_STARS = { 3: 100, 2: 70, 1: 50, 0: 0 }
-
-export default function StarResult({ stars, levelConfig, elapsedSeconds, onContinue, onRetry }) {
-  const gold = GOLD_BY_STARS[stars] ?? 0
+export default function StarResult({ stars, levelConfig, elapsedSeconds, goldEarned, onContinue, onRetry }) {
+  const won = stars > 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85">
       <motion.div
-        initial={{ scale: 0.7, opacity: 0 }}
+        initial={{ scale: 0.75, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="bg-game-card border border-game-border rounded-2xl p-10 text-center shadow-2xl w-full max-w-sm"
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        className="card mx-4 w-full max-w-sm text-center"
+        style={{ padding: '2.5rem' }}
       >
-        {stars > 0 ? (
-          <>
-            <h2 className="text-3xl font-black text-white mb-2 pixel-heading">Level Complete!</h2>
-            <p className="text-gray-400 text-sm mb-6">{levelConfig.name} · {formatTime(elapsedSeconds)}</p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-3xl font-black text-red-400 mb-2 pixel-heading">Time's Up</h2>
-            <p className="text-gray-400 text-sm mb-6">{levelConfig.name}</p>
-          </>
-        )}
+        <h2 className={`text-4xl font-black pixel-heading mb-2 ${won ? 'text-white' : 'text-pixel-red'}`}>
+          {won ? 'Complete!' : "Time's Up"}
+        </h2>
+        <p className="text-gray-500 text-sm font-semibold mb-8">
+          {levelConfig.name}{won ? ` · ${fmt(elapsedSeconds)}` : ''}
+        </p>
 
         {/* Stars */}
-        <div className="flex justify-center gap-3 mb-6 text-5xl">
+        <div className="flex justify-center gap-4 mb-8">
           {[1, 2, 3].map(i => (
             <motion.span
               key={i}
-              initial={{ scale: 0, rotate: -30 }}
-              animate={{ scale: i <= stars ? 1 : 0.6, rotate: 0 }}
-              transition={{ delay: i * 0.15, type: 'spring' }}
-              className={i <= stars ? 'text-pixel-yellow' : 'text-gray-700'}
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: i * 0.12, type: 'spring', stiffness: 240 }}
+              style={{ fontSize: '3.5rem', lineHeight: 1 }}
+              className={i <= stars ? 'text-pixel-yellow' : 'text-game-border'}
             >
               ★
             </motion.span>
           ))}
         </div>
 
-        {stars > 0 && (
-          <div className="text-pixel-yellow font-bold text-lg mb-6">
-            +{gold} gold
-          </div>
+        {goldEarned > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="mb-8 px-5 py-3 rounded-2xl border-2 border-pixel-yellow/40 bg-pixel-yellow/10 inline-block"
+          >
+            <span className="text-pixel-yellow font-black text-2xl">+{goldEarned.toLocaleString()}</span>
+            <span className="text-pixel-yellow/70 font-bold text-sm ml-2">gold</span>
+          </motion.div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            onClick={onRetry}
-            className="flex-1 bg-game-bg hover:bg-game-border border border-game-border text-white font-semibold py-2 rounded-lg transition"
-          >
-            Retry
-          </button>
-          <button
-            onClick={onContinue}
-            className="flex-1 bg-pixel-blue hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition"
-          >
-            {stars > 0 ? 'Continue' : 'Back'}
-          </button>
+        <div className="flex gap-3 mt-2">
+          <button onClick={onRetry}    className="btn btn-secondary flex-1">Retry</button>
+          <button onClick={onContinue} className="btn btn-primary flex-1">{won ? 'Continue' : 'Back'}</button>
         </div>
       </motion.div>
     </div>

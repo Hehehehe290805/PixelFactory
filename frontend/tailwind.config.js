@@ -4,20 +4,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        'game-bg': '#0f0f1a',
-        'game-card': '#1a1a2e',
-        'game-border': '#2a2a4a',
-        'pixel-red': '#e63946',
-        'pixel-orange': '#f4a261',
-        'pixel-yellow': '#ffd166',
-        'pixel-green': '#06d6a0',
-        'pixel-blue': '#118ab2',
-        'pixel-violet': '#9b5de5',
-        'pixel-white': '#f8f9fa',
+        'game-bg':       '#0a0a18',
+        'game-card':     '#111128',
+        'game-card2':    '#191934',  // slightly lighter card for nested panels
+        'game-border':   '#36366a',  // visible, saturated purple-grey
+        'game-border2':  '#4a4a88',  // hover/active border
+        'pixel-red':     '#f03e4e',
+        'pixel-orange':  '#f59342',
+        'pixel-yellow':  '#ffd166',
+        'pixel-green':   '#00d49a',
+        'pixel-blue':    '#1499cc',
+        'pixel-violet':  '#a066f0',
+        'pixel-white':   '#f0f0fa',
         'pixel-rainbow': '#ff6b9d',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderWidth: {
+        '3': '3px',
       },
     },
   },

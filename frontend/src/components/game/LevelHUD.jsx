@@ -1,66 +1,59 @@
 import { useGameStore } from '../../store/gameStore'
 import { Link } from 'react-router-dom'
 
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+function fmt(s) {
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
-function liveStar(elapsedSeconds, timeLimitSeconds) {
-  const ratio = elapsedSeconds / timeLimitSeconds
-  if (ratio <= 0.30) return 3
-  if (ratio <= 0.70) return 2
-  return 1
+function liveStar(elapsed, limit) {
+  const r = elapsed / limit
+  return r <= 0.30 ? 3 : r <= 0.70 ? 2 : 1
 }
 
-export default function LevelHUD({ config, timeRemaining, elapsedSeconds }) {
+export default function LevelHUD({ config, effectiveRequired, timeRemaining, elapsedSeconds }) {
   const { totalPixelsProduced } = useGameStore()
-  const progress = Math.min(1, totalPixelsProduced / config.requiredOutput)
+  const progress    = Math.min(1, totalPixelsProduced / effectiveRequired)
   const currentStar = liveStar(elapsedSeconds, config.timeLimitSeconds)
-  const urgentTime = timeRemaining <= 30
+  const urgent      = timeRemaining <= 30
 
   return (
-    <div className="bg-game-card border-b border-game-border px-4 py-3 flex items-center gap-4">
-      {/* Back */}
-      <Link to="/campaign" className="text-gray-500 hover:text-white text-sm transition flex-shrink-0">
-        ← Exit
-      </Link>
+    <div className="bg-game-card border-b-2 border-game-border px-4 py-3 flex items-center gap-4 flex-shrink-0">
+      <Link to="/campaign" className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">← Exit</Link>
 
-      {/* Level name */}
-      <div className="flex-shrink-0">
-        <span className="text-xs text-gray-500">LVL {config.number}</span>
-        <span className="text-white font-semibold ml-2">{config.name}</span>
+      <div className="flex-shrink-0 hidden sm:block">
+        <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">LVL {config.number}</div>
+        <div className="text-white font-black text-sm leading-tight">{config.name}</div>
       </div>
 
-      {/* Progress bar */}
-      <div className="flex-1 flex flex-col gap-1">
-        <div className="flex justify-between text-xs text-gray-500">
+      {/* Progress */}
+      <div className="flex-1 flex flex-col gap-1 min-w-0">
+        <div className="flex justify-between text-xs font-bold text-gray-500">
           <span>{Math.floor(totalPixelsProduced).toLocaleString()} px</span>
-          <span>{config.requiredOutput.toLocaleString()} px</span>
+          <span>{effectiveRequired.toLocaleString()} px</span>
         </div>
-        <div className="h-3 bg-game-bg rounded-full overflow-hidden border border-game-border">
+        <div className="progress-track">
           <div
-            className="h-full rounded-full transition-all duration-100"
-            style={{
-              width: `${progress * 100}%`,
-              backgroundColor: progress >= 1 ? '#06d6a0' : '#118ab2',
-            }}
+            className="progress-fill"
+            style={{ width: `${progress * 100}%`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
           />
         </div>
       </div>
 
-      {/* Star indicator */}
-      <div className="flex-shrink-0 text-lg">
+      {/* Live stars */}
+      <div className="flex-shrink-0 text-xl leading-none">
         {[1, 2, 3].map(i => (
-          <span key={i} className={i <= currentStar ? 'text-pixel-yellow' : 'text-gray-700'}>★</span>
+          <span key={i} className={i <= currentStar ? 'text-pixel-yellow' : 'text-game-border'}>★</span>
         ))}
       </div>
 
       {/* Timer */}
-      <div className={`flex-shrink-0 font-mono text-xl font-bold ${urgentTime ? 'text-red-400' : 'text-white'}`}>
-        {formatTime(timeRemaining)}
-      </div>
+      {config.tutorial ? (
+        <div className="flex-shrink-0 text-xs font-black text-game-border2 uppercase tracking-widest">No Limit</div>
+      ) : (
+        <div className={`flex-shrink-0 font-black text-2xl font-mono leading-none ${urgent ? 'text-pixel-red animate-pulse' : 'text-white'}`}>
+          {fmt(timeRemaining)}
+        </div>
+      )}
     </div>
   )
 }
