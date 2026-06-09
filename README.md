@@ -7,7 +7,7 @@ A browser-based **idle/strategy game** about parallel programming. Each block on
 ## Play It
 
 Deployed on GitHub Pages:  
-**https://Hehehehe290805.github.io/pixelfactory/**
+**https://GITHUB_USERNAME.github.io/pixelfactory/**
 
 ---
 
@@ -176,10 +176,10 @@ App runs at `http://localhost:5173/pixelfactory/`
    This builds to `dist/` and pushes it to the `gh-pages` branch.
 4. In your GitHub repo go to **Settings → Pages** and set the source branch to `gh-pages`.
 5. In your Supabase project go to **Authentication → URL Configuration** and add:
-   - Site URL: `https://Hehehehe290805.github.io/pixelfactory`
-   - Redirect URL: `https://Hehehehe290805.github.io/pixelfactory`
+   - Site URL: `https://GITHUB_USERNAME.github.io/pixelfactory`
+   - Redirect URL: `https://GITHUB_USERNAME.github.io/pixelfactory`
 
-Your game will be live at `https://Hehehehe290805.github.io/pixelfactory` — completely free.
+Your game will be live at `https://GITHUB_USERNAME.github.io/pixelfactory` — completely free.
 
 > **Alternative free hosts:** [Netlify](https://netlify.com) (drag-and-drop your `dist/` folder) or [Vercel](https://vercel.com) (connect your GitHub repo, set the same env vars in the dashboard). Both are free for personal projects with no server needed since all game logic runs client-side.
 
