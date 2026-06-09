@@ -1,0 +1,19 @@
+# Dependencies
+frontend/node_modules
+backend/node_modules
+
+# Build output
+frontend/dist
+
+# Environment variables — never commit
+frontend/.env
+backend/.env
+
+# Vite cache
+frontend/.vite
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea
+.vscode

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      const path = window.location.pathname;
+      window.location.replace(
+        window.location.origin + '/?p=' + encodeURIComponent(path)
+      );
+    </script>
+  </head>
+</html>
