@@ -7,6 +7,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
+  const [confirmed, setConfirmed] = useState(false)
   const { register, loading, error, clearError } = useUserStore()
 
   function validate() {
@@ -26,6 +27,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
     if (Object.keys(errors).length) { setFieldErrors(errors); return }
     setFieldErrors({})
     const ok = await register(email.trim().toLowerCase(), password, sanitizePlainText(username))
+    if (ok === 'confirm_email') { setConfirmed(true); return }
     if (ok) onClose()
   }
 
@@ -40,34 +42,47 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
       <div className="card w-full max-w-sm" style={{ padding: '2rem' }}>
         <h2 className="text-3xl font-black text-white pixel-heading mb-6">Register</h2>
 
-        {error && (
+        {confirmed && (
+          <div className="border-2 border-pixel-green/50 bg-pixel-green/10 text-green-300 text-sm font-semibold rounded-xl px-4 py-4 mb-4 text-center">
+            <div className="text-2xl mb-2">📧</div>
+            <div className="font-black text-pixel-green mb-1">Check your email!</div>
+            <div>Click the confirmation link in your inbox to activate your account.</div>
+            <button onClick={onClose} className="btn btn-primary w-full mt-4 text-sm">Done</button>
+          </div>
+        )}
+
+        {!confirmed && error && (
           <div className="border-2 border-pixel-red/50 bg-pixel-red/10 text-red-300 text-sm font-semibold rounded-xl px-4 py-3 mb-4">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <Field label="Username" type="text" value={username}
-            onChange={v => handleChange('username', v, setUsername)}
-            error={fieldErrors.username} placeholder="3–20 chars" maxLength={20} />
-          <Field label="Email" type="email" value={email}
-            onChange={v => handleChange('email', v, setEmail)}
-            error={fieldErrors.email} maxLength={254} />
-          <Field label="Password" type="password" value={password}
-            onChange={v => handleChange('password', v, setPassword)}
-            error={fieldErrors.password} placeholder="8+ chars, upper + number + symbol" maxLength={72} />
-          <button type="submit" disabled={loading} className="btn btn-primary w-full text-base mt-2">
-            {loading ? 'Creating account…' : 'Create Account'}
-          </button>
-        </form>
+        {!confirmed && (
+          <>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <Field label="Username" type="text" value={username}
+                onChange={v => handleChange('username', v, setUsername)}
+                error={fieldErrors.username} placeholder="3–20 chars" maxLength={20} />
+              <Field label="Email" type="email" value={email}
+                onChange={v => handleChange('email', v, setEmail)}
+                error={fieldErrors.email} maxLength={254} />
+              <Field label="Password" type="password" value={password}
+                onChange={v => handleChange('password', v, setPassword)}
+                error={fieldErrors.password} placeholder="8+ chars, upper + number + symbol" maxLength={72} />
+              <button type="submit" disabled={loading} className="btn btn-primary w-full text-base mt-2">
+                {loading ? 'Creating account…' : 'Create Account'}
+              </button>
+            </form>
 
-        <p className="text-sm text-gray-500 mt-5 text-center font-semibold">
-          Have an account?{' '}
-          <button onClick={onSwitchToLogin} className="text-pixel-blue hover:underline font-black">Login</button>
-        </p>
-        <button onClick={onClose} className="mt-3 w-full text-xs text-gray-600 hover:text-gray-400 font-semibold transition">
-          Cancel
-        </button>
+            <p className="text-sm text-gray-500 mt-5 text-center font-semibold">
+              Have an account?{' '}
+              <button onClick={onSwitchToLogin} className="text-pixel-blue hover:underline font-black">Login</button>
+            </p>
+            <button onClick={onClose} className="mt-3 w-full text-xs text-gray-600 hover:text-gray-400 font-semibold transition">
+              Cancel
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

@@ -1,5 +1,4 @@
 import { useGameStore } from '../../store/gameStore'
-import { Link } from 'react-router-dom'
 
 function fmt(s) {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
@@ -10,15 +9,27 @@ function liveStar(elapsed, limit) {
   return r <= 0.30 ? 3 : r <= 0.70 ? 2 : 1
 }
 
+const SPEED_OPTIONS = [0.5, 1, 2, 5, 10]
+
 export default function LevelHUD({ config, effectiveRequired, timeRemaining, elapsedSeconds }) {
-  const { totalPixelsProduced } = useGameStore()
+  const { totalPixelsProduced, gameSpeed, purchasedSpeeds, setGameSpeed, setPaused } = useGameStore()
   const progress    = Math.min(1, totalPixelsProduced / effectiveRequired)
   const currentStar = liveStar(elapsedSeconds, config.timeLimitSeconds)
   const urgent      = timeRemaining <= 30
 
+  // Speed buttons visible once at least one speed is purchased
+  const availableSpeeds = SPEED_OPTIONS.filter(s => s === 1 || purchasedSpeeds.has(s))
+
   return (
-    <div className="bg-game-card border-b-2 border-game-border px-4 py-3 flex items-center gap-4 flex-shrink-0">
-      <Link to="/campaign" className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">← Exit</Link>
+    <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0">
+      {/* Pause button */}
+      <button
+        onClick={() => setPaused(true)}
+        className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0"
+        title="Pause"
+      >
+        ⏸
+      </button>
 
       <div className="flex-shrink-0 hidden sm:block">
         <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">LVL {config.number}</div>
@@ -40,11 +51,31 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
       </div>
 
       {/* Live stars */}
-      <div className="flex-shrink-0 text-xl leading-none">
-        {[1, 2, 3].map(i => (
-          <span key={i} className={i <= currentStar ? 'text-pixel-yellow' : 'text-game-border'}>★</span>
-        ))}
-      </div>
+      {!config.tutorial && (
+        <div className="flex-shrink-0 text-xl leading-none hidden sm:flex">
+          {[1, 2, 3].map(i => (
+            <span key={i} className={i <= currentStar ? 'text-pixel-yellow' : 'text-game-border'}>★</span>
+          ))}
+        </div>
+      )}
+
+      {/* Speed selector — visible once any speed is purchased */}
+      {availableSpeeds.length > 1 && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {availableSpeeds.map(s => (
+            <button
+              key={s}
+              onClick={() => setGameSpeed(s)}
+              className={`text-xs font-black px-1.5 py-1 rounded-lg border transition leading-none
+                ${gameSpeed === s
+                  ? 'border-pixel-yellow text-pixel-yellow bg-pixel-yellow/10'
+                  : 'border-game-border text-gray-500 hover:border-gray-500'}`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Timer */}
       {config.tutorial ? (

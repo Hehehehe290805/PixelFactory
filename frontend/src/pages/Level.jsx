@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { getLevelConfig } from '../engine/levelConfig'
@@ -36,6 +36,7 @@ export default function Level() {
   const {
     grid, inventory, pixelInventory, selectedBlockId, setSelectedBlock,
     startLevel, levelComplete, resetLevel, colorCheckerReductions, removeBlock,
+    gamePaused, setPaused,
   } = useGameStore()
   const {
     saveCampaignProgress, addGold, unlockAchievements, addCumulativeGreedyGold,
@@ -48,13 +49,10 @@ export default function Level() {
   const [resultShown, setResultShown]       = useState(false)
   const [stars, setStars]                   = useState(0)
   const [goldEarned, setGoldEarned]         = useState(0)
-  const tabHiddenAtRef = useRef(null) // tracks when tab was hidden
+  const tabHiddenAtRef = useRef(null)
 
-  // Template save prompt state
-  const [templatePrompt, setTemplatePrompt] = useState(null) // { block, setName }
-  const shownSetPrompts = useRef(new Set()) // avoid double-prompting same set
-
-  // Template picker: shown when an empty block is placed/selected
+  const [templatePrompt, setTemplatePrompt] = useState(null)
+  const shownSetPrompts = useRef(new Set())
   const [pickerBlockId, setPickerBlockId] = useState(null)
 
   const effectiveRequired = config
@@ -71,7 +69,6 @@ export default function Level() {
     return () => resetLevel()
   }, [levelNum]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pause timer when tab is hidden so alt-tab doesn't consume time
   useEffect(() => {
     function onVisibilityChange() {
       if (document.hidden) {
@@ -80,7 +77,6 @@ export default function Level() {
         const hiddenMs = Date.now() - tabHiddenAtRef.current
         const hiddenSecs = Math.round(hiddenMs / 1000)
         tabHiddenAtRef.current = null
-        // Restore time that was silently consumed while hidden
         setTimeRemaining(t => Math.min(config?.timeLimitSeconds ?? 120, t + hiddenSecs))
         setElapsedSeconds(e => Math.max(0, e - hiddenSecs))
       }
@@ -89,9 +85,9 @@ export default function Level() {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [config]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Timer countdown — paused for tutorial levels (config.tutorial === true)
+  // Timer countdown — paused for tutorial levels or when gamePaused
   useEffect(() => {
-    if (!config || levelComplete || resultShown || config.tutorial) return
+    if (!config || levelComplete || resultShown || config.tutorial || gamePaused) return
     const interval = setInterval(() => {
       setTimeRemaining(t => {
         if (t <= 1) { clearInterval(interval); handleTimeUp(); return 0 }
@@ -100,16 +96,16 @@ export default function Level() {
       setElapsedSeconds(e => e + 1)
     }, 1000)
     return () => clearInterval(interval)
-  }, [config, levelComplete, resultShown]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [config, levelComplete, resultShown, gamePaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Elapsed time still ticks for tutorial (for star calc) but no time limit
+  // Elapsed time for tutorial (no limit, just for star calc)
   useEffect(() => {
-    if (!config?.tutorial || levelComplete || resultShown) return
+    if (!config?.tutorial || levelComplete || resultShown || gamePaused) return
     const interval = setInterval(() => setElapsedSeconds(e => e + 1), 1000)
     return () => clearInterval(interval)
-  }, [config, levelComplete, resultShown]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [config, levelComplete, resultShown, gamePaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Detect new sets on the grid and prompt template save
+  // Detect new sets → prompt template save
   useEffect(() => {
     for (const row of grid) {
       for (const block of row) {
@@ -127,11 +123,9 @@ export default function Level() {
     }
   }, [grid]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Level complete handler
   useEffect(() => {
     if (!levelComplete || resultShown) return
     const ratio = elapsedSeconds / config.timeLimitSeconds
-    // Tutorial (level 1) always gives 1 star — no speed-based rating
     const s = config.tutorial ? 1 : (ratio <= 0.30 ? 3 : ratio <= 0.70 ? 2 : 1)
     const greedyBonus = totalGreedyBonus(grid)
     const forgeBonus  = totalForgeBonus(grid)
@@ -154,7 +148,6 @@ export default function Level() {
     setResultShown(true); setStars(0); setGoldEarned(0)
   }
 
-  // Called by Grid/BlockSlot when a block with 0 pixels is focused — show template picker first
   function handleOpenForBlock(blockId) {
     const state = useGameStore.getState()
     const block = [
@@ -162,13 +155,12 @@ export default function Level() {
       ...state.grid.flat().filter(Boolean),
     ].find(b => b.id === blockId)
     if (block && block.pixelCount === 0) {
-      setPickerBlockId(blockId)  // show template picker first
+      setPickerBlockId(blockId)
     } else {
-      setSelectedBlock(blockId)  // go straight to editor
+      setSelectedBlock(blockId)
     }
   }
 
-  // Close the editor — if the block still has 0 pixels, cancel the placement
   function handleCloseEditor() {
     const state = useGameStore.getState()
     for (let r = 0; r < 12; r++) {
@@ -195,22 +187,20 @@ export default function Level() {
   if (!config) return null
 
   return (
-    <div className="min-h-screen bg-game-bg flex flex-col">
+    <div className="h-screen bg-game-bg flex flex-col overflow-hidden">
       <ProductionEngine requiredOutput={effectiveRequired} />
 
       <LevelHUD config={config} effectiveRequired={effectiveRequired} timeRemaining={timeRemaining} elapsedSeconds={elapsedSeconds} />
 
       {/* Main play area */}
       <div className="flex flex-1 gap-0 overflow-hidden min-h-0">
-        {/* Left sidebar — shop */}
         <ShopSidebar />
 
-        {/* Grid — center */}
-        <div className="flex-1 flex items-start justify-center overflow-auto px-2 py-2">
+        <div className="flex-1 flex items-start justify-center overflow-auto px-2 py-2" data-tutorial="grid">
           <Grid selectedBlockId={selectedBlockId} onBlockSelect={handleOpenForBlock} />
         </div>
 
-        {/* Stats — right side */}
+        {/* Right stats */}
         <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 196 }}>
           <PixelCounter requiredOutput={effectiveRequired} />
           {colorCheckerReductions > 0 && (
@@ -221,17 +211,15 @@ export default function Level() {
         </div>
       </div>
 
-      {/* Inventory — bottom bar */}
       <InventoryPanel selectedBlockId={selectedBlockId} onBlockSelect={setSelectedBlock} />
 
-      {/* Template picker — shown before editor when block is empty */}
+      {/* Template picker */}
       {pickerBlockId && (
         <TemplatePicker
           blockId={pickerBlockId}
           onPick={layout => {
             useGameStore.getState().applyTemplate(pickerBlockId, layout)
             setPickerBlockId(null)
-            // Open editor so player can touch up if they want
             setSelectedBlock(pickerBlockId)
           }}
           onBlank={() => {
@@ -239,7 +227,6 @@ export default function Level() {
             setSelectedBlock(pickerBlockId)
           }}
           onClose={() => {
-            // Cancel: remove the block if it was placed empty
             const state = useGameStore.getState()
             for (let r = 0; r < 12; r++) {
               for (let c = 0; c < 12; c++) {
@@ -252,10 +239,13 @@ export default function Level() {
         />
       )}
 
-      {/* BlockEditor — centered modal overlay */}
+      {/* BlockEditor — z-50 so it renders above the tutorial overlay (z-40) */}
       {selectedBlockId && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-4"
-          onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}>
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 px-4"
+          style={{ zIndex: 50 }}
+          onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}
+        >
           <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
         </div>
       )}
@@ -277,6 +267,37 @@ export default function Level() {
         />
       )}
 
+      {/* Pause modal */}
+      {gamePaused && !resultShown && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
+          <div className="card mx-4 w-full max-w-xs text-center" style={{ padding: '2rem' }}>
+            <div className="text-4xl font-black text-white pixel-heading mb-1">Paused</div>
+            <div className="text-sm text-gray-500 font-semibold mb-6">Level {config.number} — {config.name}</div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setPaused(false)}
+                className="btn btn-primary text-base"
+              >
+                ▶ Continue
+              </button>
+              <Link
+                to="/settings"
+                onClick={() => setPaused(false)}
+                className="btn btn-secondary text-base"
+              >
+                Settings
+              </Link>
+              <button
+                onClick={() => navigate('/campaign')}
+                className="btn btn-danger text-base"
+              >
+                ✕ Exit Level
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {resultShown && (
         <StarResult
           stars={stars}
@@ -290,4 +311,3 @@ export default function Level() {
     </div>
   )
 }
-

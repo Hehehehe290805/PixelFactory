@@ -48,12 +48,9 @@ export default function Home() {
               <p className="text-pixel-yellow font-black text-lg">{gold.toLocaleString()}</p>
               <p className="text-xs text-gray-500 font-semibold">gold</p>
             </div>
-            <button
-              onClick={logout}
-              className="btn btn-danger text-xs px-3 py-2"
-            >
-              Logout
-            </button>
+            <Link to="/account" className="btn btn-secondary text-xs px-3 py-2">
+              Account
+            </Link>
           </div>
         ) : (
           <div className="flex gap-3">

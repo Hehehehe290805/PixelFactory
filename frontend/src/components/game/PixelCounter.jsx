@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 
 export default function PixelCounter({ requiredOutput }) {
@@ -5,15 +7,39 @@ export default function PixelCounter({ requiredOutput }) {
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
 
+  // Floating "+N px" animation — fires once per second while producing
+  const [floatKey, setFloatKey] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setFloatKey(k => k + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+
   return (
     <div className="card">
       <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Output</h3>
 
-      <div className="mb-4 text-center">
-        <div className="text-4xl font-black text-pixel-blue leading-none">
+      {/* px/s + floating number */}
+      <div className="relative mb-4 text-center" style={{ height: 72 }}>
+        <div className="text-5xl font-black text-pixel-blue leading-none">
           {currentPxPerSecond.toFixed(1)}
         </div>
         <div className="text-xs font-bold text-gray-600 uppercase tracking-widest mt-1">px / sec</div>
+
+        <AnimatePresence mode="popLayout">
+          {currentPxPerSecond > 0.05 && (
+            <motion.div
+              key={floatKey}
+              initial={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ opacity: 0, y: -44, scale: 0.85 }}
+              exit={{}}
+              transition={{ duration: 1.0, ease: 'easeOut' }}
+              className="absolute left-1/2 font-black text-pixel-green pointer-events-none select-none"
+              style={{ top: 0, transform: 'translateX(-50%)', fontSize: 13, whiteSpace: 'nowrap' }}
+            >
+              +{Math.max(0.1, currentPxPerSecond).toFixed(1)} px
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="progress-track mb-4">

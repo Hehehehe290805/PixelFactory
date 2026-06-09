@@ -38,38 +38,40 @@ PixelFactory/
 │   │   ├── components/
 │   │   │   ├── game/
 │   │   │   │   ├── Block.jsx              # Canvas render + 8-dir wave animation
-│   │   │   │   ├── BlockEditor.jsx        # 16×16 painter, campaign-unlock-aware palette
+│   │   │   │   ├── BlockEditor.jsx        # 16×16 painter; eraser (⌫); data-tutorial attrs
 │   │   │   │   ├── BlockSlot.jsx          # Grid cell; drag-drop + onCellClick
 │   │   │   │   ├── Grid.jsx               # Radial wheel, move mode, wave dir picker
-│   │   │   │   ├── InventoryPanel.jsx     # Bottom bar: horizontal block strip + pixels
-│   │   │   │   ├── LevelHUD.jsx           # Progress bar, timer, star preview
-│   │   │   │   ├── PixelCounter.jsx       # px/s, total, remaining stats
-│   │   │   │   ├── ProductionEngine.jsx   # 100ms tick; calls computeTick
+│   │   │   │   ├── InventoryPanel.jsx     # Expandable bottom bar (▲ toggle); overlays grid
+│   │   │   │   ├── LevelHUD.jsx           # Progress bar, timer, ⏸ pause, speed selector
+│   │   │   │   ├── PixelCounter.jsx       # px/s + floating +N animation, progress, totals
+│   │   │   │   ├── ProductionEngine.jsx   # 100ms tick; respects gameSpeed + gamePaused
 │   │   │   │   ├── RadialWheel.jsx        # Animated radial context menu
-│   │   │   │   └── ShopSidebar.jsx        # Left sidebar pixel shop (Level + Endless)
+│   │   │   │   └── ShopSidebar.jsx        # In-level shop; uses produced pixels (not gold)
 │   │   │   ├── ui/
 │   │   │   │   ├── AchievementToast.jsx
 │   │   │   │   ├── InLevelShop.jsx        # (legacy popup — replaced by ShopSidebar)
-│   │   │   │   ├── StarResult.jsx
+│   │   │   │   ├── StarResult.jsx         # No stars on tutorial; green ✓ checkmark instead
 │   │   │   │   ├── TemplatePicker.jsx     # Shown before editor when block is empty
 │   │   │   │   ├── TemplateSaveModal.jsx
-│   │   │   │   └── TutorialOverlay.jsx    # Top-right overlay, Level 1 only
+│   │   │   │   └── TutorialOverlay.jsx    # Spotlight tutorial (clip-path grayout + pulsing ring)
 │   │   │   └── auth/
 │   │   │       ├── LoginModal.jsx
-│   │   │       └── RegisterModal.jsx
+│   │   │       └── RegisterModal.jsx      # Shows email confirmation message when needed
 │   │   ├── pages/
-│   │   │   ├── Home.jsx          # Main menu
-│   │   │   ├── Campaign.jsx      # Level select with tier accordions
-│   │   │   ├── Level.jsx         # Core gameplay (shop sidebar + grid + inventory)
-│   │   │   ├── Endless.jsx       # Endless wave mode (same layout as Level)
-│   │   │   ├── Profile.jsx       # Templates: official (locked until discovered) + player
-│   │   │   ├── Shop.jsx          # Permanent shop: block unlocks, grid styles, pixels
-│   │   │   └── Settings.jsx      # Volume, tutorial toggle, achievement list
+│   │   │   ├── Home.jsx            # Main menu; "Account" button when logged in
+│   │   │   ├── Campaign.jsx        # Level select with tier accordions
+│   │   │   ├── Level.jsx           # Core gameplay; h-screen; pause modal; editor at z-50
+│   │   │   ├── Endless.jsx         # Endless wave mode; h-screen; pause modal
+│   │   │   ├── Profile.jsx         # Templates: official (locked until discovered) + player
+│   │   │   ├── Shop.jsx            # Permanent shop: block unlocks, grid styles (uses gold)
+│   │   │   ├── Settings.jsx        # Tutorial toggle; achievements (hidden for guests)
+│   │   │   └── AccountSettings.jsx # /account: update username/email/password, forgot pw, delete
 │   │   ├── store/
-│   │   │   ├── gameStore.js      # Grid, pixel inventory, blocks, cooldowns, waveDir
-│   │   │   ├── userStore.js      # Auth, gold, campaign progress, achievements, templates
+│   │   │   ├── gameStore.js      # Grid, inventory, cooldowns, waveDir, gameSpeed, gamePaused,
+│   │   │   │                     #   pixelsSpentInShop, purchasedSpeeds
+│   │   │   ├── userStore.js      # Auth, gold, progress, achievements, CRUD, requestAccountDeletion
 │   │   │   ├── shopStore.js      # Persistent shop unlocks (localStorage)
-│   │   │   └── settingsStore.js  # Volume, tutorial toggle
+│   │   │   └── settingsStore.js  # showTutorial only (audio removed — not implemented)
 │   │   ├── engine/
 │   │   │   ├── productionEngine.js   # Full tick: base + sets + synergy + dominance + effects
 │   │   │   ├── blockEffects.js       # All block effect functions + Lattice helper
@@ -86,12 +88,12 @@ PixelFactory/
 │   │   │   └── officialTemplates.js  # 12 official prebuilt designs (one per standard set)
 │   │   ├── hooks/
 │   │   │   └── useGridCellSize.js    # Responsive cell size
-│   │   ├── App.jsx
+│   │   ├── App.jsx                   # Routes; includes /account
 │   │   ├── main.jsx
-│   │   └── index.css               # CSS keyframes + utility classes
+│   │   └── index.css                 # CSS keyframes + utility classes
 │   └── package.json
 ├── backend/functions/validate-user/  ← Supabase Edge Function
-├── supabase/schema.sql               ← Run once in Supabase SQL Editor
+├── supabase/schema.sql               ← Re-run in Supabase SQL Editor after any change
 └── README.md
 ```
 
@@ -99,10 +101,47 @@ PixelFactory/
 
 ## Core Game Loop
 
-1. **Tick** (every 100ms): `ProductionEngine` calls `computeTick(grid, opts)` → updates `totalPixelsProduced`
-2. **Level complete** when `totalPixelsProduced >= effectiveRequired`
-3. **Effective required** = `config.requiredOutput × 0.95^colorCheckerReductions`
-4. **Stars** = based on fraction of time limit used (tutorial always gives 1 star)
+1. **Tick** (every 100ms): `ProductionEngine` calls `computeTick(grid, opts)` → scaled by `gameSpeed` → updates `totalPixelsProduced`
+2. **Tick skipped** when `gamePaused === true`
+3. **Level complete** when `totalPixelsProduced >= effectiveRequired`
+4. **Effective required** = `config.requiredOutput × 0.95^colorCheckerReductions`
+5. **Stars** = based on fraction of time limit used (tutorial always gives 1 star, shown as ✓ not ★)
+
+---
+
+## gameStore State Shape
+
+```js
+{
+  // Grid & blocks
+  grid,                  // 12×12 array of block | null
+  inventory,             // blocks not yet placed
+  pixelInventory,        // { [colorKey]: count } — used for painting
+
+  // Production
+  totalPixelsProduced,   // append-only; never decremented; used for win condition
+  pixelsSpent,           // pixels spent on painting (paint/fill/template)
+  pixelsSpentInShop,     // pixels spent in the in-level shop this level
+  currentPxPerSecond,    // live rate (already × gameSpeed)
+
+  // Level state
+  levelActive, levelComplete,
+  selectedBlockId,
+  colorCheckerReductions,
+
+  // Game speed / pause
+  gameSpeed,             // 0.5 | 1 | 2 | 5 | 10  (default 1)
+  gamePaused,            // boolean — stops timer + production tick
+  purchasedSpeeds,       // Set of speed values bought in shop this level
+
+  // Actions (key ones)
+  buyShopItem(cost),     // deducts from pixelsSpentInShop budget; returns bool
+  purchaseSpeed(speed),  // adds speed to purchasedSpeeds
+  setGameSpeed(speed),
+  setPaused(bool),
+  startLevel(), resetLevel(), completeLevel(),
+}
+```
 
 ---
 
@@ -150,7 +189,7 @@ PixelFactory/
 | Cluster | Level 25 | +12% per occupied neighbor (excl. void) |
 | Forge | Level 30 | On complete: +3 gold per pixel held |
 
-### Shop-Only (require gold purchase)
+### Shop-Only (require gold purchase from permanent shop)
 | Block | Shop Cost | Effect |
 |---|---|---|
 | Overflow | 300g | 3× burst for 5 s every 10 s |
@@ -171,7 +210,7 @@ PixelFactory/
 | Green | Level 3 | 3px | |
 | Violet | Level 5 | 3px | |
 
-### Shop-Only
+### Shop-Only (permanent shop, cost in gold)
 | Color | Cost | Notes |
 |---|---|---|
 | Rainbow | 1000g unlock, then 1px | Wildcard for sets |
@@ -226,30 +265,68 @@ All detected by `setDetector.js` / `buildSetMap`. Radiation rules in `synergyEng
 
 ---
 
+## In-Level Shop (ShopSidebar)
+
+**Currency: produced pixels** — the shop balance is `totalPixelsProduced − pixelsSpentInShop`.  
+Spending shop pixels does **not** affect the win condition (`totalPixelsProduced` is append-only).
+
+| Item | Cost |
+|---|---|
+| 10 mixed pixels | 20 px |
+| 25 mixed pixels | 45 px |
+| 50 mixed pixels | 85 px |
+| 100 mixed pixels | 160 px |
+| 10 of one color | 30 px |
+| Speed 0.5× | 50 px |
+| Speed 2× | 100 px |
+| Speed 5× | 250 px |
+| Speed 10× | 600 px |
+
+Once a speed is purchased, buttons `0.5× 1× 2× 5× 10×` appear in the HUD (only purchased speeds + always-on `1×`).
+
+---
+
 ## Production Engine Logic
 
 ```js
-// productionEngine.js runs every 100ms (10 ticks/s)
+// ProductionEngine.jsx — interval runs every TICK_MS (100ms)
+// Skips entirely when gamePaused === true
+
+const { totalThisTick, totalPxPerSec, setMap } = computeTick(grid, {
+  activeGridStyle, gridTick,
+})
+
+// Scale output by gameSpeed (0.5, 1, 2, 5, or 10)
+const scaled = totalThisTick * gameSpeed
+addPixels(scaled)             // totalPixelsProduced += scaled
+setPxPerSecond(totalPxPerSec * gameSpeed)
+
+// Achievement checks only fire when user is logged in
+if (userRef.current) { /* checkSetDiscovery, checkDominance, etc. */ }
+```
+
+```js
+// productionEngine.js computeTick — pure function, no side effects
 function computeTick(grid, { activeGridStyle, gridTick }) {
-  setMap       = buildSetMap(grid)        // 15-set detection
-  dominanceMap = buildDominanceMap(grid)  // >50% non-white color → +25% to all 8 neighbors
-  catalystRows = buildCatalystRows(grid)  // rows with active catalyst blocks
-
-  rateMap = first pass: base × set bonus × synergy (synergy scaled by catalyst + synergyMult)
-
-  second pass per block:
-    rate += getCrossAmplifierBonus + getSplitterBonus (flat adds)
-    rate *= Doubler × Amplifier × Resonator × Reactor × Conductor × Prism
-           × Overflow × Echo × Focus × Cluster × VoidBonus
-    if dominanceMap: rate *= 1.25
-    if mirror: rate = best neighbor's rateMap value
-    rate *= grid-style multipliers (outputMult, industrial, quantum, cascade, lattice)
-
+  setMap       = buildSetMap(grid)
+  dominanceMap = buildDominanceMap(grid)
+  catalystRows = buildCatalystRows(grid)
+  // first pass: base × set × synergy (fills rateMap)
+  // second pass: + flat adds (CA, Splitter), × all multipliers, grid-style mods
   return { totalThisTick, totalPxPerSec, setMap }
 }
 ```
 
-Base rate formula: `effectivePixels / 37.5` px/s (25 white pixels ≈ 0.667 px/s)
+Base rate formula: `effectivePixels / 37.5` px/s
+
+---
+
+## Pause System
+
+- ⏸ button in `LevelHUD` calls `setPaused(true)` from gameStore.
+- `ProductionEngine` skips the tick when `gamePaused === true`.
+- Timer countdown in `Level.jsx` / stopwatch in `Endless.jsx` also pauses.
+- Pause modal (z-70) shows **Continue**, **Settings**, **Exit Level**.
 
 ---
 
@@ -260,7 +337,6 @@ Each active block shows a directional "pixel surge" animation using `mix-blend-m
 - `block.waveDir` (default `'up'`) controls the animation direction (8 options)
 - CSS keyframes: `pixelWaveV` (vertical), `pixelWaveH` (horizontal), `pixelWaveD` (diagonal)
 - `transformOrigin` set per direction; animation duration = `37.5 / pixelCount` seconds
-- Cycle speed correlates with production rate (faster = more productive block)
 
 Change direction: click a placed block on the grid → "〰 Wave" option → 8-direction sub-wheel
 
@@ -270,8 +346,39 @@ Change direction: click a placed block on the grid → "〰 Wave" option → 8-d
 
 **Empty cell click:** Shows all inventory blocks in a radial. Select one to place it.  
 **Occupied cell click:** 5-option wheel — Paint, Move, Add (swap), Wave (direction sub-wheel), Remove.  
-**Move mode:** After selecting Move, empty cells pulse; click one to complete move.  
-**Escape:** Dismisses wheel.
+**Move mode:** After selecting Move, empty cells pulse; click one to complete move.
+
+---
+
+## Inventory Panel (InventoryPanel.jsx)
+
+- **Collapsed** (default): 44px handle bar at the bottom. Shows block count + pixel color chips.
+- **Expanded**: slides up 264px, overlays the bottom of the grid. Auto-filling block grid, scrollable.
+- Dragging a block from the panel auto-collapses it so the grid drop target is visible.
+- The handle bar has `data-tutorial="inventory"` for the tutorial spotlight.
+
+---
+
+## Tutorial System (TutorialOverlay.jsx)
+
+Level 1 only. 7 steps, rendered as a fixed card (top-right, z-60).
+
+**Spotlight grayout**: A dark backdrop div at z-40 uses a CSS `clip-path` polygon with a rectangular "hole" cut out at the current step's target element (`data-tutorial` attribute). The hole lets pointer events pass through to the target. All other UI is blocked.
+
+**z-index scheme during tutorial:**
+- Game UI: z-0 to z-20
+- Tutorial backdrop: z-40 (clip-path hole at target)
+- Pulsing ring around hole: z-41
+- BlockEditor overlay: z-50 (above the backdrop, always interactive)
+- Tutorial card: z-60
+- StarResult: z-50 (never shown simultaneously with tutorial card)
+- Pause modal: z-70
+
+**Step targets** (`data-tutorial` attributes):
+- `inventory` — InventoryPanel handle button
+- `editor-canvas` — BlockEditor 16×16 grid div
+- `editor-done` — BlockEditor "Done" button
+- `grid` — Grid center area wrapper in Level.jsx
 
 ---
 
@@ -323,7 +430,6 @@ Shop-only (never campaign-unlocked): Overflow, Mirror, Catalyst, Void; Rainbow, 
 ### Generated (11–200)
 - Required: `floor(5500 × (level/10)^2.3)`
 - Time: 330s + 1.45s/level, capped 600s
-- Block mix shifts toward Doubler/CA/Greedy in higher tiers
 
 ### Scoring
 | Performance | Stars | Gold |
@@ -331,31 +437,73 @@ Shop-only (never campaign-unlocked): Overflow, Mirror, Catalyst, Void; Rainbow, 
 | ≤30% time used | 3 ★ | 100g |
 | 31–70% | 2 ★ | 70g |
 | >70% | 1 ★ | 50g |
-| Tutorial | always 1 ★ | 50g |
+| Tutorial | always 1 ★ (shown as ✓) | 50g |
 
 ---
 
 ## Endless Mode
 
 - Starts at 20 px; each wave: `requiredOutput × 1.6`
-- Grid/inventory persists between waves
-- No time limit; stopwatch runs
+- No time limit; stopwatch pauses on tab-hide and on `gamePaused`
 - Leaderboard synced to Supabase for logged-in users
-- Alt-tab pauses the stopwatch (visibilitychange)
-- Endpoint: **Stop** (all hearts depleted — hearts system planned)
+- Pause modal available
+
+---
+
+## Auth & User CRUD
+
+### Registration (`userStore.register`)
+- Username is passed via `supabase.auth.signUp({ options: { data: { username } } })`
+- A DB trigger (`handle_new_user` in schema.sql) creates the profile row with `SECURITY DEFINER` — bypasses RLS even when email confirmation is pending (no session yet).
+- If email confirmation is required, `register()` returns `'confirm_email'` instead of `true`, and `RegisterModal` shows an email-check prompt.
+
+### User CRUD actions (all in `userStore.js`)
+| Action | Method |
+|---|---|
+| Change username | `updateUsername(newUsername)` |
+| Change email | `updateEmail(newEmail)` — sends confirmation link |
+| Change password | `updatePassword(newPassword)` |
+| Send password reset | `sendPasswordReset(email)` — sends reset link |
+| Delete account (soft) | `requestAccountDeletion()` — sets `delete_requested_at`; user has 30 days |
+| Cancel deletion | Automatic on next login — `loadProfile` clears `delete_requested_at` |
+
+All CRUD UI lives at `/account` → `AccountSettings.jsx`.
+
+### Achievements
+- Only tracked and persisted when the user is **logged in** (`userStore.user !== null`).
+- `unlockAchievements()` returns immediately if `user` is null.
+- `ProductionEngine` skips all achievement checks for guests.
+- Settings page hides the achievements section for guests.
+
+### Session Persistence
+- Supabase JS SDK handles refresh tokens automatically (stored in localStorage).
+- No custom cookie logic needed.
+
+---
+
+## Supabase Schema Notes
+
+**Always re-run `supabase/schema.sql` in the Supabase SQL Editor after any change.**
+
+Key additions beyond basic CRUD policies:
+- `profiles.delete_requested_at TIMESTAMPTZ` — set when user requests deletion
+- `handle_new_user()` trigger on `auth.users` INSERT — auto-creates profile from auth metadata
+- Auto-delete cron job (commented out in schema.sql) — requires `pg_cron` extension; runs daily to hard-delete accounts where `delete_requested_at < NOW() - INTERVAL '30 days'`
 
 ---
 
 ## Key Implementation Rules
 
-1. **Progress bar never decreases**: `totalPixelsProduced` is append-only.
-2. **Pixel inventory is authoritative**: always use store actions (`paintPixel`, `clearBlock`, `fillBlock`, `applyTemplate`).
-3. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
-4. **Color dominance**: >50% of block's filled pixels (white counts in denominator).
-5. **Set detection**: "only" sets reject any color outside allowed list; white/silver neutral; rainbow/gold/plasma wildcard.
-6. **Campaign unlocks** via `useUnlocks()` hook; shop-only items bypass campaign check.
-7. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, templates.
-8. **Never commit env files**: `frontend/.env` and `backend/.env` are gitignored.
+1. **`totalPixelsProduced` is append-only** — never decremented, used for win condition.
+2. **Shop uses produced pixels** — `pixelsSpentInShop` tracks spending; win condition unaffected.
+3. **Pixel inventory is authoritative** — always use store actions (`paintPixel`, `clearBlock`, `fillBlock`, `applyTemplate`).
+4. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
+5. **Color dominance**: >50% of block's filled pixels (white counts in denominator).
+6. **Set detection**: "only" sets reject any color outside allowed list; white/silver neutral; rainbow/gold/plasma wildcard.
+7. **Campaign unlocks** via `useUnlocks()` hook; shop-only items bypass campaign check.
+8. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, templates, profiles CRUD.
+9. **Achievements require login** — guest players cannot earn achievements.
+10. **Never commit env files**: `frontend/.env` and `backend/.env` are gitignored.
 
 ---
 
@@ -385,3 +533,4 @@ Shop-only (never campaign-unlocked): Overflow, Mirror, Catalyst, Void; Rainbow, 
 - **Blueprint matching**: tiered pixel art targets for passive boosts (4 phases: Base → Binary)
 - **Endless final stats**: total pixels generated, longest survival, high score tracking
 - **Profile page template creation**: build new templates from scratch in the Profile page
+- **Mobile responsive layout**: ShopSidebar hidden on phones; stats panel hidden on tablet; touch drag-drop via `drag-drop-touch` polyfill (planned, not yet wired)

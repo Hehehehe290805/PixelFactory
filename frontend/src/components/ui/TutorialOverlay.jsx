@@ -1,58 +1,78 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useSettingsStore } from '../../store/settingsStore'
 
-// Each step: if `waitFor` is set, the Next button is hidden — the step auto-advances
-// when the condition becomes true. Manual steps show a Next button immediately.
+const PAD = 14 // padding around the spotlight target
+
 const STEPS = [
   {
     id: 'welcome',
     title: 'Welcome to PixelFactory!',
     body: 'Each block is an independent process that produces pixels — like parallel threads. Paint blocks, place them on the grid, and watch them produce!',
-    waitFor: null, // manual — show Next button
+    waitFor: null,
+    targetSel: null,
   },
   {
     id: 'select_block',
-    title: 'Select your block',
-    body: 'Click the block in the inventory on the left to select it. The pixel editor will open in the center of your screen.',
+    title: 'Open your inventory',
+    body: 'Tap the bar at the very bottom of the screen to expand your inventory, then click a block to open the pixel editor.',
     waitFor: 'blockSelected',
-    hint: 'Click the block in the left panel →',
+    targetSel: '[data-tutorial="inventory"]',
+    hint: 'Tap the inventory bar at the bottom ↓',
   },
   {
     id: 'paint_pixels',
     title: 'Paint at least 5 pixels',
-    body: 'Click or drag on the 16×16 grid to paint pixels. Each pixel you add increases your block\'s production rate.',
+    body: 'Click or drag on the 16×16 canvas to paint pixels. The more pixels you add, the faster your block produces!',
     waitFor: 'pixelsPainted',
-    hint: 'Paint pixels in the editor that just opened',
+    targetSel: '[data-tutorial="editor-canvas"]',
+    hint: 'Paint pixels on the canvas',
   },
   {
     id: 'close_editor',
     title: 'Close the editor',
-    body: 'Press ✕ on the editor or click the block again to deselect. Then drag your block onto the main grid.',
+    body: 'Click "Done" to close the pixel editor. Then you\'ll place your painted block on the grid.',
     waitFor: null,
+    targetSel: '[data-tutorial="editor-done"]',
   },
   {
     id: 'place_block',
     title: 'Place your block on the grid',
-    body: 'Drag your block from the left panel onto any cell on the 12×12 grid in the center.',
+    body: 'Open the inventory bar at the bottom, then drag your block to any cell on the 12×12 grid.',
     waitFor: 'blockPlaced',
-    hint: 'Drag the block from the left inventory onto the grid',
+    targetSel: '[data-tutorial="grid"]',
+    hint: 'Drag a block from the inventory onto the grid',
   },
   {
     id: 'watch',
     title: 'Watch it produce!',
-    body: 'Your block is now producing pixels. See the px/sec counter on the right and the progress bar at the top filling up.',
+    body: 'Your block is now producing pixels! Watch the progress bar fill and the px/s counter on the right.',
     waitFor: 'producing',
-    hint: 'Wait a moment for production to start…',
+    targetSel: null,
+    hint: 'Waiting for production to start…',
   },
   {
     id: 'done',
-    title: 'You\'re all set!',
-    body: 'Keep placing blocks and painting more pixels to increase your output rate. Right-click a placed block to return it to inventory. Good luck!',
+    title: "You're all set!",
+    body: 'Keep placing and painting blocks to hit the pixel target. Discover color sets for big bonuses. Good luck!',
     waitFor: null,
+    targetSel: null,
   },
 ]
+
+function getSpotlight(sel) {
+  if (!sel) return null
+  const el = document.querySelector(sel)
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  return {
+    x: r.left - PAD,
+    y: r.top  - PAD,
+    w: r.width  + PAD * 2,
+    h: r.height + PAD * 2,
+  }
+}
 
 export default function TutorialOverlay({ active }) {
   const { showTutorial } = useSettingsStore()
@@ -60,6 +80,7 @@ export default function TutorialOverlay({ active }) {
 
   const [stepIdx, setStepIdx] = useState(0)
   const [dismissed, setDismissed] = useState(false)
+  const [spotlight, setSpotlight] = useState(null)
 
   const blocksOnGrid = grid.flat().filter(Boolean).length
   const totalPainted = [
@@ -69,6 +90,30 @@ export default function TutorialOverlay({ active }) {
 
   const step = STEPS[stepIdx]
 
+  // Update spotlight position when step changes or when the DOM changes
+  const refreshSpotlight = useCallback(() => {
+    if (!step?.targetSel) { setSpotlight(null); return }
+    const s = getSpotlight(step.targetSel)
+    setSpotlight(s)
+  }, [step?.targetSel])
+
+  useEffect(() => {
+    refreshSpotlight()
+    // Re-check after a short delay (for elements that appear after animation)
+    const t = setTimeout(refreshSpotlight, 200)
+    return () => clearTimeout(t)
+  }, [refreshSpotlight, stepIdx, selectedBlockId])
+
+  // Update spotlight on window resize
+  useEffect(() => {
+    window.addEventListener('resize', refreshSpotlight)
+    return () => window.removeEventListener('resize', refreshSpotlight)
+  }, [refreshSpotlight])
+
+  function advance() {
+    setStepIdx(i => Math.min(i + 1, STEPS.length - 1))
+  }
+
   useEffect(() => {
     if (!active || !showTutorial || dismissed || !step) return
     if (step.waitFor === 'blockSelected' && selectedBlockId) advance()
@@ -77,69 +122,126 @@ export default function TutorialOverlay({ active }) {
     if (step.waitFor === 'producing'      && totalPixelsProduced > 0) advance()
   }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
 
-  function advance() {
-    setStepIdx(i => Math.min(i + 1, STEPS.length - 1))
-  }
-
   if (!active || !showTutorial || dismissed || stepIdx >= STEPS.length) return null
 
   const isLast    = stepIdx === STEPS.length - 1
-  const isWaiting = !!step.waitFor // true = hide Next, wait for action
+  const isWaiting = !!step.waitFor
+
+  // Build the clip-path that creates a rectangular hole where the user needs to click.
+  // The outer rectangle fills the whole viewport (clockwise = normal fill).
+  // The inner rectangle is the hole (counterclockwise = subtract with nonzero fill rule).
+  const W = window.innerWidth
+  const H = window.innerHeight
+  let clipPath = undefined
+  if (spotlight) {
+    const { x, y, w, h } = spotlight
+    // Outer CW: TL→TR→BR→BL→TL
+    // Inner CCW (hole): TL→BL→BR→TR→TL
+    clipPath = `polygon(
+      0px 0px, ${W}px 0px, ${W}px ${H}px, 0px ${H}px, 0px 0px,
+      ${x}px ${y}px, ${x}px ${y + h}px, ${x + w}px ${y + h}px, ${x + w}px ${y}px, ${x}px ${y}px
+    )`
+  }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={stepIdx}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        className="fixed top-20 right-4 z-40 w-80 max-w-[calc(100vw-2rem)]"
-      >
-        <div className="card" style={{ borderColor: '#1499cc88', boxShadow: '0 0 0 1px #1499cc33, 0 12px 40px #000000aa' }}>
-          {/* Progress dots + skip */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex gap-1">
-              {STEPS.map((_, i) => (
-                <div key={i} className={`rounded-full transition-all ${i < stepIdx ? 'w-3 h-2 bg-pixel-blue' : i === stepIdx ? 'w-4 h-2 bg-pixel-blue' : 'w-2 h-2 bg-game-border'}`} />
-              ))}
-            </div>
-            <button onClick={() => setDismissed(true)} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
-              Skip tutorial
-            </button>
-          </div>
+    <>
+      {/* Dark backdrop — clip-path cuts a hole at the target so clicks pass through there */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 40,
+          background: 'rgba(0, 0, 0, 0.72)',
+          clipPath,
+          pointerEvents: 'all',
+        }}
+      />
 
-          <h3 className="text-base font-black text-white mb-1">{step.title}</h3>
-          <p className="text-sm font-semibold text-gray-400 leading-relaxed">{step.body}</p>
+      {/* Pulsing ring around the spotlight target */}
+      <AnimatePresence>
+        {spotlight && (
+          <motion.div
+            key={step.id + '-ring'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.6, 1, 0.6] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              position: 'fixed',
+              left: spotlight.x - 4,
+              top:  spotlight.y - 4,
+              width:  spotlight.w + 8,
+              height: spotlight.h + 8,
+              borderRadius: 10,
+              border: '2px solid #1499cc',
+              boxShadow: '0 0 0 1px #1499cc33, 0 0 24px #1499cc50',
+              zIndex: 41,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-          {/* Waiting indicator */}
-          {isWaiting && step.hint && (
-            <div className="mt-3 flex items-center gap-2 text-xs font-black text-pixel-blue">
-              <motion.span
-                animate={{ opacity: [1, 0.3, 1] }}
-                transition={{ repeat: Infinity, duration: 1.4 }}
-              >
-                ●
-              </motion.span>
-              {step.hint}
-            </div>
-          )}
-
-          {/* Action buttons — only shown for manual steps */}
-          {!isWaiting && (
-            <div className="flex gap-2 mt-4">
-              {stepIdx > 0 && (
-                <button onClick={() => setStepIdx(i => i - 1)} className="btn btn-secondary text-xs px-3 py-2">← Back</button>
-              )}
-              <button
-                onClick={() => isLast ? setDismissed(true) : advance()}
-                className="btn btn-primary flex-1 text-sm"
-              >
-                {isLast ? 'Let\'s go!' : 'Next →'}
+      {/* Tutorial card — z-60 so it's always above backdrop + ring + editor */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={stepIdx}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.22 }}
+          style={{
+            position: 'fixed',
+            top: 80,
+            right: 16,
+            width: 300,
+            maxWidth: 'calc(100vw - 32px)',
+            zIndex: 60,
+          }}
+        >
+          <div className="card" style={{ borderColor: '#1499cc88', boxShadow: '0 0 0 1px #1499cc22, 0 12px 40px #000000bb' }}>
+            {/* Progress dots + skip */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex gap-1">
+                {STEPS.map((_, i) => (
+                  <div key={i} className={`rounded-full transition-all ${i < stepIdx ? 'w-3 h-2 bg-pixel-blue' : i === stepIdx ? 'w-4 h-2 bg-pixel-blue' : 'w-2 h-2 bg-game-border'}`} />
+                ))}
+              </div>
+              <button onClick={() => setDismissed(true)} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
+                Skip
               </button>
             </div>
-          )}
-        </div>
-      </motion.div>
-    </AnimatePresence>
+
+            <h3 className="text-base font-black text-white mb-1">{step.title}</h3>
+            <p className="text-sm font-semibold text-gray-400 leading-relaxed">{step.body}</p>
+
+            {/* Waiting indicator */}
+            {isWaiting && step.hint && (
+              <div className="mt-3 flex items-center gap-2 text-xs font-black text-pixel-blue">
+                <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}>
+                  ●
+                </motion.span>
+                {step.hint}
+              </div>
+            )}
+
+            {/* Action buttons — only for manual steps */}
+            {!isWaiting && (
+              <div className="flex gap-2 mt-4">
+                {stepIdx > 0 && (
+                  <button onClick={() => setStepIdx(i => i - 1)} className="btn btn-secondary text-xs px-3 py-2">← Back</button>
+                )}
+                <button
+                  onClick={() => isLast ? setDismissed(true) : advance()}
+                  className="btn btn-primary flex-1 text-sm"
+                >
+                  {isLast ? "Let's go!" : 'Next →'}
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </>
   )
 }

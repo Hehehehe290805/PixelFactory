@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { checkEndlessWave } from '../engine/achievementEngine'
@@ -29,9 +29,11 @@ function baseBlocks(wave) {
 }
 
 export default function Endless() {
+  const navigate = useNavigate()
   const {
     grid, inventory, pixelInventory, selectedBlockId, setSelectedBlock,
     startLevel, levelComplete, resetLevel, colorCheckerReductions, totalPixelsProduced, removeBlock,
+    gamePaused, setPaused,
   } = useGameStore()
   const { achievements, unlockAchievements, saveEndlessScore, user } = useUserStore()
 
@@ -54,12 +56,12 @@ export default function Endless() {
     return () => resetLevel()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stopwatch
+  // Stopwatch — pauses when gamePaused
   useEffect(() => {
-    if (phase !== 'playing') return
+    if (phase !== 'playing' || gamePaused) return
     const id = setInterval(() => setElapsed(e => e + 1), 1000)
     return () => clearInterval(id)
-  }, [phase])
+  }, [phase, gamePaused])
 
   // Pause stopwatch on tab hide
   useEffect(() => {
@@ -109,11 +111,12 @@ export default function Endless() {
   const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
-    <div className="min-h-screen bg-game-bg flex flex-col">
+    <div className="h-screen bg-game-bg flex flex-col overflow-hidden">
       {phase === 'playing' && <ProductionEngine requiredOutput={effectiveRequired} />}
 
       {/* HUD */}
-      <div className="bg-game-card border-b-2 border-game-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
+      <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0">
+        <button onClick={() => setPaused(true)} className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">⏸</button>
         <Link to="/" className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">← Exit</Link>
         <div className="flex-shrink-0 hidden sm:block">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Endless</div>
@@ -163,6 +166,21 @@ export default function Endless() {
           onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
           <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
+        </div>
+      )}
+
+      {/* Pause modal */}
+      {gamePaused && phase === 'playing' && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
+          <div className="card mx-4 w-full max-w-xs text-center" style={{ padding: '2rem' }}>
+            <div className="text-4xl font-black text-white pixel-heading mb-1">Paused</div>
+            <div className="text-sm text-gray-500 font-semibold mb-6">Endless — Wave {wave}</div>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => setPaused(false)} className="btn btn-primary text-base">▶ Continue</button>
+              <Link to="/settings" onClick={() => setPaused(false)} className="btn btn-secondary text-base">Settings</Link>
+              <button onClick={() => navigate('/')} className="btn btn-danger text-base">✕ Exit</button>
+            </div>
+          </div>
         </div>
       )}
 

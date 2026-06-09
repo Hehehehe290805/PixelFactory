@@ -7,14 +7,12 @@ export const useUserStore = create((set, get) => ({
   profile: null,
   gold: 0,
   templates: [],
-  achievements: new Set(),    // Set of unlocked achievement keys
-  discoveredSets: new Set(),  // Set names discovered in any level
+  achievements: new Set(),
+  discoveredSets: new Set(),
   campaignProgress: {},
   cumulativeGreedyGold: 0,
   loading: false,
   error: null,
-
-  // Toast queue — array of { key, name, desc }
   toastQueue: [],
 
   async initialize() {
@@ -38,6 +36,12 @@ export const useUserStore = create((set, get) => ({
 
     if (profileRes.error) { set({ error: profileRes.error.message, loading: false }); return }
 
+    // If the account was pending delete, cancel it now that they've logged in
+    if (profileRes.data?.delete_requested_at) {
+      await supabase.from('profiles').update({ delete_requested_at: null }).eq('id', authUser.id)
+      profileRes.data.delete_requested_at = null
+    }
+
     const unlockedKeys = new Set((achievementsRes.data ?? []).map(r => r.achievement_key))
     const progress = {}
     for (const row of (progressRes.data ?? [])) {
@@ -47,13 +51,23 @@ export const useUserStore = create((set, get) => ({
     set({ profile: profileRes.data, gold: profileRes.data.gold, achievements: unlockedKeys, campaignProgress: progress, loading: false })
   },
 
+  // ── Registration ────────────────────────────────────────────────────────────
+  // Username is passed via auth metadata so the DB trigger can create the profile
+  // even before email confirmation (no active session yet).
   async register(email, password, username) {
     set({ loading: true, error: null })
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    })
     if (error) { set({ error: error.message, loading: false }); return false }
 
-    const { error: profileError } = await supabase.from('profiles').insert({ id: data.user.id, username, gold: 0 })
-    if (profileError) { set({ error: profileError.message, loading: false }); return false }
+    // Email confirmation required — session not yet established
+    if (!data.session) {
+      set({ loading: false })
+      return 'confirm_email'
+    }
 
     await get().loadProfile(data.user)
     return true
@@ -70,6 +84,60 @@ export const useUserStore = create((set, get) => ({
   async logout() {
     await supabase.auth.signOut()
     set({ user: null, profile: null, gold: 0, templates: [], achievements: new Set(), discoveredSets: new Set(), campaignProgress: {} })
+  },
+
+  // ── Profile CRUD ───────────────────────────────────────────────────────────
+  async updateUsername(newUsername) {
+    const state = get()
+    if (!state.user) return { error: 'Not logged in' }
+    set({ loading: true, error: null })
+    const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', state.user.id)
+    if (error) { set({ error: error.message, loading: false }); return { error: error.message } }
+    set({ profile: { ...state.profile, username: newUsername }, loading: false })
+    return { error: null }
+  },
+
+  async updateEmail(newEmail) {
+    set({ loading: true, error: null })
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) { set({ error: error.message, loading: false }); return { error: error.message } }
+    set({ loading: false })
+    return { error: null }
+  },
+
+  async updatePassword(newPassword) {
+    set({ loading: true, error: null })
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) { set({ error: error.message, loading: false }); return { error: error.message } }
+    set({ loading: false })
+    return { error: null }
+  },
+
+  async sendPasswordReset(email) {
+    set({ loading: true, error: null })
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/PixelFactory/reset-password`,
+    })
+    if (error) { set({ error: error.message, loading: false }); return { error: error.message } }
+    set({ loading: false })
+    return { error: null }
+  },
+
+  // Marks the account for deletion (pending 30 days). Actual hard-delete is
+  // handled by the pg_cron job in schema.sql.
+  async requestAccountDeletion() {
+    const state = get()
+    if (!state.user) return { error: 'Not logged in' }
+    set({ loading: true, error: null })
+    const { error } = await supabase
+      .from('profiles')
+      .update({ delete_requested_at: new Date().toISOString() })
+      .eq('id', state.user.id)
+    if (error) { set({ error: error.message, loading: false }); return { error: error.message } }
+    set({ loading: false })
+    // Sign out after marking for deletion
+    await get().logout()
+    return { error: null }
   },
 
   clearError() { set({ error: null }) },
@@ -98,10 +166,11 @@ export const useUserStore = create((set, get) => ({
     }
   },
 
-  // Unlock one or more achievement keys, show toasts, persist to Supabase.
+  // Only unlocks achievements when logged in
   async unlockAchievements(keys) {
     if (!keys.length) return
     const state = get()
+    if (!state.user) return  // achievements require login
     const newKeys = keys.filter(k => !state.achievements.has(k))
     if (!newKeys.length) return
 
@@ -109,24 +178,19 @@ export const useUserStore = create((set, get) => ({
     const toasts = newKeys.map(k => ({ key: k, ...ACHIEVEMENTS[k] }))
     set({ achievements: newSet, toastQueue: [...state.toastQueue, ...toasts] })
 
-    if (state.user) {
-      await supabase.from('achievements').upsert(
-        newKeys.map(k => ({ user_id: state.user.id, achievement_key: k }))
-      )
-    }
+    await supabase.from('achievements').upsert(
+      newKeys.map(k => ({ user_id: state.user.id, achievement_key: k }))
+    )
   },
 
   dismissToast() {
     set(s => ({ toastQueue: s.toastQueue.slice(1) }))
   },
 
-  // Track which sets the player has discovered (persisted in memory only, no DB needed)
   addDiscoveredSets(setNames) {
     const state = get()
     const combined = new Set([...state.discoveredSets, ...setNames])
-    if (combined.size !== state.discoveredSets.size) {
-      set({ discoveredSets: combined })
-    }
+    if (combined.size !== state.discoveredSets.size) set({ discoveredSets: combined })
   },
 
   addCumulativeGreedyGold(amount) {

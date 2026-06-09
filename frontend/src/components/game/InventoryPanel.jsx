@@ -24,6 +24,7 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect }) {
 
       {/* ── Collapsed handle — always visible at the very bottom ── */}
       <button
+        data-tutorial="inventory"
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-2 px-3 border-t-2 border-game-border select-none"
         style={{ height: 44, background: '#111128', cursor: 'pointer' }}

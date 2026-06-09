@@ -52,6 +52,7 @@ export default function BlockEditor({ blockId, onClose }) {
 
       {/* 16×16 grid */}
       <div
+        data-tutorial="editor-canvas"
         className="rounded-xl overflow-hidden cursor-crosshair border-2 border-game-border"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -108,11 +109,15 @@ export default function BlockEditor({ blockId, onClose }) {
           )
         })}
         <button
+          title="Eraser"
           onClick={() => setIsErasing(v => !v)}
-          className={`rounded-lg border-2 flex items-center justify-center font-black transition text-xs ${isErasing ? 'border-white text-white bg-white/10' : 'border-game-border text-gray-500 hover:border-game-border2'}`}
-          style={{ width: 22, height: 22 }}
+          className={`rounded-lg border-2 flex items-center justify-center transition-all
+            ${isErasing
+              ? 'border-pixel-red text-pixel-red bg-pixel-red/15 scale-110'
+              : 'border-game-border text-gray-500 hover:border-gray-400 hover:text-gray-300'}`}
+          style={{ width: 26, height: 22, fontSize: 13 }}
         >
-          ✕
+          ⌫
         </button>
       </div>
 
@@ -132,7 +137,7 @@ export default function BlockEditor({ blockId, onClose }) {
         </button>
       </div>
 
-      <button onClick={onClose} className="btn btn-primary w-full text-sm">
+      <button data-tutorial="editor-done" onClick={onClose} className="btn btn-primary w-full text-sm">
         Done
       </button>
     </div>

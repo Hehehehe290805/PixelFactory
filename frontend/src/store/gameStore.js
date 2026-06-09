@@ -60,10 +60,14 @@ export const useGameStore = create((set, get) => ({
   selectedBlockId: null,
   totalPixelsProduced: 0,
   pixelsSpent: 0,
+  pixelsSpentInShop: 0,
   currentPxPerSecond: 0,
   levelActive: false,
   levelComplete: false,
   colorCheckerReductions: 0,
+  gameSpeed: 1,
+  gamePaused: false,
+  purchasedSpeeds: new Set(),
 
   placeBlock(blockId, row, col) {
     const state = get()
@@ -227,6 +231,26 @@ export const useGameStore = create((set, get) => ({
 
   setSelectedBlock(blockId) { set({ selectedBlockId: blockId }) },
 
+  setGameSpeed(speed) { set({ gameSpeed: speed }) },
+  setPaused(paused) { set({ gamePaused: paused }) },
+
+  // Buy from the in-level shop using produced pixels as currency.
+  // Win condition (totalPixelsProduced) is NEVER decremented by this.
+  buyShopItem(cost) {
+    const s = get()
+    const balance = s.totalPixelsProduced - s.pixelsSpentInShop
+    if (balance < cost) return false
+    set({ pixelsSpentInShop: s.pixelsSpentInShop + cost })
+    return true
+  },
+
+  purchaseSpeed(speed) {
+    const s = get()
+    const next = new Set(s.purchasedSpeeds)
+    next.add(speed)
+    set({ purchasedSpeeds: next })
+  },
+
   setWaveDir(blockId, dir) {
     const { grid, inventory } = applyBlockUpdate(get(), blockId, b => ({ ...b, waveDir: dir }))
     set({ grid, inventory })
@@ -291,11 +315,15 @@ export const useGameStore = create((set, get) => ({
       pixelInventory: { ...startingPixels },
       totalPixelsProduced: 0,
       pixelsSpent: 0,
+      pixelsSpentInShop: 0,
       currentPxPerSecond: 0,
       levelActive: true,
       levelComplete: false,
       selectedBlockId: null,
       colorCheckerReductions: 0,
+      gameSpeed: 1,
+      gamePaused: false,
+      purchasedSpeeds: new Set(),
     })
   },
 
@@ -308,11 +336,15 @@ export const useGameStore = create((set, get) => ({
       pixelInventory: {},
       totalPixelsProduced: 0,
       pixelsSpent: 0,
+      pixelsSpentInShop: 0,
       currentPxPerSecond: 0,
       levelActive: false,
       levelComplete: false,
       selectedBlockId: null,
       colorCheckerReductions: 0,
+      gameSpeed: 1,
+      gamePaused: false,
+      purchasedSpeeds: new Set(),
     })
   },
 }))
