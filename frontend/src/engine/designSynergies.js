@@ -199,6 +199,25 @@ export const SYNERGY_DEFS = {
   },
 }
 
+// ── Design synergy lookup (for tooltips) ──────────────────────────────────────
+// Returns array of synergy names that this design can participate in.
+export function getDesignSynergies(design) {
+  const names = []
+  for (const def of Object.values(SYNERGY_DEFS)) {
+    if (def.type === 'series_count' || def.type === 'row_series') {
+      if (def.series === design.series) names.push(def.name)
+    } else if (def.type === 'exact_count') {
+      if (def.designId === design.id) names.push(def.name)
+    } else if (def.type === 'adjacency_pair') {
+      if (def.seriesA === design.series || def.seriesB === design.series ||
+          def.designA === design.id    || def.designB === design.id) {
+        names.push(def.name)
+      }
+    }
+  }
+  return names
+}
+
 // ── Detection ─────────────────────────────────────────────────────────────────
 
 function getBlockSeries(block) {

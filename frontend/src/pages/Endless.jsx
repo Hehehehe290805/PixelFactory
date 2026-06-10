@@ -29,7 +29,7 @@ export default function Endless() {
   const navigate = useNavigate()
   const {
     grid, startLevel, levelComplete, resetLevel, totalPixelsProduced,
-    gamePaused, setPaused, deckSelection, setDeckSelection,
+    gamePaused, setPaused, deckSelection, setDeckSelection, addPixels,
   } = useGameStore()
 
   const {
@@ -63,10 +63,11 @@ export default function Endless() {
     setElapsed(0)
   }
 
-  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds }) {
+  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget }) {
     setActiveDeck(preBoughtDesignIds)
     setDeckSelection(preBoughtDesignIds)
     doStartWave(1, startingBlocks)
+    if (remainingBudget > 0) addPixels(remainingBudget)
   }
 
   useEffect(() => {

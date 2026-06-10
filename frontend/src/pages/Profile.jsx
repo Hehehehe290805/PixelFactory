@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { DESIGNS, ALL_SERIES } from '../data/designLibrary'
 import { useDesignUnlocks } from '../lib/designUnlocks'
-import { DesignMiniThumb } from '../components/ui/DeckSelector'
+import { DesignMiniThumb, DesignTooltipBody } from '../components/ui/DeckSelector'
 
 const COLOR_HEX = {
   red:'#f03e4e', orange:'#f59342', yellow:'#ffd166', green:'#00d49a',
@@ -136,18 +136,10 @@ export default function Profile() {
               className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
             >
               {unlocked ? (
-                <>
-                  <DesignMiniThumb design={hoveredDesign} size={80} centered />
-                  <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
-                  <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
-                  <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-                  <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
-                  <div className="text-xs text-gray-600">{hoveredDesign.pixelCount} pixels</div>
-                  <div className="text-[10px] text-gray-700 capitalize italic">{hoveredDesign.unlockSource.replace(/_/g, ' ')}</div>
-                </>
+                <DesignTooltipBody design={hoveredDesign} />
               ) : (
                 <>
-                  <div className="w-20 h-20 mx-auto rounded-xl bg-gray-900 flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto rounded-xl bg-gray-900 flex items-center justify-center">
                     <span className="text-gray-600 text-3xl font-black">?</span>
                   </div>
                   <div className="text-sm font-black text-gray-600">???</div>

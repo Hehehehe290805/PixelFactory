@@ -32,7 +32,7 @@ export default function Level() {
   const {
     grid, deckSelection, startLevel, levelComplete, resetLevel,
     gamePaused, setPaused, gameSpeed, setDeckSelection,
-    totalPixelsProduced,
+    totalPixelsProduced, addPixels,
   } = useGameStore()
 
   const {
@@ -78,10 +78,11 @@ export default function Level() {
         : config.timeLimitSeconds)
     : 120
 
-  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds }) {
+  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget }) {
     setActiveDeck(preBoughtDesignIds)
     setDeckSelection(preBoughtDesignIds)
     startLevel(startingBlocks)
+    if (remainingBudget > 0) addPixels(remainingBudget)
     setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)

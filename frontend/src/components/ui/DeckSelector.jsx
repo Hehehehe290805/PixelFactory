@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { createBlock, useGameStore } from '../../store/gameStore'
 import { getStartingPixelBudget } from '../../lib/constants'
+import { getDesignSynergies } from '../../engine/designSynergies'
 
 const MAX_DECK = 10
 
@@ -29,7 +30,7 @@ function PreBuyPhase({ deck, levelNumber, onStart, onBack, bargain }) {
         if (b) startingBlocks.push(b)
       }
     }
-    onStart({ startingBlocks, preBoughtDesignIds: deck })
+    onStart({ startingBlocks, preBoughtDesignIds: deck, remainingBudget: budget - spent })
   }
 
   const totalPreBought = Object.values(preBought).reduce((s, n) => s + n, 0)
@@ -225,12 +226,7 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
           style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
           className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
         >
-          <DesignMiniThumb design={hoveredDesign} size={80} centered />
-          <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
-          <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-          <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
-          <div className="text-xs text-gray-400 leading-snug">{hoveredDesign.desc}</div>
-          <div className="text-xs text-pixel-yellow font-bold">{getDesignLevelCost(hoveredDesign, bargain)}px in shop</div>
+          <DesignTooltipBody design={hoveredDesign} cost={getDesignLevelCost(hoveredDesign, bargain)} />
         </div>
       )}
     </div>
@@ -275,4 +271,33 @@ const COLOR_HEX = {
   gold:    '#ffc000',
   neon:    '#39ff14',
   rainbow: '#ff6b9d',
+}
+
+// ── Shared tooltip body — used by DeckSelector, ShopSidebar, InventoryPanel, Profile ──
+export function DesignTooltipBody({ design, cost }) {
+  const synergies = getDesignSynergies(design)
+  const rate = design.blockType === 'void' ? '0' : '1.0'
+  return (
+    <>
+      <DesignMiniThumb design={design} size={72} centered />
+      <div className="text-sm font-black text-white leading-tight">{design.name}</div>
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-xs text-pixel-blue font-bold capitalize">{design.blockType.replace(/_/g, ' ')}</div>
+        <div className="text-xs text-pixel-green font-bold">{rate} px/s</div>
+      </div>
+      <div className="text-xs text-gray-500 capitalize">{design.series}</div>
+      <div className="text-xs text-gray-400 leading-snug">{design.desc}</div>
+      {synergies.length > 0 && (
+        <div className="pt-1 border-t border-game-border">
+          <div className="text-[10px] font-black uppercase tracking-wide text-gray-600 mb-1">Synergies</div>
+          {synergies.map(name => (
+            <div key={name} className="text-[10px] text-pixel-blue/80 leading-snug">· {name}</div>
+          ))}
+        </div>
+      )}
+      {cost != null && (
+        <div className="text-xs text-pixel-yellow font-bold pt-0.5">{cost}px in shop</div>
+      )}
+    </>
+  )
 }

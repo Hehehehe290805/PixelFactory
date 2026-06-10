@@ -1,14 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useShopStore } from '../../store/shopStore'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import Block from './Block'
+import { DesignTooltipBody } from '../ui/DeckSelector'
 
 export default function ShopSidebar({ deckDesignIds = [] }) {
   const { totalPixelsProduced, pixelsSpentInShop, buyDesignFromShop } = useGameStore()
   const { activeGridStyle } = useShopStore()
-  const [flash, setFlash] = useState(null)   // { id, ok }
+  const [flash, setFlash]       = useState(null)
   const [hoveredId, setHoveredId] = useState(null)
+  const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
+  const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   const balance = Math.floor(totalPixelsProduced - pixelsSpentInShop)
   const bargain = activeGridStyle === 'bargain'
@@ -41,10 +44,17 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
 
   const hoveredDesign = hoveredId ? deckDesigns.find(d => d.id === hoveredId) : null
 
+  const tipW = 172
+  const tipX = mousePos.x + 12 + tipW > window.innerWidth
+    ? mousePos.x - tipW - 12
+    : mousePos.x + 12
+  const tipY = Math.min(mousePos.y - 8, window.innerHeight - 300)
+
   return (
     <div
       className="flex flex-col gap-0 overflow-hidden flex-shrink-0 border-r-2 border-game-border"
       style={{ width: 164, background: '#080816' }}
+      onMouseMove={handleMouseMove}
     >
       {/* Header */}
       <div className="px-2 pt-3 pb-2 border-b border-game-border flex-shrink-0">
@@ -103,20 +113,14 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
         })}
       </div>
 
-      {/* Hover tooltip at bottom */}
+      {/* Hover tooltip — fixed overlay follows cursor */}
       {hoveredDesign && (
         <div
-          className="flex-shrink-0 border-t border-game-border px-2 py-2"
-          style={{ background: '#0d0d22' }}
+          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
         >
-          <div className="text-xs font-black text-white mb-0.5">{hoveredDesign.name}</div>
-          <div className="text-[10px] text-pixel-blue font-bold capitalize mb-0.5">
-            {hoveredDesign.blockType.replace(/_/g, ' ')}
-          </div>
-          <div className="text-[10px] text-gray-400 leading-snug">{hoveredDesign.desc}</div>
-          <div className="text-[10px] text-pixel-yellow font-bold mt-1">
-            {getDesignLevelCost(hoveredDesign, bargain)}px · drag or click to buy
-          </div>
+          <DesignTooltipBody design={hoveredDesign} cost={getDesignLevelCost(hoveredDesign, bargain)} />
+          <div className="text-[10px] text-gray-600 font-semibold border-t border-game-border pt-1">drag or click to buy</div>
         </div>
       )}
     </div>

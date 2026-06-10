@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
 import Block from './Block'
 import { DESIGNS } from '../../data/designLibrary'
+import { DesignTooltipBody } from '../ui/DeckSelector'
 
 export default function InventoryPanel({ onOpenStateChange }) {
   const { inventory } = useGameStore()
@@ -136,16 +137,12 @@ export default function InventoryPanel({ onOpenStateChange }) {
       {hoveredDesign && open && (
         <div
           style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 100, pointerEvents: 'none', background: '#0d0d22' }}
-          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-1.5"
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
         >
-          <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
-          <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
-          <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-          <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
+          <DesignTooltipBody design={hoveredDesign} />
           {hovered?.activeSynergy && (
-            <div className="text-xs text-pixel-green font-bold">✦ {hovered.activeSynergy.replace(/_/g, ' ')}</div>
+            <div className="text-xs text-pixel-green font-bold border-t border-game-border pt-1">✦ {hovered.activeSynergy.replace(/_/g, ' ')} active</div>
           )}
-          <div className="text-xs text-gray-600">{hoveredDesign.pixelCount}px</div>
         </div>
       )}
     </div>
