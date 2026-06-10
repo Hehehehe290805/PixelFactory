@@ -131,8 +131,18 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
     )
   }
 
+  const tipW = 168
+  const tipMargin = 16
+  const tipX = mousePos.x + tipMargin + tipW > window.innerWidth
+    ? mousePos.x - tipW - tipMargin
+    : mousePos.x + tipMargin
+  const tipY = Math.min(mousePos.y - 8, window.innerHeight - 260)
+
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 px-4">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 px-4"
+      onMouseMove={handleMouseMove}
+    >
       <div className="card w-full max-w-2xl max-h-[92vh] flex flex-col" style={{ padding: '1.5rem' }}>
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
@@ -166,7 +176,7 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
         </div>
 
         {/* Design grid */}
-        <div className="flex-1 overflow-y-auto min-h-0" onMouseMove={handleMouseMove}>
+        <div className="flex-1 overflow-y-auto min-h-0">
           <div className="grid grid-cols-5 gap-2">
             {filtered.map(design => {
               const selected = deck.includes(design.id)
@@ -196,31 +206,6 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
           </div>
         </div>
 
-        {/* Hover tooltip — fixed, follows cursor, never affects layout */}
-        {hoveredDesign && (() => {
-          const tipW = 168
-          const margin = 16
-          const x = mousePos.x + margin + tipW > window.innerWidth
-            ? mousePos.x - tipW - margin
-            : mousePos.x + margin
-          const y = Math.min(mousePos.y - 8, window.innerHeight - 260)
-          return (
-            <div
-              style={{ position: 'fixed', left: x, top: y, width: tipW, zIndex: 200, pointerEvents: 'none', background: '#0d0d22' }}
-              className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
-            >
-              <DesignMiniThumb design={hoveredDesign} size={80} centered />
-              <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
-              <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-              <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
-              <div className="text-xs text-gray-400 leading-snug">{hoveredDesign.desc}</div>
-              <div className="text-xs text-pixel-yellow font-bold">
-                {getDesignLevelCost(hoveredDesign, bargain)}px in shop
-              </div>
-            </div>
-          )
-        })()}
-
         {/* Footer */}
         <div className="flex gap-3 mt-4 flex-shrink-0">
           <button onClick={onBack} className="btn btn-secondary px-4 py-2 text-sm">← Back</button>
@@ -233,6 +218,21 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
           </button>
         </div>
       </div>
+
+      {/* Hover tooltip — sibling to card, fully outside it, follows cursor */}
+      {hoveredDesign && (
+        <div
+          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
+        >
+          <DesignMiniThumb design={hoveredDesign} size={80} centered />
+          <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
+          <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
+          <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
+          <div className="text-xs text-gray-400 leading-snug">{hoveredDesign.desc}</div>
+          <div className="text-xs text-pixel-yellow font-bold">{getDesignLevelCost(hoveredDesign, bargain)}px in shop</div>
+        </div>
+      )}
     </div>
   )
 }
