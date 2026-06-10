@@ -312,8 +312,8 @@ export default function Level() {
         />
       )}
 
-      {/* Pause modal (z-70) */}
-      {gamePaused && !resultShown && !preLevelOpen && (
+      {/* Pause modal (z-70) — only for manual pause, not editor auto-pause */}
+      {gamePaused && !selectedBlockId && !pickerBlockId && !resultShown && !preLevelOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
           <div className="card mx-4 w-full max-w-xs text-center" style={{ padding: '2rem' }}>
             <div className="text-4xl font-black text-white pixel-heading mb-1">Paused</div>

@@ -120,7 +120,7 @@ function ToggleRow({ label, desc, value, onChange }) {
           ${value ? 'bg-pixel-blue border-pixel-blue' : 'bg-game-bg border-game-border'}`}
       >
         <span
-          className={`absolute left-0 top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
+          className={`absolute left-0 top-[1px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
             ${value ? 'translate-x-[23px]' : 'translate-x-[3px]'}`}
         />
       </button>

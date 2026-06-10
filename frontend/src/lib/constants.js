@@ -24,31 +24,31 @@ export const PIXEL_COLORS = {
 
 export const BLOCK_TYPES = {
   // Base set
-  base:          { label: 'Base',          shopCost: 50,   levelCost: 20,  desc: 'Workhorse. Output = pixelCount × 0.8 px/s' },
-  doubler:       { label: 'Doubler',       shopCost: 150,  levelCost: 60,  desc: '×2 output if all 4 orthogonal neighbors have < half its pixels' },
-  cross_amp:     { label: 'Cross Amp',     shopCost: 120,  levelCost: 50,  desc: '+⌊pixelCount/10⌋ px/s to each diagonal neighbor' },
-  color_checker: { label: 'Color Checker', shopCost: 100,  levelCost: 40,  desc: 'Assigned a color at placement. 50%+ match → −5% required output (once)' },
-  greedy:        { label: 'Greedy',        shopCost: 200,  levelCost: 80,  desc: 'On complete: (myPixels − all 8 neighbors\' pixels) × 10 gold' },
+  base:          { label: 'Base',          shopCost: 50,   levelCost: 13,  desc: 'Workhorse. Output = pixelCount × 0.8 px/s' },
+  doubler:       { label: 'Doubler',       shopCost: 150,  levelCost: 39,  desc: '×2 output if all 4 orthogonal neighbors have < half its pixels' },
+  cross_amp:     { label: 'Cross Amp',     shopCost: 120,  levelCost: 32,  desc: '+⌊pixelCount/10⌋ px/s to each diagonal neighbor' },
+  color_checker: { label: 'Color Checker', shopCost: 100,  levelCost: 26,  desc: 'Assigned a color at placement. 50%+ match → −5% required output (once)' },
+  greedy:        { label: 'Greedy',        shopCost: 200,  levelCost: 52,  desc: 'On complete: (myPixels − all 8 neighbors\' pixels) × 10 gold' },
 
   // Unlockable specials (from Shop)
-  overflow:      { label: 'Overflow',      shopCost: 300,  levelCost: 100, desc: 'Stores excess each tick; bursts 5s of production every 10s' },
-  mirror:        { label: 'Mirror',        shopCost: 250,  levelCost: 90,  desc: 'Copies the output rate of its highest-producing orthogonal neighbor' },
-  catalyst:      { label: 'Catalyst',      shopCost: 350,  levelCost: 120, desc: 'Synergy bonuses in its row ×1.5' },
-  void:          { label: 'Void',          shopCost: 200,  levelCost: 70,  desc: 'Produces 0 px itself; removes adjacency penalties from neighbors' },
+  overflow:      { label: 'Overflow',      shopCost: 300,  levelCost: 65,  desc: 'Stores excess each tick; bursts 5s of production every 10s' },
+  mirror:        { label: 'Mirror',        shopCost: 250,  levelCost: 58,  desc: 'Copies the output rate of its highest-producing orthogonal neighbor' },
+  catalyst:      { label: 'Catalyst',      shopCost: 350,  levelCost: 78,  desc: 'Synergy bonuses in its row ×1.5' },
+  void:          { label: 'Void',          shopCost: 200,  levelCost: 45,  desc: 'Produces 0 px itself; removes adjacency penalties from neighbors' },
 
   // New block types (Phase 2)
-  amplifier:     { label: 'Amplifier',     shopCost: 180,  levelCost: 70,  desc: '+8% output per occupied neighbor cell (up to ×1.64 with 8 neighbors)' },
-  resonator:     { label: 'Resonator',     shopCost: 220,  levelCost: 85,  desc: '+50% output if any orthogonal neighbor is the same block type' },
-  reactor:       { label: 'Reactor',       shopCost: 400,  levelCost: 140, desc: 'Starts at 50% output; ramps +5%/s to 200% max. Resets on move' },
-  conductor:     { label: 'Conductor',     shopCost: 300,  levelCost: 110, desc: 'Borrows the highest set bonus from any adjacent block' },
-  prism:         { label: 'Prism',         shopCost: 250,  levelCost: 90,  desc: '+5% output per unique non-white color in its pixels (max +30%)' },
+  amplifier:     { label: 'Amplifier',     shopCost: 180,  levelCost: 45,  desc: '+8% output per occupied neighbor cell (up to ×1.64 with 8 neighbors)' },
+  resonator:     { label: 'Resonator',     shopCost: 220,  levelCost: 55,  desc: '+50% output if any orthogonal neighbor is the same block type' },
+  reactor:       { label: 'Reactor',       shopCost: 400,  levelCost: 91,  desc: 'Starts at 50% output; ramps +5%/s to 200% max. Resets on move' },
+  conductor:     { label: 'Conductor',     shopCost: 300,  levelCost: 72,  desc: 'Borrows the highest set bonus from any adjacent block' },
+  prism:         { label: 'Prism',         shopCost: 250,  levelCost: 58,  desc: '+5% output per unique non-white color in its pixels (max +30%)' },
 
   // New block types (Phase 3)
-  echo:          { label: 'Echo',          shopCost: 180,  levelCost: 70,  desc: '+4% output for each 10s stationary (max +80% at ~3.5 min)' },
-  splitter:      { label: 'Splitter',      shopCost: 280,  levelCost: 100, desc: 'Gives each orthogonal neighbor a flat +20% of this block\'s base rate' },
-  focus:         { label: 'Focus',         shopCost: 160,  levelCost: 65,  desc: 'Assigned a color at placement; output doubles when all pixels match that color' },
-  cluster:       { label: 'Cluster',       shopCost: 230,  levelCost: 85,  desc: '+12% output per occupied neighbor (all 8, excluding void)' },
-  forge:         { label: 'Forge',         shopCost: 320,  levelCost: 120, desc: 'On level complete: +3 gold per pixel held (no production bonus)' },
+  echo:          { label: 'Echo',          shopCost: 180,  levelCost: 45,  desc: '+4% output for each 10s stationary (max +80% at ~3.5 min)' },
+  splitter:      { label: 'Splitter',      shopCost: 280,  levelCost: 65,  desc: 'Gives each orthogonal neighbor a flat +20% of this block\'s base rate' },
+  focus:         { label: 'Focus',         shopCost: 160,  levelCost: 42,  desc: 'Assigned a color at placement; output doubles when all pixels match that color' },
+  cluster:       { label: 'Cluster',       shopCost: 230,  levelCost: 55,  desc: '+12% output per occupied neighbor (all 8, excluding void)' },
+  forge:         { label: 'Forge',         shopCost: 320,  levelCost: 78,  desc: 'On level complete: +3 gold per pixel held (no production bonus)' },
 }
 
 // ── Grid Styles ───────────────────────────────────────────────────────────────

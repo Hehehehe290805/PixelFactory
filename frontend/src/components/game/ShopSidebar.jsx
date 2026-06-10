@@ -49,15 +49,15 @@ export default function ShopSidebar() {
 
         {/* Per-color pixel packs */}
         <div>
-          <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1.5">Colors — 10 for 30px</div>
+          <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1.5">Colors — 10 for 20px</div>
           <div className="flex flex-col gap-1">
             {Object.entries(PIXEL_COLORS)
               .filter(([key]) => isPixelUnlocked(key))
               .map(([key, meta]) => (
                 <button
                   key={key}
-                  onClick={() => handleBuyColor(key, 10, 30)}
-                  disabled={balance < 30}
+                  onClick={() => handleBuyColor(key, 10, 20)}
+                  disabled={balance < 20}
                   className={`rounded-xl border flex items-center gap-2 px-2.5 py-1.5 transition
                     ${balance >= 30 ? 'hover:border-game-border2 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                   style={{ background: '#0d0d22', borderColor: meta.hex + '55' }}

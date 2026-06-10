@@ -104,6 +104,12 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
     return () => clearTimeout(t)
   }, [refreshSpotlight, stepIdx, selectedBlockId])
 
+  // Re-measure after inventory open/close animation completes
+  useEffect(() => {
+    const t = setTimeout(refreshSpotlight, 350)
+    return () => clearTimeout(t)
+  }, [inventoryOpen, refreshSpotlight])
+
   useEffect(() => {
     window.addEventListener('resize', refreshSpotlight)
     return () => window.removeEventListener('resize', refreshSpotlight)

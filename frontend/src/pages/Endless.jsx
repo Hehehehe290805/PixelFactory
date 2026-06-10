@@ -219,8 +219,8 @@ export default function Endless() {
         </div>
       )}
 
-      {/* Pause modal */}
-      {gamePaused && phase === 'playing' && (
+      {/* Pause modal — only for manual pause, not editor auto-pause */}
+      {gamePaused && !selectedBlockId && phase === 'playing' && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
           <div className="card mx-4 w-full max-w-xs text-center" style={{ padding: '2rem' }}>
             <div className="text-4xl font-black text-white pixel-heading mb-1">Paused</div>
