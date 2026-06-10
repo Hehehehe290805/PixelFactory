@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { getLevelConfig } from '../engine/levelConfig'
@@ -39,7 +39,7 @@ export default function Level() {
     saveCampaignProgress, addGold, unlockAchievements,
     addCumulativeGreedyGold, achievements, campaignProgress,
     cumulativeGreedyGold, gold, unlockedDesigns: unlockedDesignIds,
-    unlockDesign, unlockDesigns,
+    unlockDesign, unlockDesigns, user,
   } = useUserStore()
 
   const { activeGridStyle } = useShopStore()
@@ -90,7 +90,11 @@ export default function Level() {
   useEffect(() => {
     if (!config) { navigate('/campaign'); return }
     if (config.tutorial) {
-      startLevel([])
+      // Give the player 4 starter designs to work with before they earn their collection
+      const tutorialBlocks = ['daisy', 'oak', 'house', 'star']
+        .map(id => createBlock(id))
+        .filter(Boolean)
+      startLevel(tutorialBlocks)
       setTimeRemaining(effectiveTimeLimit)
       setElapsedSeconds(0)
     }
@@ -176,7 +180,10 @@ export default function Level() {
     setDesignChoicePair(null)
     resetLevel()
     if (isTutorial) {
-      startLevel([])
+      const tutorialBlocks = ['daisy', 'oak', 'house', 'star']
+        .map(id => createBlock(id))
+        .filter(Boolean)
+      startLevel(tutorialBlocks)
       setTimeRemaining(effectiveTimeLimit)
     } else {
       setDeckPhase(true)
@@ -194,6 +201,7 @@ export default function Level() {
   }
 
   if (!config) return null
+  if (!user) { navigate('/'); return null }
 
   return (
     <div className="h-screen bg-game-bg flex flex-col overflow-hidden select-none">

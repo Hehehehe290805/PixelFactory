@@ -30,8 +30,23 @@ function fmtOutput(n) {
 }
 
 export default function Campaign() {
-  const { campaignProgress } = useUserStore()
+  const { campaignProgress, user } = useUserStore()
   const [openTier, setOpenTier] = useState(0) // index of expanded tier
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-game-bg flex items-center justify-center px-4">
+        <div className="card w-full max-w-sm text-center" style={{ padding: '2rem' }}>
+          <div className="text-3xl font-black text-white pixel-heading mb-2">Campaign</div>
+          <p className="text-sm text-gray-500 font-semibold mb-6">Log in to track your progress and play Campaign levels.</p>
+          <div className="flex flex-col gap-3">
+            <Link to="/" className="btn btn-primary text-base">Login / Register</Link>
+            <Link to="/" className="btn btn-secondary text-sm">← Back to Home</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const totalStars = Object.values(campaignProgress).reduce((s, p) => s + (p?.stars ?? 0), 0)
   const maxStars   = LEVELS.length * 3
