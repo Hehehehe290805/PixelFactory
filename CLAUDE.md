@@ -25,7 +25,9 @@ GitHub: **https://github.com/Hehehehe290805/PixelFactory**
 - `lib/constants.js` — PIXEL_COLORS and PIXEL_SETS removed
 - `lib/unlocks.js` — thin shim re-exporting from designUnlocks
 - `components/ui/DeckSelector.jsx` — pre-level deck picker + pre-buy phase
-- `components/game/ActiveEffectsPanel.jsx` — live synergy progress display
+- `components/game/ActiveEffectsPanel.jsx` — live synergy progress display; fires synergy-activate sound
+- `lib/audio.js` — Web Audio API synthesizer: 8 ambient music tracks + 6 SFX; no external files
+- `store/settingsStore.js` — music/sfx volume + enabled flags, persisted to localStorage
 - `components/game/InventoryPanel.jsx` — design cards with hover tooltips
 - `components/game/ShopSidebar.jsx` — deck designs, pixel costs, hover descriptions, drag-to-grid
 - `pages/Level.jsx` — DeckSelector replaces pre-level shop; DesignChoiceModal after milestones
@@ -623,6 +625,70 @@ function computeTick(grid, { activeGridStyle, gridTick }) {
 ```
 
 Base rate formula: `pixelCount / 37.5` px/s (pixelCount fixed per design)
+
+---
+
+## Audio System (`lib/audio.js`)
+
+All audio is synthesized at runtime using the **Web Audio API** — no external files are bundled.
+
+### Architecture
+
+```
+SFX oscillators → sfxMasterGain → AudioContext.destination
+Music oscillators → playerGain → musicMasterGain → lowpassFilter → DynamicsCompressor → destination
+```
+
+- `sfxMasterGain` and `musicMasterGain` are lazy-created on first use (satisfies browser autoplay policy)
+- `AudioSettingsSync` component in `App.jsx` watches `settingsStore` and updates gain values reactively
+- `MusicManager` component in `App.jsx` watches `useLocation()` and starts `menu` track on non-gameplay routes
+
+### Music Tracks (8 total)
+
+| Track ID | Area | Key / BPM | Character |
+|---|---|---|---|
+| `menu` | All non-level screens | A major, 68 BPM | Bright, inviting |
+| `intro` | Levels 1–10 | C major, 72 BPM | Calm, peaceful |
+| `apprentice` | Levels 11–30 | G major, 88 BPM | Warm, hopeful |
+| `craftsman` | Levels 31–60 | D minor, 96 BPM | Focused, rhythmic |
+| `expert` | Levels 61–100 | A minor, 108 BPM | Energetic, driving |
+| `master` | Levels 101–150 | E minor, 118 BPM | Intense, tense |
+| `grandmaster` | Levels 151–200 | B minor, 132 BPM | Epic, driving |
+| `endless` | Endless mode | F lydian, 76 BPM | Meditative, flowing |
+
+### MusicPlayer class
+
+Each playing track is a `MusicPlayer` instance with:
+- **Drone layer** — 3–4 sustained oscillators with slow LFO vibrato (runs until `stop()`)
+- **Arpeggio layer** — lookahead scheduler (100ms poll, 280ms lookahead) that wraps `arpNotes[]` infinitely
+- Fade in (2.5 s) on `start()`, fade out on `stop(fadeTime)`
+- Routes through a per-player gain node → `musicMasterGain`
+
+### Music API
+
+```js
+startMusic(trackId)          // fade-in new track; fades out old one
+stopMusic(fade = 2.0)        // fade out current track
+applyMusicEnabled(bool)      // called from Settings toggle; restarts last trackId when re-enabled
+getLevelTrack(levelNum)      // returns track id for a campaign level number
+setMusicVolume(0–1)          // updates musicMasterGain immediately
+setSfxVolume(0–1)            // updates sfxMasterGain immediately
+```
+
+### Sound Effects
+
+| Function | Trigger | Sound |
+|---|---|---|
+| `playBlockPlace()` | Block dragged/placed on grid | Soft double-thud |
+| `playPurchase()` | Design bought (pre-buy or shop) | Two-note coin ping |
+| `playSynergyActivate(type)` | Synergy activates (per type, 7 variants) | Rising arpeggio, type-specific pattern |
+| `playLevelComplete()` | Level win condition met | Grand 5-note fanfare + chord resolution |
+| `playAchievementUnlock()` | Achievement toast appears | 4-note triumphant chime |
+| `playDesignUnlock()` | Design unlock modal shown | 7-note magical shimmer |
+
+### Settings persistence
+
+`settingsStore.js` persists `{ musicEnabled, sfxEnabled, musicVolume, sfxVolume, showTutorial, showLearning }` to `localStorage` key `pf_settings`. Audio gain nodes are updated reactively via `AudioSettingsSync` in `App.jsx`.
 
 ---
 

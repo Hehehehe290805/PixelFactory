@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { startMusic, stopMusic, getLevelTrack, playLevelComplete, playDesignUnlock } from '../lib/audio'
 import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
@@ -92,6 +93,13 @@ export default function Level() {
     setElapsedSeconds(0)
   }
 
+  // Start music when gameplay begins (deck phase ends); stop on unmount
+  useEffect(() => {
+    if (!deckPhase) startMusic(getLevelTrack(levelNum))
+    else stopMusic(1.0)
+  }, [deckPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => stopMusic(0.8), []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!config) { navigate('/campaign'); return }
     if (config.tutorial) {
@@ -153,6 +161,8 @@ export default function Level() {
   // Level complete
   useEffect(() => {
     if (!levelComplete || resultShown) return
+    stopMusic(1.5)
+    playLevelComplete()
     const ratio = elapsedSeconds / effectiveTimeLimit
     const s = config.tutorial ? 3 : (ratio <= 0.60 ? 3 : ratio <= 0.85 ? 2 : 1)
     const greedyBonus = totalGreedyBonus(grid)
@@ -180,7 +190,7 @@ export default function Level() {
     if (choicePair) setDesignChoicePair(choicePair)
   }, [levelComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleTimeUp() { setResultShown(true); setStars(0); setGoldEarned(0) }
+  function handleTimeUp() { stopMusic(0.8); setResultShown(true); setStars(0); setGoldEarned(0) }
 
   function handleAfterUnlocked() {
     setShowUnlocked(false)
@@ -210,7 +220,7 @@ export default function Level() {
 
   function handleStarResultContinue() {
     if (designChoicePair) return
-    if (unlockedThisLevel.length > 0) { setShowUnlocked(true); return }
+    if (unlockedThisLevel.length > 0) { playDesignUnlock(); setShowUnlocked(true); return }
     const content = getLevelContent(levelNum)
     if (showLearning && content) {
       setLearningShown(true)

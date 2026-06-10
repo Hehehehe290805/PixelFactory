@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { startMusic, stopMusic } from '../lib/audio'
 import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { checkEndlessWave } from '../engine/achievementEngine'
@@ -60,6 +61,12 @@ export default function Endless() {
     setElapsed(0)
   }
 
+  // Start/stop endless music based on phase
+  useEffect(() => {
+    if (phase === 'playing') startMusic('endless')
+    else if (phase === 'ended') stopMusic(1.5)
+  }, [phase])
+
   // On mount: check for a saved run (logged-in users only)
   useEffect(() => {
     async function checkSave() {
@@ -73,7 +80,7 @@ export default function Endless() {
       }
     }
     checkSave()
-    return () => resetLevel()
+    return () => { stopMusic(0.8); resetLevel() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startFreshRun() {

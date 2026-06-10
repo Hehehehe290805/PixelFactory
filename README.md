@@ -197,6 +197,41 @@ Categories: Campaign Progress, Stars, Design Collection, Production Milestones, 
 
 ---
 
+## Audio
+
+All audio is synthesized at runtime using the **Web Audio API** — no audio files are bundled.
+
+### Music
+Each area has a distinct ambient track that loops indefinitely:
+
+| Area | Track | Character |
+|---|---|---|
+| Menus / Lobby | Menu | A major, bright and inviting |
+| Levels 1–10 | Intro | C major, calm and peaceful |
+| Levels 11–30 | Apprentice | G major, warm and hopeful |
+| Levels 31–60 | Craftsman | D minor, focused and rhythmic |
+| Levels 61–100 | Expert | A minor, energetic and driving |
+| Levels 101–150 | Master | E minor, intense and tense |
+| Levels 151–200 | Grandmaster | B minor, epic and epic |
+| Endless Mode | Endless | F lydian, meditative and flowing |
+
+### Sound Effects
+
+| Event | Sound |
+|---|---|
+| Block placed | Soft double-thud |
+| Design purchased (pre-buy or shop) | Two-note coin ping |
+| Synergy activates | Rising arpeggio — distinct pattern per synergy type |
+| Achievement unlocked | Four-note triumphant chime |
+| Level complete | Grand ascending fanfare + chord resolution |
+| Design/unlock discovered | Seven-note magical shimmer |
+
+### Volume Controls
+
+Music and sound effects each have a separate volume slider and on/off toggle in **Settings**. Settings persist to localStorage.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -205,6 +240,7 @@ Categories: Campaign Progress, Stars, Design Collection, Production Milestones, 
 | Styling | Tailwind CSS + custom CSS keyframes |
 | State | Zustand (`gameStore`, `userStore`, `shopStore`, `settingsStore`) |
 | Animation | Framer Motion + CSS (`pixelWaveV/H/D`, `blockFillUp`) |
+| Audio | Web Audio API — pure synthesis, no files |
 | Routing | React Router v6 |
 | Backend | Supabase (Auth + PostgreSQL + Edge Functions) |
 | Deploy | GitHub Actions → GitHub Pages |

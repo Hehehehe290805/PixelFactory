@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserStore } from '../../store/userStore'
+import { playAchievementUnlock } from '../../lib/audio'
 
 export default function AchievementToast() {
   const { toastQueue, dismissToast } = useUserStore()
@@ -8,6 +9,7 @@ export default function AchievementToast() {
 
   useEffect(() => {
     if (!current) return
+    playAchievementUnlock()
     const t = setTimeout(dismissToast, 3500)
     return () => clearTimeout(t)
   }, [current?.key]) // eslint-disable-line react-hooks/exhaustive-deps
