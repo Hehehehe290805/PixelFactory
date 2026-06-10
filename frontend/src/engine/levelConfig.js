@@ -3,7 +3,7 @@
 
 // Required outputs scaled for new production rate (pixelCount/37.5 px/s per block).
 const HAND_CRAFTED = [
-  { number: 1,  name: 'Tutorial',      requiredOutput: 25,    timeLimitSeconds: 120, tutorial: true },
+  { number: 1,  name: 'Tutorial',      requiredOutput: 80,    timeLimitSeconds: 120, tutorial: true },
   { number: 2,  name: 'Color Lab',     requiredOutput: 50,    timeLimitSeconds: 150 },
   { number: 3,  name: 'Double Down',   requiredOutput: 100,   timeLimitSeconds: 180 },
   { number: 4,  name: 'Crossfire',     requiredOutput: 200,   timeLimitSeconds: 200 },

@@ -12,7 +12,7 @@ function nbOrtho(r, c, grid) {
 // pixelCount is fixed per design; no color multipliers needed (removed with painting)
 export function baseRate(block) {
   if (!block.pixelCount) return 0
-  return block.pixelCount / 37.5
+  return block.pixelCount / 75
 }
 
 // ── Doubler ───────────────────────────────────────────────────────────────────

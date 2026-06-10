@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
@@ -11,6 +11,9 @@ export default function InventoryPanel({ onOpenStateChange }) {
   const blockSize = Math.min(cellSize, 52)
   const [open, setOpen] = useState(false)
   const [hoveredId, setHoveredId] = useState(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   function toggle() {
     const next = !open
@@ -20,6 +23,13 @@ export default function InventoryPanel({ onOpenStateChange }) {
 
   const hovered = hoveredId ? inventory.find(b => b.id === hoveredId) : null
   const hoveredDesign = hovered ? DESIGNS.find(d => d.id === hovered.designId) : null
+
+  const tipW = 168
+  const tipMargin = 12
+  const tipX = mousePos.x + tipMargin + tipW > window.innerWidth
+    ? mousePos.x - tipW - tipMargin
+    : mousePos.x + tipMargin
+  const tipY = Math.max(8, mousePos.y - 120)
 
   return (
     <div className="relative flex-shrink-0 select-none">
@@ -74,58 +84,56 @@ export default function InventoryPanel({ onOpenStateChange }) {
             animate={{ height: 280, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 34 }}
-            className="absolute bottom-full left-0 right-0 z-20 overflow-hidden border-t-2 border-game-border flex"
+            className="absolute bottom-full left-0 right-0 z-20 overflow-hidden border-t-2 border-game-border"
             style={{ background: '#0a0a1e' }}
+            onMouseMove={handleMouseMove}
           >
-            {/* Design grid */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-2 pt-2 pb-1 flex-shrink-0 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-600">In Hand</span>
-                <span className="text-xs text-gray-700">{inventory.length} designs</span>
-              </div>
-              <div className="overflow-y-auto flex-1 px-2 pb-2">
-                {inventory.length === 0 ? (
-                  <p className="text-xs font-semibold text-gray-700 italic text-center py-6">All placed on grid</p>
-                ) : (
-                  <div
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${blockSize + 16}px, 1fr))` }}
-                  >
-                    {inventory.map(block => (
-                      <InventoryDesignCard
-                        key={block.id}
-                        block={block}
-                        blockSize={blockSize}
-                        hovered={hoveredId === block.id}
-                        onHover={setHoveredId}
-                        onLeave={() => setHoveredId(null)}
-                        onDragStart={() => { setOpen(false); onOpenStateChange?.(false) }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="px-2 pt-2 pb-1 flex-shrink-0 flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-widest text-gray-600">In Hand</span>
+              <span className="text-xs text-gray-700">{inventory.length} designs</span>
             </div>
-
-            {/* Hover tooltip panel */}
-            {hoveredDesign && (
-              <div
-                className="flex-shrink-0 w-44 border-l-2 border-game-border flex flex-col gap-2 p-3 overflow-y-auto"
-                style={{ background: '#0d0d22' }}
-              >
-                <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
-                <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
-                <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-                <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
-                {hovered?.activeSynergy && (
-                  <div className="text-xs text-pixel-green font-bold">✦ {hovered.activeSynergy.replace(/_/g, ' ')}</div>
-                )}
-                <div className="text-xs text-gray-600">{hoveredDesign.pixelCount}px</div>
-              </div>
-            )}
+            <div className="overflow-y-auto px-2 pb-2" style={{ height: 244 }}>
+              {inventory.length === 0 ? (
+                <p className="text-xs font-semibold text-gray-700 italic text-center py-6">All placed on grid</p>
+              ) : (
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${blockSize + 16}px, 1fr))` }}
+                >
+                  {inventory.map(block => (
+                    <InventoryDesignCard
+                      key={block.id}
+                      block={block}
+                      blockSize={blockSize}
+                      hovered={hoveredId === block.id}
+                      onHover={setHoveredId}
+                      onLeave={() => setHoveredId(null)}
+                      onDragStart={() => { setOpen(false); onOpenStateChange?.(false) }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hover tooltip — fixed, follows cursor */}
+      {hoveredDesign && open && (
+        <div
+          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 100, pointerEvents: 'none', background: '#0d0d22' }}
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-1.5"
+        >
+          <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
+          <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
+          <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
+          <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
+          {hovered?.activeSynergy && (
+            <div className="text-xs text-pixel-green font-bold">✦ {hovered.activeSynergy.replace(/_/g, ' ')}</div>
+          )}
+          <div className="text-xs text-gray-600">{hoveredDesign.pixelCount}px</div>
+        </div>
+      )}
     </div>
   )
 }
