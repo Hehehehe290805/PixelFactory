@@ -285,12 +285,6 @@ App runs at `http://localhost:5173/PixelFactory/`
 
 Run `supabase/schema.sql` once in the SQL Editor. For future changes, run only the changed block — not the full file (existing policies error on re-run).
 
-Required columns (add if missing):
-```sql
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_designs JSONB DEFAULT '[]';
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS endless_minutes FLOAT DEFAULT 0;
-```
-
 ---
 
 ## Email Setup (Brevo SMTP)
