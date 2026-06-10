@@ -286,8 +286,10 @@ Currency: **produced pixels** (`totalPixelsProduced − pixelsSpentInShop`). Spe
 
 | Item | Cost |
 |---|---|
-| 10 of one color | 30 px |
+| 10 of one color | 20 px |
 | Any unlocked block | `bt.levelCost` px |
+
+`levelCost` values are ~35% lower than their original values (reduced for balance — early game shop was unaffordable).
 
 Only shows colors and blocks the player has unlocked through campaign or the permanent Shop.
 
@@ -346,6 +348,7 @@ Base rate formula: `effectivePixels / 37.5` px/s
 - `ProductionEngine` skips the tick when `gamePaused === true`.
 - Timer countdown in `Level.jsx` / stopwatch in `Endless.jsx` also pauses.
 - **Auto-pause on editor**: Opening `BlockEditor` saves the current pause state and forces `gamePaused=true`. Closing the editor restores the previous state.
+- **Pause modal only shows on manual pause** — it is suppressed when `selectedBlockId` or `pickerBlockId` is set (editor/template picker open). This prevents Start Blank, Paint, and similar actions from triggering the pause screen.
 - Pause modal (z-70) shows **Continue**, **Settings**, **Exit Level** (no ✕ prefix).
 - Endless HUD has no Exit button — use the pause modal to exit.
 
@@ -387,7 +390,7 @@ Change direction: click a placed block on the grid → "〰 Wave" option → 8-d
 
 Level 1 only. 7 steps, rendered as a fixed card (top-right, z-60).
 
-**Spotlight grayout**: A dark backdrop div at z-40 uses a CSS `clip-path` polygon with a rectangular "hole" cut out at the current step's target element (`data-tutorial` attribute). The hole lets pointer events pass through to the target. All other UI is blocked.
+**Spotlight grayout**: A dark backdrop div at z-40 uses a CSS `clip-path` polygon with a rectangular "hole" cut out at the current step's target element (`data-tutorial` attribute). The hole lets pointer events pass through to the target. All other UI is blocked. The spotlight re-measures on step change, `selectedBlockId` change, and `inventoryOpen` change (350ms delay on the latter to wait for the expand animation).
 
 **z-index scheme during tutorial:**
 - Game UI: z-0 to z-20
