@@ -551,14 +551,21 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   }
 
   // Count series, exact designs, and block types
-  const seriesCount = {}
-  const designCount = {}
-  const typeCount   = {}
+  const seriesCount   = {}  // total instances per series (used for radiation-target counts)
+  const designCount   = {}  // total instances per design id
+  const typeCount     = {}  // total instances per blockType
+  const uniqueSeriesIds = {} // series → Set of unique design IDs (for threshold checks)
   for (const { series, designId, blockType } of blocks) {
     if (series)    seriesCount[series]   = (seriesCount[series]   ?? 0) + 1
     if (designId)  designCount[designId] = (designCount[designId] ?? 0) + 1
     if (blockType) typeCount[blockType]  = (typeCount[blockType]  ?? 0) + 1
+    if (series && designId) {
+      if (!uniqueSeriesIds[series]) uniqueSeriesIds[series] = new Set()
+      uniqueSeriesIds[series].add(designId)
+    }
   }
+  // Returns how many DIFFERENT design IDs of a series are on the grid
+  function uCount(series) { return uniqueSeriesIds[series]?.size ?? 0 }
 
   // Per-cell bonus and winning-synergy maps
   const bonusMap   = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
@@ -590,13 +597,14 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   for (const [synergyId, def] of Object.entries(SYNERGY_DEFS)) {
     const required = (def.required ?? 0) + threshold
 
-    // ── Series count ─────────────────────────────────────────────────────────
+    // ── Series count — requires N UNIQUE design IDs of the series ───────────────
     if (def.type === 'series_count') {
-      const count = seriesCount[def.series] ?? 0
+      const count = uCount(def.series)
       const active = count >= required
       activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: count, required: def.required, reward: def.reward ?? null })
       if (!active) continue
 
+      // Bonus applies to all blocks of that series (including duplicates)
       for (const { r, c, series } of blocks) {
         if (series !== def.series) continue
         bonusMap[r][c] += def.own
@@ -659,13 +667,14 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       }
     }
 
-    // ── Row series ────────────────────────────────────────────────────────────
+    // ── Row series — requires N unique design IDs in the same row ────────────
     else if (def.type === 'row_series') {
       let totalActive = 0
       for (let r = 0; r < GRID_SIZE; r++) {
         const rowCells = blocks.filter(b => b.r === r && b.series === def.series)
-        if (rowCells.length >= required) {
-          totalActive += rowCells.length
+        const uniqueInRow = new Set(rowCells.map(b => b.designId)).size
+        if (uniqueInRow >= required) {
+          totalActive += uniqueInRow
           for (const { c } of rowCells) {
             bonusMap[r][c] += def.own
             tryAssignMap(r, c, synergyId, def)
@@ -673,17 +682,17 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           }
         }
       }
-      const totalInSeries = seriesCount[def.series] ?? 0
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: totalInSeries, required: def.required, reward: def.reward ?? null })
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: uCount(def.series), required: def.required, reward: def.reward ?? null })
     }
 
-    // ── Column series ─────────────────────────────────────────────────────────
+    // ── Column series — requires N unique design IDs in the same column ───────
     else if (def.type === 'column_series') {
       let totalActive = 0
       for (let c = 0; c < GRID_SIZE; c++) {
         const colCells = blocks.filter(b => b.c === c && b.series === def.series)
-        if (colCells.length >= required) {
-          totalActive += colCells.length
+        const uniqueInCol = new Set(colCells.map(b => b.designId)).size
+        if (uniqueInCol >= required) {
+          totalActive += uniqueInCol
           for (const { r } of colCells) {
             bonusMap[r][c] += def.own
             tryAssignMap(r, c, synergyId, def)
@@ -691,8 +700,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           }
         }
       }
-      const totalInSeries = seriesCount[def.series] ?? 0
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: totalInSeries, required: def.required, reward: def.reward ?? null })
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: uCount(def.series), required: def.required, reward: def.reward ?? null })
     }
 
     // ── Long-range (≥ minDist Manhattan distance apart) ───────────────────────
@@ -701,11 +709,12 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       let anyFound = false
 
       if (def.series) {
-        // Same-series: any two blocks of this series at least minDist apart
+        // Same-series: any two blocks of this series with DIFFERENT design IDs at least minDist apart
         const pool = blocks.filter(b => b.series === def.series)
         for (let i = 0; i < pool.length; i++) {
           for (let j = i + 1; j < pool.length; j++) {
             const a = pool[i], b = pool[j]
+            if (a.designId === b.designId) continue  // must be different designs
             if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) >= def.minDist) {
               qualifyingCells.add(`${a.r},${a.c}`)
               qualifyingCells.add(`${b.r},${b.c}`)
@@ -731,9 +740,9 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         }
       }
 
-      // Progress: number of qualifying designs on grid
+      // Progress: number of qualifying unique designs on grid
       const qualifyingCount = def.series
-        ? (seriesCount[def.series] ?? 0)
+        ? uCount(def.series)
         : Math.min(
             blocks.filter(b => def.designA ? b.designId === def.designA : b.series === def.seriesA).length,
             1
@@ -768,13 +777,16 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
 
         const nearSatellites = blocks.filter(sat => {
           if (sat.r === core.r && sat.c === core.c) return false
+          if (sat.designId === core.designId) return false  // same design as core doesn't count
           const satMatch = def.satelliteSeries ? sat.series === def.satelliteSeries : false
           return satMatch && Math.abs(sat.r - core.r) + Math.abs(sat.c - core.c) <= def.radius
         })
 
-        bestProgress = Math.max(bestProgress, nearSatellites.length)
+        // Require unique design IDs among the satellites
+        const uniqueSatIds = new Set(nearSatellites.map(s => s.designId)).size
+        bestProgress = Math.max(bestProgress, uniqueSatIds)
 
-        if (nearSatellites.length >= def.requiredSatellites) {
+        if (uniqueSatIds >= def.requiredSatellites) {
           anyFound = true
           coreCells.add(`${core.r},${core.c}`)
           for (const sat of nearSatellites) satelliteCells.add(`${sat.r},${sat.c}`)
@@ -838,7 +850,8 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         if (req.designId) {
           return (designCount[req.designId] ?? 0) >= 1
         } else if (req.series) {
-          return (seriesCount[req.series] ?? 0) >= (req.count ?? 1)
+          // Series requirements count unique design IDs, not total instances
+          return uCount(req.series) >= (req.count ?? 1)
         }
         return false
       })

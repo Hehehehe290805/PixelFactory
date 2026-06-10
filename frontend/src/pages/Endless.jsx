@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { startMusic, stopMusic } from '../lib/audio'
-import { useGameStore, createBlock } from '../store/gameStore'
+import { useGameStore, createBlock, pickRandomType } from '../store/gameStore'
+import { useShopStore } from '../store/shopStore'
 import { useUserStore } from '../store/userStore'
+import { useDesignUnlocks } from '../lib/designUnlocks'
 import { checkEndlessWave } from '../engine/achievementEngine'
 import { getEndlessQuestion, ENDLESS_REWARDS } from '../data/learningContent'
 import Grid from '../components/game/Grid'
@@ -11,10 +13,15 @@ import ProductionEngine from '../components/game/ProductionEngine'
 import ActiveEffectsPanel from '../components/game/ActiveEffectsPanel'
 import InventoryPanel from '../components/game/InventoryPanel'
 import ShopSidebar from '../components/game/ShopSidebar'
+import DeckSelector from '../components/ui/DeckSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const FIRST_WAVE  = 20
-const MULTIPLIER  = 1.6
+// Wave N requires: FIRST_WAVE × MULTIPLIER^(N-1)
+// At ~30 px/s (6 starting blocks):  wave 1 ≈ 27s · wave 3 ≈ 4.5 min
+// At ~200 px/s (mid-game):          wave 5 ≈ 5 min · wave 6 ≈ 9 min
+// At ~1 000 px/s (optimised):       wave 7 ≈ 10 min · wave 8 ≈ 27 min
+const FIRST_WAVE  = 800
+const MULTIPLIER  = 3.0
 
 function waveRequired(wave) {
   return Math.floor(FIRST_WAVE * Math.pow(MULTIPLIER, wave - 1))
@@ -37,8 +44,11 @@ export default function Endless() {
     saveEndlessRun, loadEndlessRun, deleteEndlessRun,
   } = useUserStore()
 
+  const { unlockedDesigns } = useDesignUnlocks()
+  const { unlockedBlocks }  = useShopStore()
+
   const [wave, setWave]             = useState(1)
-  const [phase, setPhase]           = useState('loading') // 'loading'|'resume'|'playing'|'between'|'ended'
+  const [phase, setPhase]           = useState('loading') // 'loading'|'deck'|'resume'|'playing'|'between'|'ended'
   const [elapsed, setElapsed]       = useState(0)
   const [grandTotal, setGrandTotal] = useState(0)
   const [runResult, setRunResult]   = useState(null)
@@ -84,11 +94,24 @@ export default function Endless() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startFreshRun() {
-    startLevel([])
-    setPhase('playing')
+    // Show deck selector before starting — wave/total reset happens in handleDeckConfirmed
     setWave(1)
     setGrandTotal(0)
     setElapsed(0)
+    setPhase('deck')
+  }
+
+  function handleDeckConfirmed({ designIds }) {
+    const shopUnlocked = unlockedBlocks ?? []
+    const startingBlocks = []
+    for (const id of [...new Set(designIds)]) {
+      for (let i = 0; i < 2; i++) {
+        const block = createBlock(id, pickRandomType(shopUnlocked), 0)
+        if (block) startingBlocks.push(block)
+      }
+    }
+    startLevel(startingBlocks)
+    setPhase('playing')
   }
 
   function handleResume() {
@@ -218,6 +241,19 @@ export default function Endless() {
   // ── Loading / resume screen ──────────────────────────────────────────────────
   if (phase === 'loading') return null
 
+  // ── Deck selection — first thing before a fresh run ─────────────────────────
+  if (phase === 'deck') {
+    return (
+      <DeckSelector
+        levelNumber={0}
+        unlockedDesigns={unlockedDesigns}
+        bargain={false}
+        onConfirm={handleDeckConfirmed}
+        onBack={() => navigate('/')}
+      />
+    )
+  }
+
   if (phase === 'resume' && savedRun) {
     return (
       <div className="min-h-screen bg-game-bg flex items-center justify-center px-4">
@@ -265,7 +301,7 @@ export default function Endless() {
           <Grid />
         </div>
         <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 196 }}>
-          <PixelCounter requiredOutput={effectiveRequired} />
+          <PixelCounter requiredOutput={effectiveRequired} totalLabel="This wave" />
           <ActiveEffectsPanel />
           <div className="card text-xs font-semibold text-gray-400 space-y-2">
             <div className="flex justify-between">

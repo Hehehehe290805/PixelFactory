@@ -1,6 +1,6 @@
 import { useGameStore } from '../../store/gameStore'
 
-export default function PixelCounter({ requiredOutput }) {
+export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
   const { totalPixelsProduced, pixelsSpentInShop: pixelsSpent, currentPxPerSecond } = useGameStore()
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
@@ -25,7 +25,7 @@ export default function PixelCounter({ requiredOutput }) {
       </div>
 
       <div className="space-y-2">
-        <Row label="Total"     value={Math.floor(totalPixelsProduced).toLocaleString()} />
+        <Row label={totalLabel} value={Math.floor(totalPixelsProduced).toLocaleString()} />
         <Row label="Remaining" value={Math.ceil(remaining).toLocaleString()} accent={remaining === 0 ? 'text-pixel-green' : 'text-white'} />
         <Row label="Spent"     value={pixelsSpent.toLocaleString()} accent="text-gray-500" />
       </div>
