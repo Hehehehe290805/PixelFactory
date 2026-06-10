@@ -170,6 +170,29 @@ export default function Endless() {
     setSelectedBlock(null)
   }
 
+  function handleCancelEditor(originalLayout, originalInventory) {
+    const pixelCount = originalLayout.flat().filter(Boolean).length
+    useGameStore.setState(s => ({
+      inventory: s.inventory.map(b =>
+        b.id === selectedBlockId ? { ...b, pixelLayout: originalLayout, pixelCount } : b
+      ),
+      grid: s.grid.map(row => row.map(b =>
+        b && b.id === selectedBlockId ? { ...b, pixelLayout: originalLayout, pixelCount } : b
+      )),
+      pixelInventory: originalInventory,
+    }))
+    if (pixelCount === 0) {
+      const state = useGameStore.getState()
+      for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+          const b = state.grid[r][c]
+          if (b && b.id === selectedBlockId) { removeBlock(r, c); break }
+        }
+      }
+    }
+    setSelectedBlock(null)
+  }
+
   const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
@@ -223,7 +246,7 @@ export default function Endless() {
           style={{ zIndex: 50 }}
           onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
-          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
+          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} onCancel={handleCancelEditor} />
         </div>
       )}
 

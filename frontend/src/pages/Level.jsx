@@ -220,6 +220,30 @@ export default function Level() {
     setSelectedBlock(null)
   }
 
+  function handleCancelEditor(originalLayout, originalInventory) {
+    const pixelCount = originalLayout.flat().filter(Boolean).length
+    useGameStore.setState(s => ({
+      inventory: s.inventory.map(b =>
+        b.id === selectedBlockId ? { ...b, pixelLayout: originalLayout, pixelCount } : b
+      ),
+      grid: s.grid.map(row => row.map(b =>
+        b && b.id === selectedBlockId ? { ...b, pixelLayout: originalLayout, pixelCount } : b
+      )),
+      pixelInventory: originalInventory,
+    }))
+    // Remove from grid if it was originally empty (same as close behaviour)
+    if (pixelCount === 0) {
+      const state = useGameStore.getState()
+      for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+          const b = state.grid[r][c]
+          if (b && b.id === selectedBlockId) { removeBlock(r, c); break }
+        }
+      }
+    }
+    setSelectedBlock(null)
+  }
+
   function handleRetry() {
     setResultShown(false)
     setLearningShown(false)
@@ -302,7 +326,7 @@ export default function Level() {
           style={{ zIndex: 50 }}
           onClick={config.tutorial ? undefined : e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
-          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} isTutorial={!!config.tutorial} />
+          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} onCancel={handleCancelEditor} isTutorial={!!config.tutorial} />
         </div>
       )}
 

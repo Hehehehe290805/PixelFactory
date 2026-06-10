@@ -5,7 +5,7 @@ import { useUnlocks } from '../../lib/unlocks'
 
 const CELL_PX = 20
 
-export default function BlockEditor({ blockId, onClose, isTutorial = false }) {
+export default function BlockEditor({ blockId, onClose, onCancel, isTutorial = false }) {
   const { grid, inventory, pixelInventory, paintPixel, clearBlock, fillBlock } = useGameStore()
   const { isPixelUnlocked } = useUnlocks()
 
@@ -17,7 +17,19 @@ export default function BlockEditor({ blockId, onClose, isTutorial = false }) {
   const [isErasing, setIsErasing] = useState(false)
   const painting = useRef(false)
 
+  // Snapshot state at the moment the editor opens
+  const originalLayoutRef = useRef(null)
+  const originalInventoryRef = useRef(null)
+  if (block && originalLayoutRef.current === null) {
+    originalLayoutRef.current = block.pixelLayout.map(row => [...row])
+    originalInventoryRef.current = { ...useGameStore.getState().pixelInventory }
+  }
+
   if (!block) return null
+
+  function handleCancel() {
+    if (onCancel) onCancel(originalLayoutRef.current, originalInventoryRef.current)
+  }
 
   const activeColor = isErasing ? null : selectedColor
 
@@ -148,14 +160,24 @@ export default function BlockEditor({ blockId, onClose, isTutorial = false }) {
           ? (isTutorial ? `Paint ${needed} more pixel${needed !== 1 ? 's' : ''}` : 'Paint at least 1 pixel')
           : 'Done'
         return (
-          <button
-            data-tutorial="editor-done"
-            onClick={onClose}
-            disabled={disabled}
-            className="btn btn-primary w-full text-sm disabled:opacity-40"
-          >
-            {label}
-          </button>
+          <div className="flex gap-2">
+            {!isTutorial && (
+              <button
+                onClick={handleCancel}
+                className="btn btn-secondary flex-1 text-sm"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              data-tutorial="editor-done"
+              onClick={onClose}
+              disabled={disabled}
+              className={`btn btn-primary text-sm disabled:opacity-40 ${isTutorial ? 'w-full' : 'flex-1'}`}
+            >
+              {label}
+            </button>
+          </div>
         )
       })()}
     </div>
