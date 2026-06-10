@@ -83,11 +83,10 @@ export default function Level() {
         : config.timeLimitSeconds)
     : 120
 
-  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget, preBuyCounts }) {
-    setActiveDeck(preBoughtDesignIds)
-    setDeckSelection(preBoughtDesignIds)
-    startLevel(startingBlocks, preBuyCounts ?? {})
-    if (remainingBudget > 0) addPixels(remainingBudget)
+  function handleDeckConfirmed({ designIds }) {
+    setActiveDeck(designIds)
+    setDeckSelection(designIds)
+    startLevel([])
     setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)

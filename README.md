@@ -67,7 +67,10 @@ All 12 series have both a full-tier (4–5 designs) and a mini-tier (2 designs) 
 ### 4. Row Series — place N of the same series in the same horizontal row
 > Example: 4 buildings in one row → **City Block** (+28% that row)
 
-### 5. Long Range — place two designs at least N cells apart
+### 5. Column Series — place N of the same series in the same vertical column
+> Example: 4 animal designs in one column → **Animal Column** (+38%)
+
+### 6. Long Range — place two designs at least N cells apart
 > Example: 2 space designs ≥5 cells apart → **Distant Stars** (+25% both, radiates +8%)
 
 Rewards spreading designs across the full grid. The Manhattan distance between the two qualifying blocks must meet or exceed `minDist`.
@@ -93,14 +96,20 @@ One "core" block acts as an anchor. The bonus activates when enough "satellite" 
 | Mountain Kingdom | Mountain | 3 landscape designs | 2 | +30% | +18% |
 | Blooming Core | any flower | 4 flower designs | 3 | +35% | +15% |
 
-### 7. Block Type Count — place N blocks sharing the same effect type
-> Example: 3 Echo blocks anywhere → **Echo Chamber** (+20% each, +7% ortho radiation). Any series works.
+### 8. Cross Family — place specific designs from different series on the grid
+> Example: Apple + 2 tree designs → **Orchard** (+45%, +40 gold reward). Star + Snowflake + any tree → **Christmas Tree** (+55%, grants a free random block!)
 
-| Synergy | Block Type | Required | Bonus |
-|---|---|---|---|
-| Double Down | doubler | 3 | +25% · +8% ortho |
-| Reactor Network | reactor | 2 | +30% · +10% all-8 |
-| Echo Chamber | echo | 3 | +20% · +7% ortho |
+Some cross-family synergies require the named designs to be **adjacent**.
+
+### 10. Meta Synergy — activate two or more other synergies simultaneously
+> Example: GARDEN + FOREST both active → **Primordial Grove** (+35% to all synergy cells, grants a free random block!)
+
+### 9. Block Type Count — place N blocks sharing the same effect type
+> Example: 5 of the same block type → **Specialist** (+45%, radiates all-8). Requires 5 — hard to pull off.
+
+| Synergy | Condition | Bonus |
+|---|---|---|
+| Specialist | 5 blocks of same type | +45% · +12% all-8 |
 
 ### Reading the Active Effects Panel
 
@@ -115,14 +124,16 @@ During a level, the right-side panel lists every synergy that is active or in pr
 ## Deck System
 
 ### Before Each Level
-1. **DeckSelector** opens — pick 10 designs from your unlocked collection
-2. **Pre-buy phase** — spend starting pixels (`50 + level × 5`, capped at 300) to load some designs into your opening hand
-3. The remaining deck designs appear in the **ShopSidebar** during the level
+1. **DeckSelector** opens — pick up to **3 designs** from your collection
+2. Same design can appear **up to 2×** in one deck — e.g. [Rose, Rose, Oak]
+3. No pre-buy phase — level starts with an empty inventory
 
 ### In-Level Shop
-- Shows all 10 chosen deck designs with pixel costs
+- Shows your unique deck designs; each purchase assigns a **random block type** from your unlocked pool
 - Drag directly from the shop to the grid when you can afford it
-- Hover a design for its name, series, effect description, and cost
+- **2 copies max** per design per level
+- **Random block** — surprise design outside your deck; starts at **200px**, cost **doubles** each time you buy one
+- **Sell zone** at the bottom of the shop — drag any block here to sell it for **20% of what you paid**
 - **Bargain** grid style reduces all in-level costs by 20%
 
 **Approximate design costs by block type:**

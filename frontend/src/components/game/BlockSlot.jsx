@@ -6,13 +6,13 @@ import { playBlockPlace } from '../../lib/audio'
 export default function BlockSlot({
   row, col, block, cellSize = 48,
   selectedBlockId, onBlockSelect, pulsing,
-  onCellClick,          // (row, col, event) → opens radial wheel
-  onBlockRightClick,    // (row, col, block, event) → show description overlay
+  onCellClick,
   moveTarget = false,
   moveSource = false,
 }) {
-  const { placeBlock, removeBlock, moveBlock } = useGameStore()
+  const { placeBlock, removeBlock, moveBlock, sellBlock } = useGameStore()
   const [dragOver, setDragOver] = useState(false)
+  const [sellOver, setSellOver] = useState(false)
 
   function handleDragOver(e) { e.preventDefault(); setDragOver(true) }
   function handleDragLeave() { setDragOver(false) }
@@ -23,10 +23,8 @@ export default function BlockSlot({
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'))
       if (data.source === 'inventory') {
-        const invBlock = useGameStore.getState().inventory.find(b => b.id === data.blockId)
         placeBlock(data.blockId, row, col)
         playBlockPlace()
-        if (invBlock && invBlock.pixelCount === 0) onBlockSelect?.(data.blockId)
       } else if (data.source === 'grid' && (data.fromRow !== row || data.fromCol !== col)) {
         moveBlock(data.fromRow, data.fromCol, row, col)
       }
@@ -35,7 +33,9 @@ export default function BlockSlot({
 
   function handleDragStart(e) {
     if (!block) return
-    e.dataTransfer.setData('application/json', JSON.stringify({ source: 'grid', blockId: block.id, fromRow: row, fromCol: col }))
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      source: 'grid', blockId: block.id, fromRow: row, fromCol: col,
+    }))
     e.dataTransfer.effectAllowed = 'move'
   }
 
@@ -47,17 +47,10 @@ export default function BlockSlot({
     }
   }
 
-  function handleRightClick(e) {
-    e.preventDefault()
-    if (block && onBlockRightClick) onBlockRightClick(row, col, block, e)
-  }
-
   const isSelected = block && block.id === selectedBlockId
 
-  // Visual state priority: moveSource > moveTarget > dragOver > selected > default
   let borderColor = '#36366a'
   let bgColor = block ? '#0d0d1e' : '#0a0a18'
-  let overlayStyle = null
 
   if (moveSource) {
     borderColor = '#ffd166'
@@ -77,15 +70,9 @@ export default function BlockSlot({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onContextMenu={handleRightClick}
       onClick={handleClick}
       className={`relative border transition-colors duration-100 ${moveTarget ? 'cursor-cell' : 'cursor-pointer'}`}
-      style={{
-        width: cellSize,
-        height: cellSize,
-        borderColor,
-        backgroundColor: bgColor,
-      }}
+      style={{ width: cellSize, height: cellSize, borderColor, backgroundColor: bgColor }}
     >
       {block && (
         <div draggable onDragStart={handleDragStart} style={{ width: '100%', height: '100%' }}>
@@ -93,7 +80,6 @@ export default function BlockSlot({
         </div>
       )}
 
-      {/* Move-target pulse ring */}
       {moveTarget && (
         <div
           className="absolute inset-0 rounded-sm pointer-events-none"
@@ -101,7 +87,6 @@ export default function BlockSlot({
         />
       )}
 
-      {/* Move-source indicator */}
       {moveSource && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-pixel-yellow font-black text-xs bg-black/60 rounded px-1">↔</div>

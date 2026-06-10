@@ -9,109 +9,16 @@ GitHub: **https://github.com/Hehehehe290805/PixelFactory**
 
 ---
 
-## Reengineering Status (June 2026)
+## Pending Action Required
 
-**Pixel painting has been removed.** The new system is largely implemented but has 3 critical gaps that must be fixed before the game is playable end-to-end.
+**Supabase schema** — Two columns must be added manually in the Supabase SQL Editor before design unlocks and endless-minute tracking persist across sessions:
 
-### ✅ Completed
-
-- `data/designLibrary.js` — 200+ designs with fixed 16×16 pixel art, block type, series, desc, unlock source
-- `engine/designSynergies.js` — 49 synergies across 7 types (series_count, exact_count, adjacency_pair, row_series, long_range, core_radius, block_type_count); replaces setDetector + synergyEngine
-- `lib/designUnlocks.js` — milestone pairs, `useDesignUnlocks()`, `shouldShowDesignChoice()`
-- `store/gameStore.js` — paint methods removed; `createBlock(design)` takes a design; deck selection; `buyDesignFromShop`
-- `store/shopStore.js` — pixel unlocks removed; gates block-type unlocks for shop designs
-- `engine/blockEffects.js` — all 19 effects adapted for fixed pixelLayout (focus/prism/color_checker/conductor)
-- `engine/productionEngine.js` — uses `buildSynergyData` instead of old set/dominance maps
-- `lib/constants.js` — PIXEL_COLORS and PIXEL_SETS removed
-- `lib/unlocks.js` — thin shim re-exporting from designUnlocks
-- `components/ui/DeckSelector.jsx` — pre-level deck picker + pre-buy phase
-- `components/game/ActiveEffectsPanel.jsx` — live synergy progress display; fires synergy-activate sound
-- `lib/audio.js` — Web Audio API synthesizer: 8 ambient music tracks + 6 SFX; no external files
-- `store/settingsStore.js` — music/sfx volume + enabled flags, persisted to localStorage
-- `components/game/InventoryPanel.jsx` — design cards with hover tooltips
-- `components/game/ShopSidebar.jsx` — deck designs, pixel costs, hover descriptions, drag-to-grid
-- `pages/Level.jsx` — DeckSelector replaces pre-level shop; DesignChoiceModal after milestones
-- `pages/Endless.jsx` — deck flow; endless-minute tracking for 20-min unlock
-- `pages/Shop.jsx` — shop-only designs, block type gate unlocks
-- `pages/Profile.jsx` — design collection grid
-- `components/game/Block.jsx` — uses COLOR_HEX directly; active synergy dot instead of set badge
-- `components/game/Grid.jsx` — Paint option removed; 4-option wheel (Move, Replace, Wave, Remove)
-- `engine/achievementEngine.js` — set discovery removed; design collection + synergy achievements added
-- `store/userStore.js` — `unlockedDesigns[]`, `unlockDesign()`, `unlockDesigns()`, `endlessMinutes`, `addEndlessMinutes()`
-
-**Deleted:** `BlockEditor.jsx`, `TemplatePicker.jsx`, `TemplateSaveModal.jsx`, `setDetector.js`, `dominanceChecker.js`, `synergyEngine.js`, `officialTemplates.js`, `InLevelShop.jsx`
-
----
-
-### 🔴 Critical — Breaks Gameplay (fix before testing)
-
-**1. `engine/levelConfig.js` — startingBlocks uses old format**
-
-`levelConfig.js` still generates `startingBlocks` with `createBlock('base')` (old string-only API). `createBlock` now requires a design object or design ID. Since levels use the deck system, `startingBlocks` and `startingPixels` in levelConfig can simply be removed — the deck + pre-buy flow handles starting inventory. Fix:
-- Remove `startingBlocks` and `startingPixels` from all level configs
-- Level.jsx's `handleDeckConfirmed` already handles starting inventory; levelConfig just needs `{ number, name, requiredOutput, timeLimitSeconds, tutorial? }`
-
-**2. Tutorial completion → starter design unlock not wired up**
-
-When the player finishes Level 1 for the first time, `unlockDesigns(getStarterDesignIds())` must be called. Currently nothing grants the 10 starter designs. Fix in `Level.jsx` inside the `useEffect([levelComplete])` block:
-```js
-// After saveCampaignProgress, if level 1 and first time:
-if (levelNum === 1 && !campaignProgress[1]) {
-  unlockDesigns(getStarterDesignIds())
-}
-```
-
-**3. `TutorialOverlay.jsx` — references removed steps**
-
-Still has steps `paint_pixels` (waits for `totalPainted >= 5`), `editor-canvas`, and `editor-done` which reference the deleted BlockEditor. The tutorial steps need to be replaced with the new flow:
-1. `welcome` — manual
-2. `open_inventory` — waits for `inventoryOpen`
-3. `view_designs` — spotlight on inventory panel (manual advance)
-4. `place_block` — waits for `blocksOnGrid >= 1`
-5. `watch` — waits for `totalPixelsProduced > 0`
-6. `check_effects` — spotlight on ActiveEffectsPanel (manual)
-7. `done` — manual
-
----
-
-### 🟡 Important — Broken UX
-
-**4. `LevelHUD.jsx` — may reference `colorCheckerReductions`**
-
-The old `colorCheckerReductions` state no longer exists in gameStore. Check LevelHUD.jsx and remove any reference to it. The `effectiveRequired` calculation now lives in Level.jsx (efficiency grid style −10%).
-
-**5. Supabase schema missing columns**
-
-`userStore.loadProfile` now reads `profiles.unlocked_designs` (JSONB array) and `profiles.endless_minutes` (FLOAT). These columns don't exist yet. Add to `supabase/schema.sql`:
 ```sql
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_designs JSONB DEFAULT '[]';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS endless_minutes FLOAT DEFAULT 0;
 ```
-Run in Supabase SQL Editor. Until done, profile loads will not restore design unlocks across sessions.
 
-**6. Deck selection not pre-populated on retry**
-
-When a player retries a level, DeckSelector opens with an empty deck. The previous deck choice should be pre-filled. Fix: read `deckSelection` from gameStore as initial value in DeckSelector's `useState([])`.
-
----
-
-### 🟢 Polish (lower priority)
-
-**7. Bundle size** — 837KB unminified; the pixel art data in designLibrary.js is the main contributor. Consider lazy-loading it with `React.lazy` / dynamic `import()` once critical bugs are fixed.
-
-**8. Campaign.jsx design choice flow** — Design choice pairs (`shouldShowDesignChoice`) are currently only triggered from within Level.jsx. Campaign.jsx doesn't independently show missed choices. Fine for now.
-
-**9. Endless quiz "bonus" redesign** — The old quiz bonus gave `+N white pixels`. The new implementation gives an extra base design block instead. `ENDLESS_REWARDS` in `learningContent.js` still refers to pixel counts; update the between-wave copy to say "Bonus design next wave" instead of "+10 white pixels."
-
-**10. `willow_tree` pattern row 9** — Has a trailing space that the `trimEnd().padEnd(16, '.')` fix in designLibrary handles at runtime. Not a bug, just note.
-
----
-
-### Implementation Order
-
-Start with the three 🔴 critical items in order: levelConfig → tutorial unlock wiring → TutorialOverlay steps. Then 🟡 items 4 and 5 before pushing to production.
-- `components/ui/DeckSelector.jsx` — pre-level deck picker (10 designs)
-- `components/game/ActiveEffectsPanel.jsx` — live synergy status panel (right side, below output)
+Everything else is fully implemented and working.
 
 ---
 
@@ -145,17 +52,17 @@ PixelFactory/
 │   │   │   ├── game/
 │   │   │   │   ├── Block.jsx              # Renders fixed pixelLayout + 8-dir wave animation
 │   │   │   │   ├── BlockSlot.jsx          # Grid cell; drag-drop + onCellClick
-│   │   │   │   ├── Grid.jsx               # Radial wheel, move mode, wave dir
+│   │   │   │   ├── Grid.jsx               # Radial wheel (Move/Replace/Wave/Synergy/Remove); unique-design dedup
 │   │   │   │   ├── InventoryPanel.jsx     # Expandable bottom bar; design cards with hover tooltips
 │   │   │   │   ├── LevelHUD.jsx           # Progress bar, timer (×gameSpeed), ⏸ pause, speed selector
 │   │   │   │   ├── PixelCounter.jsx       # px/s + floating +N animation, progress, totals
 │   │   │   │   ├── ProductionEngine.jsx   # 100ms tick; respects gameSpeed + gamePaused
 │   │   │   │   ├── RadialWheel.jsx        # Animated radial context menu
-│   │   │   │   ├── ActiveEffectsPanel.jsx # Right panel: active synergies + progress (e.g. GARDEN 3/5)
-│   │   │   │   └── ShopSidebar.jsx        # In-level shop: 10 deck designs with pixel costs + hover tooltips
+│   │   │   │   ├── ActiveEffectsPanel.jsx # Right panel: synergies + rewards dispatch on first activation
+│   │   │   │   └── ShopSidebar.jsx        # Deck shop + random block + sell zone (drag to sell 20%)
 │   │   │   ├── ui/
 │   │   │   │   ├── AchievementToast.jsx
-│   │   │   │   ├── DeckSelector.jsx       # Pre-level: pick 10 designs from collection + pre-buy
+│   │   │   │   ├── DeckSelector.jsx       # Pre-level: pick 3 designs (max 2× same), no pre-buy
 │   │   │   │   ├── LearningCard.jsx       # Post-level fact card (L1–12) or quiz (L13+)
 │   │   │   │   ├── StarResult.jsx         # No stars on tutorial; green ✓ checkmark instead
 │   │   │   │   └── TutorialOverlay.jsx    # Spotlight tutorial (clip-path grayout + pulsing ring)
@@ -173,10 +80,10 @@ PixelFactory/
 │   │   │   ├── AccountSettings.jsx
 │   │   │   └── Leaderboard.jsx
 │   │   ├── store/
-│   │   │   ├── gameStore.js      # Grid, inventory (design instances), deckSelection, gameSpeed, gamePaused
+│   │   │   ├── gameStore.js      # Grid, inventory, deckSelection, randomBuyCount, sellBlock, grantRandomBlock
 │   │   │   ├── userStore.js      # Auth, gold, progress, achievements, quizStats, CRUD
-│   │   │   ├── shopStore.js      # Persistent unlocks: activeGridStyle, unlockedDesigns, purchasedSpeeds
-│   │   │   └── settingsStore.js  # showTutorial, showLearning
+│   │   │   ├── shopStore.js      # Persistent unlocks: activeGridStyle, unlockedBlocks, purchasedSpeeds
+│   │   │   └── settingsStore.js  # showTutorial, showLearning, musicEnabled/Volume, sfxEnabled/Volume (persisted)
 │   │   ├── engine/
 │   │   │   ├── productionEngine.js   # Full tick: base + design synergy + block effects
 │   │   │   ├── blockEffects.js       # All 19 block effect functions (adapted for fixed pixelLayout)
@@ -207,11 +114,12 @@ PixelFactory/
 
 ## Core Game Loop
 
-1. **Pre-level**: Player opens DeckSelector → picks 10 designs from their collection → optionally pre-buys some using starting pixels (pixels scale with level)
-2. **Tick** (every 100ms): `ProductionEngine` calls `computeTick(grid, opts)` → scaled by `gameSpeed` → updates `totalPixelsProduced`
-3. **Tick skipped** when `gamePaused === true`
-4. **Level complete** when `totalPixelsProduced >= config.requiredOutput`
-5. **Stars** = based on fraction of time limit used (tutorial always gives ✓ not ★)
+1. **Pre-level**: Player opens DeckSelector → picks up to 3 designs from their collection (same design can appear up to 2× in the deck)
+2. **Level starts**: inventory is empty; deck designs appear in ShopSidebar for purchase with produced pixels
+3. **Tick** (every 100ms): `ProductionEngine` calls `computeTick(grid, opts)` → scaled by `gameSpeed` → updates `totalPixelsProduced`
+4. **Tick skipped** when `gamePaused === true`
+5. **Level complete** when `totalPixelsProduced >= config.requiredOutput`
+6. **Stars** = based on fraction of time limit used (tutorial always gives ✓ not ★)
 
 ---
 
@@ -221,10 +129,12 @@ PixelFactory/
 
 A **design** is a block with:
 - Fixed 16×16 pixel art (`pixelLayout`) — not editable by the player
-- A bundled block type (`blockType`) — determines the production effect
+- A default `blockType` listed on the design card — but **each purchased instance gets a randomly assigned block type** from the pool of unlocked types
 - A series (`series`) — determines synergy group membership
 - A one-line tooltip (`desc`)
 - An unlock source
+
+The `blockType` field on a design in `designLibrary.js` is the fallback/default used only for tutorial blocks. Every shop or random purchase calls `pickRandomType(shopUnlocked)` and passes the result to `createBlock(designId, randomType, cost)`. Block instances also carry `purchaseCost` (pixels paid at purchase) for the sell-back calculation.
 
 ```js
 // Example design from data/designLibrary.js
@@ -267,19 +177,22 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
 
 ## Design Synergy System (`engine/designSynergies.js`)
 
-Replaces the old pixel-set / radiation system. **49 synergies across 7 types.**
+Replaces the old pixel-set / radiation system. **~75 synergies across 10 types.** Synergies are harder to activate (higher required counts), stronger when triggered, and some grant one-time rewards on first activation.
 
 ### Synergy Types
 
 | Type | Trigger | Example |
 |---|---|---|
-| `series_count` | N designs of same series anywhere on grid | GARDEN: 5 flower designs → +20% all output |
-| `exact_count` | N copies of exact same design on grid | ROSE PARADE: 3 Roses → +25% those blocks |
-| `adjacency_pair` | Two specific designs placed orthogonally adjacent | SUN & MOON: Sun + Moon adjacent → +30% both |
-| `row_series` | N designs of same series in same horizontal row | CITY BLOCK: 4 buildings in one row → +28% that row |
-| `long_range` | Two qualifying designs at least `minDist` cells apart (Manhattan) | DISTANT STARS: 2 space designs ≥5 apart → +25% both |
-| `core_radius` | One "core" design + N "satellite" designs within `radius` cells | SOLAR SYSTEM: Sun + 3 space within 3 cells → Sun +40%, ring +20% |
-| `block_type_count` | N blocks sharing the same `blockType` anywhere on grid | ECHO CHAMBER: 3 echo blocks → +20% each |
+| `series_count` | N **unique** designs of same series anywhere | GARDEN: 7 flower designs → +35% |
+| `exact_count` | N copies of the exact same design id | ROSE PARADE: 3 Roses → +30% those blocks |
+| `adjacency_pair` | Two **specific** design ids placed orthogonally adjacent | SUN & MOON: Sun adjacent to Moon → +55% both |
+| `row_series` | N designs of same series in the same horizontal row | CITY BLOCK: 5 buildings in one row → +45% |
+| `column_series` | N designs of same series in the same vertical column | FLOWER COLUMN: 4 flowers in one column → +40% |
+| `long_range` | Two qualifying designs ≥ `minDist` Manhattan cells apart | DISTANT STARS: 2 space ≥6 apart → +45% both |
+| `core_radius` | Core design + N satellites within `radius` cells | SOLAR SYSTEM: Sun + 3 space within 2 → Sun +65%, ring +38% |
+| `block_type_count` | N blocks of the same `blockType` anywhere | SPECIALIST: 5 of same type → +45% |
+| `cross_family` | Specific designs AND/OR series from **different** families all on grid | CHRISTMAS_TREE: Star + Snowflake + any tree → +55%, grants random block |
+| `meta_synergy` | Two or more other synergy IDs both currently active | PRIMORDIAL_GROVE: GARDEN + FOREST both active → +35% to all synergy cells |
 
 ### Synergy Definition Fields
 
@@ -300,8 +213,8 @@ Replaces the old pixel-set / radiation system. **49 synergies across 7 types.**
 // exact_count:
 { designId, required }
 
-// adjacency_pair:
-{ seriesA, seriesB, designA, designB }  // designA/B override series check if set
+// adjacency_pair — both must be specific design IDs (no generic series):
+{ designA, designB }
 
 // long_range — same-series pair:
 { series, minDist }
@@ -314,11 +227,30 @@ Replaces the old pixel-set / radiation system. **49 synergies across 7 types.**
   coreSeries,          // any design of this series can be the core
   satelliteSeries,     // qualifying satellite designs must be of this series
   requiredSatellites,  // how many satellites must be within radius
-  radius,              // max Manhattan distance from core to satellite
+  radius,              // max Manhattan distance from core to satellite (≤ 2)
   ownCore,             // bonus for the core block
   ownSatellite,        // bonus for each qualifying satellite block
   own,                 // = ownCore, used for synergyMap priority comparison
 }
+
+// cross_family:
+{
+  requires: [
+    { designId: 'x' },          // specific design must be on grid
+    { series: 'x', count: N },  // N designs of this series must be on grid
+  ],
+  requireAdjacent: true,  // optional: the two named designIds must be orthogonally adjacent
+}
+
+// meta_synergy — MUST appear last in SYNERGY_DEFS:
+{
+  requires: ['SYNERGY_ID_A', 'SYNERGY_ID_B'],  // all must be currently active
+  affectsAll: true,  // optional: bonus applies to every occupied cell (not just synergy cells)
+}
+
+// reward field (any type):
+{ reward: { type: 'pixels' | 'gold' | 'random_block', amount?: number } }
+// Fired once by ActiveEffectsPanel when the synergy first transitions to active
 
 // block_type_count:
 { blockType, required }  // blockType matches block.type (e.g. 'reactor', 'echo')
@@ -465,16 +397,19 @@ All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
 
 ---
 
-## Block Instance Shape (from `createBlock(design)`)
+## Block Instance Shape (from `createBlock(designOrId, typeOverride, purchaseCost)`)
 
 ```js
 {
   id,             // unique instance id
   designId,       // references DESIGNS array
-  type,           // = design.blockType (e.g. 'doubler')
+  name,           // = design.name
+  series,         // = design.series
+  type,           // randomly assigned at purchase — NOT always design.blockType
   pixelLayout,    // = design.pixelLayout (fixed; not editable)
   pixelCount,     // = design.pixelCount (fixed)
   dominantColor,  // = design.dominantColor (for color_checker/focus)
+  purchaseCost,   // pixels paid when bought; sell refund = floor(purchaseCost * 0.20)
   pauseTimer,     // ms remaining on move cooldown
   activeSynergy,  // highest synergy ID affecting this block (null if none)
   colorCheckerTriggered,
@@ -484,6 +419,8 @@ All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
   waveDir,
 }
 ```
+
+`createBlock` signature: `createBlock(designOrId, typeOverride = null, purchaseCost = 0)`. Tutorial blocks use `typeOverride = null` so they keep the design's default type. Shop purchases pass a random type from `pickRandomType(shopUnlocked)`.
 
 ---
 
@@ -523,19 +460,22 @@ At levels 5, 10, 15, 20, 25, 30 (and every 5 levels after), a design choice moda
 ## Deck System (Pre-Level)
 
 1. **DeckSelector** screen opens before each level
-2. Player picks 10 designs from their unlocked collection (any series/type mix)
-3. **Pre-buy phase**: spend starting pixels (= `50 + level × 5`, capped at 300) to buy some deck designs into starting inventory
-4. **Level starts**: pre-bought designs are in `inventory`; remaining 10 deck designs appear in `ShopSidebar`
-5. **Mid-level shop**: buy more copies of deck designs using produced pixels
+2. Player picks up to **3 designs** from their collection — same design can appear up to **2×** in one deck
+3. No pre-buy phase — level starts with an empty inventory; deck designs are in the `ShopSidebar`
+4. **Mid-level shop**: buy copies of deck designs using produced pixels; each purchase assigns a **random block type** from the unlocked pool
+5. **Random block**: always available in the shop at `200px × 2^purchaseCount` (doubles every buy)
+
+`MAX_DECK = 3` and `MAX_DECK_COPIES = 2` are constants in `lib/constants.js`.
 
 ### In-Level Shop (ShopSidebar)
 
-- Shows all 10 chosen deck designs
-- Each has a pixel cost (based on block type effect power; Bargain grid style −20%)
-- Hover shows: design name, series, effect description, current pixel cost
-- Can drag directly from shop → grid if affordable (cost deducted on drop)
-- Purchase feedback: green flash on success, red flash on failure (420ms)
-- Items semi-transparent when unaffordable, full opacity when affordable
+- Shows unique deck designs (deduplicated — each design appears once)
+- Each has a pixel cost based on the design's default block type (Bargain grid style −20%)
+- Block type shown as "type: random" — the actual effect is only known after purchase
+- Can drag directly from shop → grid if affordable
+- Purchase limit: 2 copies of any one design per level
+- **Sell zone** at the bottom: drag any block here to sell for 20% of its `purchaseCost`
+- **Random block** at the bottom: cost starts at 200px and doubles each time it's bought
 
 ### Approximate In-Level Design Costs
 
@@ -706,7 +646,7 @@ setSfxVolume(0–1)            // updates sfxMasterGain immediately
 
 `block.waveDir` (default `'up'`) — 8 directions. CSS keyframes unchanged. Duration = `37.5 / pixelCount` seconds.
 
-Radial wheel on occupied cell: Move, Wave (sub-wheel), Remove. (Paint option removed.)
+Radial wheel on occupied cell: Move, Replace, Wave (sub-wheel), Synergy (shows synergy list panel for that block), Remove. No right-click — the Synergy option replaces it. When selecting a design to place from an empty-cell wheel, the inventory is first deduplicated by `designId` so each design shows at most once.
 
 ---
 
@@ -761,9 +701,55 @@ Now shows **Design Collection** instead of templates:
 
 ---
 
-## Auth & User CRUD (unchanged)
+## Auth, User CRUD & Email Setup
 
-See previous registration, CRUD, and session persistence notes. All unchanged.
+### Supabase Auth
+
+Authentication is handled entirely by Supabase. Users register with email + password; Supabase sends a 6-digit OTP confirmation code. On successful auth, `userStore.initialize()` calls `loadProfile()` to fetch gold, achievements, campaign progress, and design unlocks from the `profiles` table.
+
+Account deletion uses a soft-delete approach via `delete_requested_at` timestamp. A Supabase Edge Function (`backend/functions/validate-user/`) handles any server-side auth validation.
+
+### Email (Brevo SMTP)
+
+Auth emails (OTP verification, password reset) are sent through Brevo's free SMTP relay instead of Supabase's default mailer. Configuration is done once in the Supabase dashboard:
+
+1. Create a free account at [brevo.com](https://brevo.com) and verify your sender email under **Senders & IP**
+2. Get SMTP credentials: click your avatar → **SMTP & API → SMTP** tab
+3. In Supabase dashboard: **Authentication → Emails → SMTP Settings** → enable Custom SMTP:
+   - Host: `smtp-relay.brevo.com`
+   - Port: `587`
+   - Username: your Brevo SMTP login (email address)
+   - Password: your Brevo SMTP key (not your account password)
+   - Sender email: your verified Brevo sender address
+4. In Supabase: **Authentication → Emails → Templates → Confirm signup** → replace the body with just `{{ .Token }}` so users receive the 6-digit code directly instead of a magic link
+
+### RLS Trigger
+
+The `profiles` table requires a trigger that automatically inserts a row on new user signup. If registration fails silently, check that this trigger exists in Supabase:
+
+```sql
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, gold, campaign_progress)
+  VALUES (new.id, 0, '{}');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
+```
+
+### User CRUD
+
+All user data lives in `userStore.js`:
+- `gold`, `achievements` (Set), `campaignProgress`, `quizStats`, `unlockedDesigns[]`, `endlessMinutes`
+- `loadProfile()` — reads from `profiles` table on init/login
+- `saveCampaignProgress(levelNum, stars, elapsed)` — upserts `campaign_progress` JSONB
+- `unlockAchievements(keys[])` — upserts `achievements` rows (no-op for guests)
+- `addGold(amount)` — updates `profiles.gold`
 
 ---
 

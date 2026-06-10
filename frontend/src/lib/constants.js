@@ -47,7 +47,16 @@ export const BLOCK_CANVAS_SIZE = 16
 export const TICK_MS           = 100
 export const MOVE_COOLDOWN_MS  = 5000
 
-// Starting pixel budget for deck pre-buy phase (scales with level, capped at 300)
-export function getStartingPixelBudget(levelNumber) {
-  return Math.min(50 + levelNumber * 5, 300)
-}
+// Deck limits
+export const MAX_DECK          = 3   // max designs in a level deck
+export const MAX_DECK_COPIES   = 2   // max copies of the same design in a deck
+
+// Random block shop pricing: starts at RANDOM_BASE_COST, doubles each purchase
+export const RANDOM_BASE_COST  = 200
+
+// Block types always available for random assignment (shop-only types added when unlocked)
+export const BASIC_BLOCK_TYPES = [
+  'base', 'doubler', 'cross_amp', 'color_checker', 'greedy',
+  'amplifier', 'resonator', 'reactor', 'echo', 'prism',
+  'conductor', 'splitter', 'focus', 'cluster', 'forge',
+]

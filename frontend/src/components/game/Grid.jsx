@@ -6,7 +6,7 @@ import Block from './Block'
 import RadialWheel from './RadialWheel'
 import { GRID_SIZE, TICK_MS } from '../../lib/constants'
 import { DESIGNS } from '../../data/designLibrary'
-import { DesignTooltipBody } from '../ui/DeckSelector'
+import { SYNERGY_DEFS, getDesignSynergies } from '../../engine/designSynergies'
 import { playBlockPlace } from '../../lib/audio'
 
 const WAVE_DIRS = [
@@ -21,29 +21,22 @@ const WAVE_DIRS = [
 ]
 
 export default function Grid() {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, replaceBlock } = useGameStore()
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, replaceBlock, sellBlock } = useGameStore()
+  const [sellToast, setSellToast] = useState(null) // { refund, x, y }
   const cellSize = useGridCellSize()
 
   const [pulsingSlots, setPulsingSlots] = useState(new Set())
-  // wheel: null | { type: 'empty'|'occupied'|'add', row, col, x, y }
   const [wheel, setWheel]       = useState(null)
-  // movingBlock: null | { blockId, fromRow, fromCol }
   const [movingBlock, setMoving] = useState(null)
-  // descPanel: null | { block, design, x, y }
-  const [descPanel, setDescPanel] = useState(null)
-
-  const handleBlockRightClick = useCallback((row, col, block, e) => {
-    const design = DESIGNS.find(d => d.id === block.designId)
-    if (!design) return
-    setDescPanel({ block, design, x: e.clientX, y: e.clientY })
-  }, [])
+  // synergyPanel: { block, design, x, y } — shows synergy list for a block
+  const [synergyPanel, setSynergyPanel] = useState(null)
 
   useEffect(() => {
-    if (!descPanel) return
-    function onKey(e) { if (e.key === 'Escape') setDescPanel(null) }
+    if (!synergyPanel) return
+    function onKey(e) { if (e.key === 'Escape') setSynergyPanel(null) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [descPanel])
+  }, [synergyPanel])
 
   // Production pulse tracker
   useEffect(() => {
@@ -60,19 +53,17 @@ export default function Grid() {
     return () => clearInterval(interval)
   }, [grid])
 
-  // ── Cell click handler ────────────────────────────────────────────────────
   function handleCellClick(row, col, e) {
     const x = e.clientX
     const y = e.clientY
 
-    // Move-mode: complete the move on a valid destination
     if (movingBlock) {
       const dest = grid[row][col]
       if (!dest) {
         moveBlock(movingBlock.fromRow, movingBlock.fromCol, row, col)
         setMoving(null)
       } else if (movingBlock.fromRow === row && movingBlock.fromCol === col) {
-        setMoving(null) // cancel by clicking the same block
+        setMoving(null)
       }
       return
     }
@@ -83,14 +74,19 @@ export default function Grid() {
 
   function dismiss() { setWheel(null) }
 
-  // ── Build wheel items ─────────────────────────────────────────────────────
   function buildItems() {
     if (!wheel) return []
 
-    // Inventory picker (used for empty cell and for "Add" on occupied cell)
     if (wheel.type === 'empty' || wheel.type === 'add') {
       if (inventory.length === 0) return []
-      return inventory.slice(0, 9).map(block => ({
+      // Show one representative block per unique design — avoids duplicates crowding the wheel
+      const seen = new Set()
+      const unique = inventory.filter(b => {
+        if (seen.has(b.designId)) return false
+        seen.add(b.designId)
+        return true
+      })
+      return unique.slice(0, 9).map(block => ({
         content: <Block block={block} size={32} />,
         label: block.name ?? block.type.replace(/_/g, ' '),
         color: '#1499cc',
@@ -106,7 +102,6 @@ export default function Grid() {
       }))
     }
 
-    // Occupied cell action wheel — no Paint option (designs have fixed art)
     if (wheel.type === 'occupied') {
       const occupant = grid[wheel.row]?.[wheel.col]
       if (!occupant) return []
@@ -137,6 +132,27 @@ export default function Grid() {
           },
         },
         {
+          icon: '✦',
+          label: 'Synergy',
+          color: '#ffd166',
+          onClick: () => {
+            const design = DESIGNS.find(d => d.id === occupant.designId)
+            setSynergyPanel({ block: occupant, design, x: wheel.x, y: wheel.y })
+            dismiss()
+          },
+        },
+        {
+          icon: '💰',
+          label: 'Sell',
+          color: '#ffd166',
+          onClick: () => {
+            const refund = sellBlock(occupant.id)
+            setSellToast({ refund, x: wheel.x, y: wheel.y })
+            setTimeout(() => setSellToast(null), 1000)
+            dismiss()
+          },
+        },
+        {
           icon: '✕',
           label: 'Remove',
           color: '#f03e4e',
@@ -148,7 +164,6 @@ export default function Grid() {
       ]
     }
 
-    // Wave direction picker
     if (wheel.type === 'wave') {
       const occupant = grid[wheel.row]?.[wheel.col]
       if (!occupant) return []
@@ -169,7 +184,6 @@ export default function Grid() {
 
   const items = buildItems()
 
-  // Auto-dismiss if no items (e.g. empty inventory when clicking empty cell)
   useEffect(() => {
     if (wheel && items.length === 0) dismiss()
   }, [wheel]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -191,7 +205,6 @@ export default function Grid() {
               onBlockSelect={null}
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
-              onBlockRightClick={handleBlockRightClick}
               moveTarget={!!movingBlock && !grid[r][c]}
               moveSource={movingBlock?.fromRow === r && movingBlock?.fromCol === c}
             />
@@ -209,28 +222,80 @@ export default function Grid() {
         <RadialWheel x={wheel.x} y={wheel.y} items={items} onDismiss={dismiss} />
       )}
 
-      {/* Right-click design description panel */}
-      {descPanel && (() => {
-        const tipW = 180
+      {/* Sell toast — brief refund confirmation */}
+      {sellToast && (
+        <div
+          style={{ position: 'fixed', left: sellToast.x + 12, top: sellToast.y - 28, zIndex: 60, pointerEvents: 'none' }}
+          className="bg-pixel-yellow text-black text-xs font-black px-2 py-0.5 rounded-lg shadow-lg"
+        >
+          {sellToast.refund > 0 ? `+${sellToast.refund}px` : 'sold (0px)'}
+        </div>
+      )}
+
+      {/* Synergy list panel — opened via radial wheel "Synergy" option */}
+      {synergyPanel && (() => {
+        const { block, design, x, y } = synergyPanel
+        const panelW = 220
         const margin = 12
-        const x = descPanel.x + margin + tipW > window.innerWidth
-          ? descPanel.x - tipW - margin
-          : descPanel.x + margin
-        const y = Math.min(descPanel.y - 8, window.innerHeight - 320)
+        const px = x + margin + panelW > window.innerWidth
+          ? x - panelW - margin
+          : x + margin
+        const py = Math.min(y - 8, window.innerHeight - 400)
+        const synergies = design ? getDesignSynergies(design) : []
         return (
           <>
-            <div className="fixed inset-0 z-[55]" onClick={() => setDescPanel(null)} />
+            <div className="fixed inset-0 z-[55]" onClick={() => setSynergyPanel(null)} />
             <div
-              style={{ position: 'fixed', left: x, top: y, width: tipW, zIndex: 56, background: '#0d0d22' }}
-              className="rounded-xl border-2 border-pixel-blue/40 p-3 flex flex-col gap-2"
+              style={{ position: 'fixed', left: px, top: py, width: panelW, zIndex: 56, background: '#0d0d22' }}
+              className="rounded-xl border-2 border-pixel-yellow/40 p-3 flex flex-col gap-2"
             >
-              <DesignTooltipBody design={descPanel.design} />
-              {descPanel.block.activeSynergy && (
-                <div className="text-xs text-pixel-green font-bold border-t border-game-border pt-1">
-                  ✦ {descPanel.block.activeSynergy.replace(/_/g, ' ')} active
+              {/* Block identity */}
+              <div>
+                <div className="text-sm font-black text-white">{design?.name ?? 'Block'}</div>
+                <div className="text-xs text-pixel-blue capitalize">{block.type?.replace(/_/g, ' ')} · {design?.series}</div>
+              </div>
+
+              {/* Active synergy */}
+              {block.activeSynergy && (
+                <div className="text-xs font-black text-pixel-green border border-pixel-green/30 rounded-lg px-2 py-1">
+                  ✦ {SYNERGY_DEFS[block.activeSynergy]?.name ?? block.activeSynergy} active
                 </div>
               )}
-              <div className="text-[10px] text-gray-700 border-t border-game-border pt-1">right-click to close</div>
+
+              {/* All eligible synergies */}
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-600 mb-1">Eligible Synergies</div>
+                {synergies.length === 0 ? (
+                  <div className="text-[10px] text-gray-700">None found</div>
+                ) : (
+                  <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                    {synergies.map(name => {
+                      const def = Object.values(SYNERGY_DEFS).find(d => d.name === name)
+                      const isActive = block.activeSynergy && SYNERGY_DEFS[block.activeSynergy]?.name === name
+                      return (
+                        <div
+                          key={name}
+                          className={`rounded-lg px-2 py-1 border ${isActive ? 'border-pixel-green/40 bg-pixel-green/5' : 'border-game-border'}`}
+                        >
+                          <div className={`text-[11px] font-black ${isActive ? 'text-pixel-green' : 'text-gray-300'}`}>
+                            {isActive ? '✦ ' : ''}{name}
+                          </div>
+                          {def && (
+                            <div className="text-[9px] text-gray-600 leading-snug mt-0.5">{def.desc}</div>
+                          )}
+                          {def?.reward && (
+                            <div className="text-[9px] text-pixel-yellow font-bold mt-0.5">
+                              🎁 {def.reward.type === 'random_block' ? 'Grants a free random block' : def.reward.type === 'pixels' ? `+${def.reward.amount} pixels` : `+${def.reward.amount} gold`}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-[10px] text-gray-700 border-t border-game-border pt-1">click outside to close</div>
             </div>
           </>
         )
