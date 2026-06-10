@@ -9,7 +9,7 @@ import { getOwnedBlockTypes } from '../../lib/constants'
 
 // ── Type labels & colors ──────────────────────────────────────────────────────
 const TYPE_LABELS = {
-  series_count:     'ANY POSITION',
+  series_count:     'ZONE CLUSTER',
   exact_count:      'DUPLICATES',
   adjacency_pair:   'ADJACENT',
   row_series:       'SAME ROW',
@@ -39,6 +39,9 @@ function synergySetupText(def) {
   if (!def) return ''
   switch (def.type) {
     case 'series_count':
+      if (def.maxSpan) {
+        return `Place ${def.required} unique ${def.series} designs within any ${def.maxSpan}×${def.maxSpan} zone on the grid.`
+      }
       return `Place ${def.required} unique ${def.series} designs anywhere on the grid.`
     case 'exact_count':
       return `Place ${def.required} copies of the exact same design anywhere on the grid.`
@@ -107,7 +110,7 @@ function rewardLabel(reward) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ActiveEffectsPanel() {
-  const { grid, addPixels, grantRandomBlock } = useGameStore()
+  const { grid, addPixels, grantRandomBlock, totalPixelsProduced } = useGameStore()
   const { activeGridStyle, unlockedBlocks }   = useShopStore()
   const { addGold }                           = useUserStore()
   const { unlockedDesigns }                   = useDesignUnlocks()
@@ -119,7 +122,14 @@ export default function ActiveEffectsPanel() {
   )
 
   // ── Synergy activation → sound + reward ────────────────────────────────────
-  const prevActiveIds = useRef(new Set())
+  const prevActiveIds = useRef(new Set())  // tracks last-seen active set (for sound)
+  const rewardedIds   = useRef(new Set())  // tracks synergies that already paid out this level
+
+  // Reset rewarded set when the level resets (totalPixelsProduced goes back to 0)
+  useEffect(() => {
+    if (totalPixelsProduced === 0) rewardedIds.current = new Set()
+  }, [totalPixelsProduced])
+
   useEffect(() => {
     const nowActive = new Set(activeList.filter(s => s.active).map(s => s.id))
     for (const id of nowActive) {
@@ -127,18 +137,21 @@ export default function ActiveEffectsPanel() {
         const def = SYNERGY_DEFS[id]
         playSynergyActivate(def?.type)
 
-        // Dispatch reward (fire-once per activation)
-        const reward = def?.reward
-        if (reward) {
-          if (reward.type === 'pixels' && reward.amount) {
-            addPixels(reward.amount)
-          } else if (reward.type === 'gold' && reward.amount) {
-            addGold(reward.amount)
-          } else if (reward.type === 'random_block') {
-            const ids = unlockedDesigns.map(d => d.id)
-            const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
-            grantRandomBlock(ids, typePool)
-            playDesignUnlock()
+        // Fire reward only once per level, even if the synergy cycles inactive→active
+        if (!rewardedIds.current.has(id)) {
+          rewardedIds.current.add(id)
+          const reward = def?.reward
+          if (reward) {
+            if (reward.type === 'pixels' && reward.amount) {
+              addPixels(reward.amount)
+            } else if (reward.type === 'gold' && reward.amount) {
+              addGold(reward.amount)
+            } else if (reward.type === 'random_block') {
+              const ids = unlockedDesigns.map(d => d.id)
+              const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
+              grantRandomBlock(ids, typePool)
+              playDesignUnlock()
+            }
           }
         }
       }
