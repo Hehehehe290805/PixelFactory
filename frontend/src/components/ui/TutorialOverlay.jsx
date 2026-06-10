@@ -164,7 +164,7 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
             key={step.id + '-ring'}
             initial={{ opacity:0 }}
             animate={{ opacity:[0.6,1,0.6] }}
-            exit={{ opacity:0 }}
+            exit={{ opacity:0, transition:{ duration:0.15, repeat:0 } }}
             transition={{ duration:1.6, repeat:Infinity, ease:'easeInOut' }}
             style={{
               position:'fixed', left:spotlight.x-4, top:spotlight.y-4,
