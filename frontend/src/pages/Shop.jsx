@@ -29,6 +29,8 @@ export default function Shop() {
   const [toast, setToast] = useState(null)
   const [rolledDesign, setRolledDesign] = useState(null)
   const [rollFlash, setRollFlash] = useState(null)
+  const [showRollModal, setShowRollModal] = useState(false)
+  const [rollModalData, setRollModalData] = useState(null)  // { design, type: 'design' }
 
   function buy(cost, label, onSuccess) {
     if (gold < cost) return
@@ -51,6 +53,8 @@ export default function Shop() {
     incrementDesignRollCount()
     setRolledDesign(design)
     setRollFlash('ok')
+    setRollModalData({ design, type: 'design' })
+    setShowRollModal(true)
     setTimeout(() => setRollFlash(null), 1500)
   }
 
@@ -273,6 +277,52 @@ export default function Shop() {
           })}
         </Section>
       </div>
+
+      {/* Roll reveal modal */}
+      <AnimatePresence>
+        {showRollModal && rollModalData && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 px-4"
+            onClick={() => setShowRollModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="card w-full max-w-xs text-center"
+              style={{ padding: '2.5rem' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-xs font-black uppercase tracking-widest text-pixel-green mb-3">
+                New Design Unlocked!
+              </div>
+
+              {/* Big design preview */}
+              <div
+                className="mx-auto mb-4 flex items-center justify-center rounded-2xl"
+                style={{ width: 96, height: 96, background: '#0a0a1a', border: '3px solid #00d49a44' }}
+              >
+                <DesignMiniThumb design={rollModalData.design} size={88} />
+              </div>
+
+              <div className="text-2xl font-black text-white pixel-heading mb-1">{rollModalData.design.name}</div>
+              <div className="text-sm text-pixel-blue capitalize mb-1">{rollModalData.design.series} series</div>
+              <div className="text-xs text-gray-500 capitalize mb-1">{rollModalData.design.blockType?.replace(/_/g, ' ')} type</div>
+              {rollModalData.design.desc && (
+                <div className="text-xs text-gray-400 leading-snug mt-2 mb-5">{rollModalData.design.desc}</div>
+              )}
+
+              <button
+                onClick={() => setShowRollModal(false)}
+                className="btn btn-primary w-full text-base"
+              >
+                Added to Collection
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toast && (

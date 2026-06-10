@@ -23,7 +23,7 @@ export default function Leaderboard() {
 
         {/* Tab selector */}
         <div className="flex gap-2 mb-6">
-          {[['global', 'Global Top 10'], ['personal', 'Personal Best'], ['quiz', 'Quiz Score']].map(([key, label]) => (
+          {[['global', 'Global Top 100'], ['personal', 'Personal Best'], ['quiz', 'Quiz Score']].map(([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -53,8 +53,9 @@ function GlobalBoard({ currentUserId }) {
       const { data, error } = await supabase
         .from('endless_scores')
         .select('username, highest_wave, total_pixels_produced, user_id, achieved_at')
+        .gte('total_pixels_produced', 1000)  // min 1000 pixels to be eligible
         .order('highest_wave', { ascending: false })
-        .limit(50)  // fetch more so we can deduplicate per user client-side
+        .limit(300)  // fetch more so we can deduplicate per user client-side
 
       if (error) { setError(error.message); return }
 
@@ -66,7 +67,7 @@ function GlobalBoard({ currentUserId }) {
           seen.add(row.user_id)
           deduped.push(row)
         }
-        if (deduped.length >= 10) break
+        if (deduped.length >= 100) break
       }
       setRows(deduped)
     }

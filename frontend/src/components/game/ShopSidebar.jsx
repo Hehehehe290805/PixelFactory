@@ -5,6 +5,7 @@ import { DESIGNS } from '../../data/designLibrary'
 import { useDesignUnlocks } from '../../lib/designUnlocks'
 import { getOwnedBlockTypes } from '../../lib/constants'
 import { DesignTooltipBody } from '../ui/DeckSelector'
+import { tooltipPos } from '../../lib/tooltipPos'
 
 export default function ShopSidebar({ deckDesignIds = [] }) {
   const {
@@ -61,10 +62,7 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
   }
 
   const tipW = 172
-  const tipX = mousePos.x + 12 + tipW > window.innerWidth
-    ? mousePos.x - tipW - 12
-    : mousePos.x + 12
-  const tipY = Math.min(mousePos.y - 8, window.innerHeight - 300)
+  const { x: tipX, y: tipY } = tooltipPos(mousePos.x, mousePos.y, tipW, 280)
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
@@ -6,6 +6,7 @@ import Block from './Block'
 import { DESIGNS } from '../../data/designLibrary'
 import { BLOCK_TYPE_VISUAL, BLOCK_TYPES, GRID_SIZE } from '../../lib/constants'
 import { DesignTooltipBody } from '../ui/DeckSelector'
+import { tooltipPos } from '../../lib/tooltipPos'
 
 export default function InventoryPanel({ onOpenStateChange }) {
   const { inventory, grid } = useGameStore()
@@ -45,15 +46,36 @@ export default function InventoryPanel({ onOpenStateChange }) {
     return n
   }
 
-  const hovered       = hoveredId ? inventory.find(b => b.id === hoveredId) : null
+  // Build list of all unique designs present in inventory OR on grid
+  const allDesignIds = useMemo(() => {
+    const seen = new Set()
+    const result = []
+    for (const b of inventory) {
+      if (!seen.has(b.designId)) { seen.add(b.designId); result.push(b.designId) }
+    }
+    for (let r = 0; r < GRID_SIZE; r++)
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const b = grid[r][c]
+        if (b && !seen.has(b.designId)) { seen.add(b.designId); result.push(b.designId) }
+      }
+    return result
+  }, [inventory, grid])
+
+  // Pick a representative block instance for each designId (prefer in-inventory, else from grid)
+  function getRepBlock(designId) {
+    const inv = inventory.find(b => b.designId === designId)
+    if (inv) return inv
+    for (let r = 0; r < GRID_SIZE; r++)
+      for (let c = 0; c < GRID_SIZE; c++)
+        if (grid[r][c]?.designId === designId) return grid[r][c]
+    return null
+  }
+
+  const hovered       = hoveredId ? (inventory.find(b => b.id === hoveredId) ?? (() => { for (let r=0;r<GRID_SIZE;r++) for (let c=0;c<GRID_SIZE;c++) if (grid[r][c]?.id===hoveredId) return grid[r][c]; return null })()) : null
   const hoveredDesign = hovered ? DESIGNS.find(d => d.id === hovered.designId) : null
 
-  const tipW      = 168
-  const tipMargin = 12
-  const tipX = mousePos.x + tipMargin + tipW > window.innerWidth
-    ? mousePos.x - tipW - tipMargin
-    : mousePos.x + tipMargin
-  const tipY = Math.max(8, mousePos.y - 120)
+  const tipW = 168
+  const { x: tipX, y: tipY } = tooltipPos(mousePos.x, mousePos.y, tipW, 240)
 
   return (
     <div ref={panelRef} className="relative flex-shrink-0 select-none">
@@ -110,28 +132,31 @@ export default function InventoryPanel({ onOpenStateChange }) {
           >
             <div className="px-2 pt-2 pb-1 flex-shrink-0 flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-widest text-gray-600">In Hand</span>
-              <span className="text-xs text-gray-700">{inventory.length} blocks</span>
+              <span className="text-xs text-gray-700">{inventory.length} / {allDesignIds.length} cards</span>
             </div>
             <div className="overflow-y-auto px-2 pb-2" style={{ height: 244 }}>
-              {inventory.length === 0 ? (
-                <p className="text-xs font-semibold text-gray-700 italic text-center py-6">All placed on grid</p>
+              {allDesignIds.length === 0 ? (
+                <p className="text-xs font-semibold text-gray-700 italic text-center py-6">No blocks yet</p>
               ) : (
                 <div
                   className="grid gap-2"
                   style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${blockSize + 8}px, 1fr))` }}
                 >
-                  {inventory.map(block => {
-                    const inInv   = inventory.filter(b => b.designId === block.designId).length
-                    const onGrid  = countOnGrid(block.designId)
-                    const total   = inInv + onGrid
+                  {allDesignIds.map(designId => {
+                    const rep    = getRepBlock(designId)
+                    if (!rep) return null
+                    const inInv  = inventory.filter(b => b.designId === designId).length
+                    const onGrid = countOnGrid(designId)
+                    const total  = inInv + onGrid
                     return (
                       <InventoryCard
-                        key={block.id}
-                        block={block}
+                        key={designId}
+                        block={rep}
                         blockSize={blockSize}
                         inInventory={inInv}
                         total={total}
-                        hovered={hoveredId === block.id}
+                        deployed={inInv === 0}
+                        hovered={hoveredId === rep.id}
                         onHover={setHoveredId}
                         onLeave={() => setHoveredId(null)}
                         onDragStart={() => { setOpen(false); onOpenStateChange?.(false) }}
@@ -164,28 +189,29 @@ export default function InventoryPanel({ onOpenStateChange }) {
   )
 }
 
-function InventoryCard({ block, blockSize, inInventory, total, hovered, onHover, onLeave, onDragStart }) {
+function InventoryCard({ block, blockSize, inInventory, total, deployed, hovered, onHover, onLeave, onDragStart }) {
   const vis       = BLOCK_TYPE_VISUAL[block.type]
   const typeColor = vis?.color ?? '#5c7abf'
-  const bStyle    = vis?.borderStyle ?? 'solid'
+  const bStyle    = deployed ? 'solid' : vis?.borderStyle ?? 'solid'
   const bWidth    = vis?.borderWidth ?? 2
 
   return (
     <div
-      draggable
+      draggable={!deployed}
       onDragStart={e => {
+        if (deployed) { e.preventDefault(); return }
         e.dataTransfer.setData('application/json', JSON.stringify({ source: 'inventory', blockId: block.id }))
         onDragStart()
       }}
       onMouseEnter={() => onHover(block.id)}
       onMouseLeave={onLeave}
-      className="relative flex flex-col items-center rounded-xl cursor-grab transition-all p-1"
+      className={`relative flex flex-col items-center rounded-xl transition-all p-1 ${deployed ? 'opacity-40 cursor-default' : 'cursor-grab'}`}
       style={{
         background:   '#111128',
-        borderColor:  hovered ? typeColor : typeColor + '66',
+        borderColor:  deployed ? '#2a2a4a' : hovered ? typeColor : typeColor + '66',
         borderStyle:  bStyle,
         borderWidth:  bWidth,
-        boxShadow:    hovered ? `0 0 8px ${typeColor}44` : undefined,
+        boxShadow:    (!deployed && hovered) ? `0 0 8px ${typeColor}44` : undefined,
       }}
     >
       {/* Pixel art block */}

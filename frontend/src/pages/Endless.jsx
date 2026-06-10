@@ -24,6 +24,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 const FIRST_WAVE  = 800
 const MULTIPLIER  = 3.0
 
+// Gold awarded for a correct quiz answer per difficulty
+const QUIZ_GOLD = { easy: 10, normal: 20, hard: 35 }
+
 function waveRequired(wave) {
   return Math.floor(FIRST_WAVE * Math.pow(MULTIPLIER, wave - 1))
 }
@@ -57,6 +60,7 @@ export default function Endless() {
   const [quizAnswered, setQuizAnswered] = useState(null)
   const [savedRun, setSavedRun]     = useState(null)
   const [saving, setSaving]         = useState(false)
+  const [quizGoldTotal, setQuizGoldTotal] = useState(0)  // cumulative gold from quiz correct answers
 
   const tabHiddenAtRef = useRef(null)
 
@@ -201,6 +205,11 @@ export default function Endless() {
     const wasCorrect = idx === quizQuestion.correct
     setQuizAnswered({ idx, wasCorrect })
     saveQuizResult(wasCorrect)
+    if (wasCorrect) {
+      const gold = QUIZ_GOLD[quizQuestion.difficulty] ?? 10
+      addGold(gold)
+      setQuizGoldTotal(g => g + gold)
+    }
   }
 
   function handleNextWave() {
@@ -225,14 +234,16 @@ export default function Endless() {
 
   async function handleEndRun() {
     const currentTotal = grandTotal + Math.floor(totalPixelsProduced)
-    const goldEarned   = calcGold(wave, currentTotal)
-    if (goldEarned > 0) addGold(goldEarned)
+    const runGold      = calcGold(wave, currentTotal)
+    if (runGold > 0) addGold(runGold)
 
     let isHighscore = false
     if (user) isHighscore = await saveEndlessScore(wave, currentTotal)
     if (user) deleteEndlessRun()
 
-    setRunResult({ wave, grandTotal: currentTotal, goldEarned, isHighscore })
+    // Score = wave^2 * 100 + total pixels / 10
+    const score = Math.floor(wave * wave * 100 + currentTotal / 10)
+    setRunResult({ wave, grandTotal: currentTotal, runGold, quizGold: quizGoldTotal, score, isHighscore })
     setPhase('ended')
     setPaused(false)
   }
@@ -394,8 +405,12 @@ export default function Endless() {
                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                       className={`mt-3 rounded-lg border px-3 py-2 text-xs ${quizAnswered.wasCorrect ? 'border-pixel-green/30 bg-pixel-green/5 text-pixel-green' : 'border-pixel-red/30 bg-pixel-red/5 text-pixel-red'}`}
                     >
-                      <span className="font-black">{quizAnswered.wasCorrect ? 'Correct! Bonus next wave.' : 'Incorrect.'}</span>
-                      <span className="text-gray-500 ml-2">{quizQuestion.explanation}</span>
+                      <div className="font-black mb-0.5">
+                        {quizAnswered.wasCorrect
+                          ? `Correct! +${QUIZ_GOLD[quizQuestion.difficulty] ?? 10}g · Bonus design next wave.`
+                          : 'Incorrect.'}
+                      </div>
+                      <span className="text-gray-500">{quizQuestion.explanation}</span>
                     </motion.div>
                   )}
                 </div>
@@ -424,14 +439,40 @@ export default function Endless() {
               {runResult.isHighscore && (
                 <div className="text-pixel-yellow font-black text-sm mb-3 tracking-wider uppercase">★ New Personal Best!</div>
               )}
-              <div className="space-y-3 mb-6">
-                <StatRow label="Waves Survived" value={runResult.wave} color="text-pixel-blue" />
-                <StatRow label="Total Pixels" value={runResult.grandTotal.toLocaleString()} color="text-white" />
-                {runResult.goldEarned > 0 && (
-                  <StatRow label="Gold Earned" value={`+${runResult.goldEarned}`} color="text-pixel-yellow" />
-                )}
-                {!user && <p className="text-xs text-gray-600 mt-2">Log in to save your score</p>}
+
+              {/* Score banner */}
+              <div className="rounded-xl border-2 border-pixel-yellow/40 bg-pixel-yellow/5 py-4 mb-4">
+                <div className="text-pixel-yellow font-black pixel-heading" style={{ fontSize: '3rem', lineHeight: 1 }}>
+                  {runResult.score.toLocaleString()}
+                </div>
+                <div className="text-xs font-black uppercase tracking-widest text-pixel-yellow/60 mt-1">Score</div>
               </div>
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="rounded-xl border border-game-border bg-game-bg py-3">
+                  <div className="text-pixel-blue font-black text-xl">{runResult.wave}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-gray-600 mt-0.5">Waves</div>
+                </div>
+                <div className="rounded-xl border border-game-border bg-game-bg py-3">
+                  <div className="text-white font-black text-lg">{(runResult.grandTotal / 1000).toFixed(1)}k</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-gray-600 mt-0.5">Points</div>
+                </div>
+              </div>
+
+              {/* Coins breakdown */}
+              <div className="rounded-xl border border-pixel-yellow/30 bg-pixel-yellow/5 px-4 py-3 mb-5 text-left space-y-1.5">
+                <div className="text-xs font-black uppercase tracking-widest text-pixel-yellow mb-2">Coins Earned</div>
+                <StatRow label="Run Bonus" value={`+${runResult.runGold}`} color="text-pixel-yellow" />
+                {runResult.quizGold > 0 && (
+                  <StatRow label="Quiz Answers" value={`+${runResult.quizGold}`} color="text-pixel-green" />
+                )}
+                <div className="border-t border-pixel-yellow/20 pt-1.5 mt-1">
+                  <StatRow label="Total Coins" value={`+${runResult.runGold + runResult.quizGold}`} color="text-pixel-yellow" />
+                </div>
+              </div>
+
+              {!user && <p className="text-xs text-gray-600 mb-4">Log in to save your score</p>}
               <div className="flex gap-3">
                 <button onClick={() => navigate('/leaderboard')} className="btn btn-secondary flex-1 text-sm">Leaderboard</button>
                 <button onClick={() => navigate('/')} className="btn btn-primary flex-1 text-base">Home</button>

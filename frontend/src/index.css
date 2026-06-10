@@ -153,6 +153,12 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   100% { transform: scaleY(0);  opacity: 0;    }
 }
 
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0);     }
+  70%  { opacity: 0.9; transform: translateX(-50%) translateY(-28px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-44px); }
+}
+
 /* ── Scrollbar ──────────────────────────────────── */
 ::-webkit-scrollbar        { width: 8px; }
 ::-webkit-scrollbar-track  { background: #111128; }

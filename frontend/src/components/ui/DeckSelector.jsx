@@ -3,6 +3,7 @@ import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { useGameStore } from '../../store/gameStore'
 import { MAX_DECK } from '../../lib/constants'
 import { getDesignSynergies } from '../../engine/designSynergies'
+import { tooltipPos } from '../../lib/tooltipPos'
 
 // ── Deck Selector ─────────────────────────────────────────────────────────────
 // Deck = up to MAX_DECK (3) unique designs.
@@ -15,6 +16,13 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
   const [seriesFilter, setFilter] = useState('all')
   const [hoveredId, setHoveredId] = useState(null)
   const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
+
+  function randomize() {
+    if (!unlockedDesigns.length) return
+    const count = Math.floor(Math.random() * 3) + 1
+    const shuffled = [...unlockedDesigns].sort(() => Math.random() - 0.5)
+    setDeck(shuffled.slice(0, Math.min(count, shuffled.length)).map(d => d.id))
+  }
 
   const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
@@ -43,12 +51,8 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
 
   const hoveredDesign = hoveredId ? DESIGNS.find(d => d.id === hoveredId) : null
 
-  const tipW      = 168
-  const tipMargin = 16
-  const tipX = mousePos.x + tipMargin + tipW > window.innerWidth
-    ? mousePos.x - tipW - tipMargin
-    : mousePos.x + tipMargin
-  const tipY = Math.min(mousePos.y - 8, window.innerHeight - 260)
+  const tipW = 168
+  const { x: tipX, y: tipY } = tooltipPos(mousePos.x, mousePos.y, tipW, 260)
 
   return (
     <div
@@ -62,7 +66,10 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
             <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-0.5">Level {levelNumber}</div>
             <h2 className="text-2xl font-black text-white pixel-heading">Choose Your Deck</h2>
             <p className="text-xs text-gray-500 mt-1">
-              Pick up to {MAX_DECK} designs — you start with 2 copies of each
+              Pick up to {MAX_DECK} designs — your first 6 cards
+            </p>
+            <p className="text-[10px] text-gray-700 mt-0.5">
+              1 design = 6 copies · 2 designs = 3 each · 3 designs = 2 each
             </p>
           </div>
           <div className="text-right flex-shrink-0 ml-4">
@@ -151,11 +158,18 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
         <div className="flex gap-3 mt-4 flex-shrink-0">
           <button onClick={onBack} className="btn btn-secondary px-4 py-2 text-sm">← Back</button>
           <button
+            onClick={randomize}
+            className="btn btn-secondary px-4 py-2 text-sm flex-shrink-0"
+            title="Randomly pick 1–3 designs"
+          >
+            🎲 Random
+          </button>
+          <button
             onClick={handleConfirm}
             disabled={deck.length === 0}
             className={`btn flex-1 text-base ${deck.length > 0 ? 'btn-primary' : 'btn-secondary opacity-50'}`}
           >
-            {deck.length === 0 ? 'Pick at least 1 design' : `Start Level →`}
+            {deck.length === 0 ? 'Pick at least 1' : `Start →`}
           </button>
         </div>
       </div>
