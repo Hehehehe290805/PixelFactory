@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import Block from './Block'
+import { playBlockPlace } from '../../lib/audio'
 
 export default function BlockSlot({
   row, col, block, cellSize = 48,
@@ -24,6 +25,7 @@ export default function BlockSlot({
       if (data.source === 'inventory') {
         const invBlock = useGameStore.getState().inventory.find(b => b.id === data.blockId)
         placeBlock(data.blockId, row, col)
+        playBlockPlace()
         if (invBlock && invBlock.pixelCount === 0) onBlockSelect?.(data.blockId)
       } else if (data.source === 'grid' && (data.fromRow !== row || data.fromCol !== col)) {
         moveBlock(data.fromRow, data.fromCol, row, col)

@@ -3,26 +3,30 @@ import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { createBlock, useGameStore } from '../../store/gameStore'
 import { getStartingPixelBudget } from '../../lib/constants'
 import { getDesignSynergies } from '../../engine/designSynergies'
+import { playPurchase } from '../../lib/audio'
 
 const MAX_DECK = 10
 
 // ── Pre-buy phase ─────────────────────────────────────────────────────────────
 function PreBuyPhase({ deck, levelNumber, onStart, onBack, bargain }) {
   const budget = getStartingPixelBudget(levelNumber)
-  const [spent, setSpent]       = useState(0)
+  const [spent, setSpent]         = useState(0)
   const [preBought, setPreBought] = useState({}) // { designId: count }
+  const [hoveredId, setHoveredId] = useState(null)
+  const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
+  const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   const balance = budget - spent
 
   function buy(designId) {
     const cost = getDesignLevelCost(DESIGNS.find(d => d.id === designId), bargain)
     if (balance < cost) return
+    playPurchase()
     setSpent(s => s + cost)
     setPreBought(pb => ({ ...pb, [designId]: (pb[designId] ?? 0) + 1 }))
   }
 
   function handleStart() {
-    // Build the starting inventory from pre-bought designs
     const startingBlocks = []
     for (const [id, count] of Object.entries(preBought)) {
       for (let i = 0; i < count; i++) {
@@ -34,9 +38,20 @@ function PreBuyPhase({ deck, levelNumber, onStart, onBack, bargain }) {
   }
 
   const totalPreBought = Object.values(preBought).reduce((s, n) => s + n, 0)
+  const hoveredDesign  = hoveredId ? DESIGNS.find(d => d.id === hoveredId) : null
+
+  const tipW      = 168
+  const tipMargin = 16
+  const tipX = mousePos.x + tipMargin + tipW > window.innerWidth
+    ? mousePos.x - tipW - tipMargin
+    : mousePos.x + tipMargin
+  const tipY = Math.min(mousePos.y - 8, window.innerHeight - 260)
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 px-4">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 px-4"
+      onMouseMove={handleMouseMove}
+    >
       <div className="card w-full max-w-md max-h-[90vh] flex flex-col" style={{ padding: '1.5rem' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -54,13 +69,15 @@ function PreBuyPhase({ deck, levelNumber, onStart, onBack, bargain }) {
           {deck.map(designId => {
             const design = DESIGNS.find(d => d.id === designId)
             if (!design) return null
-            const cost = getDesignLevelCost(design, bargain)
+            const cost     = getDesignLevelCost(design, bargain)
             const canAfford = balance >= cost
-            const count = preBought[designId] ?? 0
+            const count    = preBought[designId] ?? 0
             return (
               <button
                 key={designId}
                 onClick={() => buy(designId)}
+                onMouseEnter={() => setHoveredId(designId)}
+                onMouseLeave={() => setHoveredId(null)}
                 disabled={!canAfford}
                 className={`w-full rounded-xl border-2 flex items-center gap-3 px-3 py-2 text-left transition
                   ${canAfford ? 'border-game-border hover:border-pixel-blue cursor-pointer' : 'border-game-border opacity-40 cursor-not-allowed'}`}
@@ -85,6 +102,16 @@ function PreBuyPhase({ deck, levelNumber, onStart, onBack, bargain }) {
           </button>
         </div>
       </div>
+
+      {/* Hover tooltip — follows cursor, outside the scrollable card */}
+      {hoveredDesign && (
+        <div
+          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
+        >
+          <DesignTooltipBody design={hoveredDesign} cost={getDesignLevelCost(hoveredDesign, bargain)} />
+        </div>
+      )}
     </div>
   )
 }

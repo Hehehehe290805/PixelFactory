@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { buildSynergyData, SYNERGY_DEFS } from '../../engine/designSynergies'
 import { useGameStore } from '../../store/gameStore'
 import { useShopStore } from '../../store/shopStore'
+import { playSynergyActivate } from '../../lib/audio'
 
 // Human-readable type labels for the badge shown in the dropdown
 const TYPE_LABELS = {
@@ -80,6 +81,19 @@ export default function ActiveEffectsPanel() {
     () => buildSynergyData(grid, activeGridStyle === 'neural'),
     [grid, activeGridStyle]
   )
+
+  // Fire a sound whenever a synergy transitions from inactive → active
+  const prevActiveIds = useRef(new Set())
+  useEffect(() => {
+    const nowActive = new Set(activeList.filter(s => s.active).map(s => s.id))
+    for (const id of nowActive) {
+      if (!prevActiveIds.current.has(id)) {
+        const def = SYNERGY_DEFS[id]
+        playSynergyActivate(def?.type)
+      }
+    }
+    prevActiveIds.current = nowActive
+  }, [activeList])
 
   const relevant = activeList.filter(s => s.active || s.progress > 0)
 

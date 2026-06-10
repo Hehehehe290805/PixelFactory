@@ -7,6 +7,7 @@ import RadialWheel from './RadialWheel'
 import { GRID_SIZE, TICK_MS } from '../../lib/constants'
 import { DESIGNS } from '../../data/designLibrary'
 import { DesignTooltipBody } from '../ui/DeckSelector'
+import { playBlockPlace } from '../../lib/audio'
 
 const WAVE_DIRS = [
   { dir: 'up',         icon: '↑', label: 'Up' },
@@ -99,6 +100,7 @@ export default function Grid() {
           } else {
             placeBlock(block.id, wheel.row, wheel.col)
           }
+          playBlockPlace()
           dismiss()
         },
       }))
