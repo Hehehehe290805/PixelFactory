@@ -9,10 +9,13 @@ const DIAG  = [[-1,-1],[-1,1],[1,-1],[1,1]]
 const ALL8  = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 
 // ── Synergy definitions ───────────────────────────────────────────────────────
-// type: 'series_count'   — N designs of same series anywhere on grid
-//       'exact_count'    — N copies of same design id anywhere on grid
-//       'adjacency_pair' — two specific series/design types placed orthogonally adjacent
-//       'row_series'     — N designs of same series in the same row
+// type: 'series_count'    — N designs of same series anywhere on grid
+//       'exact_count'     — N copies of same design id anywhere on grid
+//       'adjacency_pair'  — two specific series/design types placed orthogonally adjacent
+//       'row_series'      — N designs of same series in the same row
+//       'long_range'      — two designs at least minDist (Manhattan) cells apart
+//       'core_radius'     — coreDesignId/coreSeries as anchor + N satellites within radius cells
+//       'block_type_count'— N blocks sharing the same blockType anywhere on grid
 // radiation: bonus spread from qualifying blocks to their neighbors
 
 export const SYNERGY_DEFS = {
@@ -79,7 +82,6 @@ export const SYNERGY_DEFS = {
   },
 
   // ── Mini-tier series synergies (2 designs → small bonus) ──────────────────
-  // These activate early, rewarding any 2-design mix from the same family.
   BLOOM: {
     name: 'Bloom', type: 'series_count', series: 'flowers', required: 2,
     own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
@@ -218,6 +220,91 @@ export const SYNERGY_DEFS = {
     own: 0.20, radiation: null,
     desc: '3 shape designs in same row → +20% each in that row',
   },
+
+  // ── Long-range synergies (blocks ≥ minDist Manhattan distance apart) ───────
+  // Rewards spreading designs across the full grid rather than clustering.
+  DISTANT_STARS: {
+    name: 'Distant Stars', type: 'long_range', series: 'space', minDist: 5,
+    own: 0.25, radiation: { type: 'all8', amount: 0.08 },
+    desc: '2 space designs ≥5 cells apart → both +25%; radiates +8% nearby',
+  },
+  ANTIPODES: {
+    name: 'Antipodes', type: 'long_range', series: 'landscapes', minDist: 6,
+    own: 0.22, radiation: { type: 'ortho', amount: 0.06 },
+    desc: '2 landscape designs ≥6 cells apart → both +22%; spreads +6% ortho',
+  },
+  POLAR_WINDS: {
+    name: 'Polar Winds', type: 'long_range',
+    seriesA: 'weather', seriesB: 'landscapes', minDist: 5,
+    own: 0.28, radiation: null,
+    desc: 'Any weather + any landscape ≥5 cells apart → both +28%',
+  },
+  TRANSCONTINENTAL: {
+    name: 'Transcontinental', type: 'long_range', series: 'buildings', minDist: 5,
+    own: 0.20, radiation: { type: 'ortho', amount: 0.07 },
+    desc: '2 building designs ≥5 cells apart → both +20%; spreads +7% ortho',
+  },
+  WILD_MIGRATION: {
+    name: 'Wild Migration', type: 'long_range', series: 'animals', minDist: 5,
+    own: 0.22, radiation: { type: 'ortho', amount: 0.06 },
+    desc: '2 animal designs ≥5 cells apart → both +22%; spreads +6% ortho',
+  },
+
+  // ── Core-radius synergies (anchor block + N satellites within radius) ──────
+  // The core block gets ownCore bonus; each qualifying satellite gets ownSatellite.
+  SOLAR_SYSTEM: {
+    name: 'Solar System', type: 'core_radius',
+    coreDesignId: 'sun', satelliteSeries: 'space',
+    requiredSatellites: 3, radius: 3,
+    own: 0.35, ownCore: 0.40, ownSatellite: 0.20,
+    desc: 'Sun as core + 3 space designs within 3 cells → Sun +40%, satellites +20%',
+  },
+  ROYAL_COURT: {
+    name: 'Royal Court', type: 'core_radius',
+    coreDesignId: 'crown', satelliteSeries: 'symbols',
+    requiredSatellites: 3, radius: 2,
+    own: 0.30, ownCore: 0.35, ownSatellite: 0.20,
+    desc: 'Crown as core + 3 symbol designs within 2 cells → Crown +35%, others +20%',
+  },
+  ECOSYSTEM: {
+    name: 'Ecosystem', type: 'core_radius',
+    coreSeries: 'trees', satelliteSeries: 'animals',
+    requiredSatellites: 3, radius: 2,
+    own: 0.22, ownCore: 0.25, ownSatellite: 0.18,
+    desc: 'Any tree as core + 3 animal designs within 2 cells → tree +25%, animals +18%',
+  },
+  MOUNTAIN_KINGDOM: {
+    name: 'Mountain Kingdom', type: 'core_radius',
+    coreDesignId: 'mountain', satelliteSeries: 'landscapes',
+    requiredSatellites: 3, radius: 2,
+    own: 0.24, ownCore: 0.30, ownSatellite: 0.18,
+    desc: 'Mountain as core + 3 landscape designs within 2 cells → Mountain +30%, others +18%',
+  },
+  BLOOMING_CORE: {
+    name: 'Blooming Core', type: 'core_radius',
+    coreSeries: 'flowers', satelliteSeries: 'flowers',
+    requiredSatellites: 4, radius: 3,
+    own: 0.25, ownCore: 0.35, ownSatellite: 0.15,
+    desc: 'Any flower as core + 4 other flowers within 3 cells → core +35%, ring +15%',
+  },
+
+  // ── Block-type synergies (N blocks sharing the same blockType) ────────────
+  // Works regardless of series — purely based on effect type.
+  DOUBLE_DOWN: {
+    name: 'Double Down', type: 'block_type_count', blockType: 'doubler', required: 3,
+    own: 0.25, radiation: { type: 'ortho', amount: 0.08 },
+    desc: '3 doubler blocks → +25% each; spreads +8% to ortho neighbors',
+  },
+  REACTOR_NETWORK: {
+    name: 'Reactor Network', type: 'block_type_count', blockType: 'reactor', required: 2,
+    own: 0.30, radiation: { type: 'all8', amount: 0.10 },
+    desc: '2 reactor blocks → +30% each; radiates +10% in all directions',
+  },
+  ECHO_CHAMBER: {
+    name: 'Echo Chamber', type: 'block_type_count', blockType: 'echo', required: 3,
+    own: 0.20, radiation: { type: 'ortho', amount: 0.07 },
+    desc: '3 echo blocks → +20% each; spreads +7% to ortho neighbors',
+  },
 }
 
 // ── Design synergy lookup (for tooltips) ──────────────────────────────────────
@@ -234,30 +321,39 @@ export function getDesignSynergies(design) {
           def.designA === design.id    || def.designB === design.id) {
         names.push(def.name)
       }
+    } else if (def.type === 'long_range') {
+      if ((def.series && def.series === design.series) ||
+          def.seriesA === design.series || def.seriesB === design.series ||
+          def.designA === design.id    || def.designB === design.id) {
+        names.push(def.name)
+      }
+    } else if (def.type === 'core_radius') {
+      if ((def.coreDesignId && def.coreDesignId === design.id) ||
+          (def.coreSeries && def.coreSeries === design.series) ||
+          (def.satelliteSeries && def.satelliteSeries === design.series)) {
+        names.push(def.name)
+      }
+    } else if (def.type === 'block_type_count') {
+      if (def.blockType === design.blockType) names.push(def.name)
     }
   }
   return names
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getDefPriority(def) {
+  // Used to decide which synergy "wins" a cell when multiple overlap.
+  return def.ownCore ?? def.own ?? 0
+}
+
 // ── Detection ─────────────────────────────────────────────────────────────────
-
-function getBlockSeries(block) {
-  return block?.designId ? block.series ?? null : null
-}
-
-function getBlockDesignId(block) {
-  return block?.designId ?? null
-}
-
-function isOrthoAdjacent(r1, c1, r2, c2) {
-  return (Math.abs(r1-r2) + Math.abs(c1-c2)) === 1
-}
 
 /**
  * Main function. Returns:
  *   synergyMap[r][c] = id of highest-value active synergy affecting that cell (or null)
  *   activeList = all synergy states for the ActiveEffectsPanel
- *   synergyBonusMap[r][c] = total additive output bonus for that cell (own + radiation received)
+ *   bonusMap[r][c] = total additive output bonus for that cell (own + radiation received)
  */
 export function buildSynergyData(grid, neuralGridStyle = false) {
   const threshold = neuralGridStyle ? -1 : 0  // Neural: thresholds -1
@@ -267,26 +363,51 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const b = grid[r][c]
-      if (b) blocks.push({ r, c, b, series: b.series ?? null, designId: b.designId ?? null })
+      if (b) blocks.push({ r, c, b, series: b.series ?? null, designId: b.designId ?? null, blockType: b.type ?? null })
     }
   }
 
-  // Count series and exact designs
+  // Count series, exact designs, and block types
   const seriesCount = {}
   const designCount = {}
-  for (const { series, designId } of blocks) {
-    if (series) seriesCount[series] = (seriesCount[series] ?? 0) + 1
-    if (designId) designCount[designId] = (designCount[designId] ?? 0) + 1
+  const typeCount   = {}
+  for (const { series, designId, blockType } of blocks) {
+    if (series)    seriesCount[series]     = (seriesCount[series]     ?? 0) + 1
+    if (designId)  designCount[designId]   = (designCount[designId]   ?? 0) + 1
+    if (blockType) typeCount[blockType]    = (typeCount[blockType]    ?? 0) + 1
   }
 
-  // For each cell, accumulate bonuses
-  const bonusMap = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
+  // Per-cell bonus and winning-synergy maps
+  const bonusMap   = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
   const synergyMap = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null))
   const activeList = []
 
-  for (const [synergyId, def] of Object.entries(SYNERGY_DEFS)) {
-    const required = def.required + threshold
+  // Helper: apply radiation from (r,c) using a synergy def
+  function applyRadiation(r, c, def) {
+    if (!def.radiation) return
+    const dirs = def.radiation.type === 'ortho' ? ORTHO
+               : def.radiation.type === 'diag'  ? DIAG : ALL8
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc
+      if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) {
+        bonusMap[nr][nc] += def.radiation.amount
+      }
+    }
+  }
 
+  // Helper: assign synergyMap cell if this def wins
+  function tryAssignMap(r, c, synergyId, def) {
+    const priority = getDefPriority(def)
+    const current  = synergyMap[r][c]
+    if (!current || priority > getDefPriority(SYNERGY_DEFS[current])) {
+      synergyMap[r][c] = synergyId
+    }
+  }
+
+  for (const [synergyId, def] of Object.entries(SYNERGY_DEFS)) {
+    const required = (def.required ?? 0) + threshold
+
+    // ── Series count ─────────────────────────────────────────────────────────
     if (def.type === 'series_count') {
       const count = seriesCount[def.series] ?? 0
       const active = count >= required
@@ -296,23 +417,12 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       for (const { r, c, series } of blocks) {
         if (series !== def.series) continue
         bonusMap[r][c] += def.own
-        if (!synergyMap[r][c] || def.own > (SYNERGY_DEFS[synergyMap[r][c]]?.own ?? 0)) {
-          synergyMap[r][c] = synergyId
-        }
-        // Radiation
-        if (def.radiation) {
-          const dirs = def.radiation.type === 'ortho' ? ORTHO
-                     : def.radiation.type === 'diag' ? DIAG : ALL8
-          for (const [dr, dc] of dirs) {
-            const nr = r + dr, nc = c + dc
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) {
-              bonusMap[nr][nc] += def.radiation.amount
-            }
-          }
-        }
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
       }
     }
 
+    // ── Exact count ───────────────────────────────────────────────────────────
     else if (def.type === 'exact_count') {
       const count = designCount[def.designId] ?? 0
       const active = count >= required
@@ -322,24 +432,13 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       for (const { r, c, designId } of blocks) {
         if (designId !== def.designId) continue
         bonusMap[r][c] += def.own
-        if (!synergyMap[r][c] || def.own > (SYNERGY_DEFS[synergyMap[r][c]]?.own ?? 0)) {
-          synergyMap[r][c] = synergyId
-        }
-        if (def.radiation) {
-          const dirs = def.radiation.type === 'ortho' ? ORTHO
-                     : def.radiation.type === 'diag' ? DIAG : ALL8
-          for (const [dr, dc] of dirs) {
-            const nr = r + dr, nc = c + dc
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) {
-              bonusMap[nr][nc] += def.radiation.amount
-            }
-          }
-        }
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
       }
     }
 
+    // ── Adjacency pair ────────────────────────────────────────────────────────
     else if (def.type === 'adjacency_pair') {
-      // Find qualifying adjacent pairs
       const qualifyingCells = new Set()
       let anyFound = false
 
@@ -351,7 +450,8 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           const b = blocks[j]
           const bMatch = (def.designB ? b.designId === def.designB : b.series === def.seriesB)
           if (!bMatch) continue
-          if (isOrthoAdjacent(a.r, a.c, b.r, b.c)) {
+          const dist = Math.abs(a.r - b.r) + Math.abs(a.c - b.c)
+          if (dist === 1) {
             qualifyingCells.add(`${a.r},${a.c}`)
             qualifyingCells.add(`${b.r},${b.c}`)
             anyFound = true
@@ -365,24 +465,13 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       for (const key of qualifyingCells) {
         const [r, c] = key.split(',').map(Number)
         bonusMap[r][c] += def.own
-        if (!synergyMap[r][c] || def.own > (SYNERGY_DEFS[synergyMap[r][c]]?.own ?? 0)) {
-          synergyMap[r][c] = synergyId
-        }
-        if (def.radiation) {
-          const dirs = def.radiation.type === 'ortho' ? ORTHO
-                     : def.radiation.type === 'diag' ? DIAG : ALL8
-          for (const [dr, dc] of dirs) {
-            const nr = r + dr, nc = c + dc
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) {
-              bonusMap[nr][nc] += def.radiation.amount
-            }
-          }
-        }
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
       }
     }
 
+    // ── Row series ────────────────────────────────────────────────────────────
     else if (def.type === 'row_series') {
-      // Check each row independently
       let totalActive = 0
       for (let r = 0; r < GRID_SIZE; r++) {
         const rowCells = blocks.filter(b => b.r === r && b.series === def.series)
@@ -390,24 +479,132 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           totalActive += rowCells.length
           for (const { c } of rowCells) {
             bonusMap[r][c] += def.own
-            if (!synergyMap[r][c] || def.own > (SYNERGY_DEFS[synergyMap[r][c]]?.own ?? 0)) {
-              synergyMap[r][c] = synergyId
-            }
-            if (def.radiation) {
-              const dirs = def.radiation.type === 'ortho' ? ORTHO
-                         : def.radiation.type === 'diag' ? DIAG : ALL8
-              for (const [dr, dc] of dirs) {
-                const nr = r + dr, nc = c + dc
-                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) {
-                  bonusMap[nr][nc] += def.radiation.amount
-                }
-              }
-            }
+            tryAssignMap(r, c, synergyId, def)
+            applyRadiation(r, c, def)
           }
         }
       }
       const totalInSeries = seriesCount[def.series] ?? 0
       activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: totalInSeries, required: def.required })
+    }
+
+    // ── Long-range (≥ minDist Manhattan distance apart) ───────────────────────
+    else if (def.type === 'long_range') {
+      const qualifyingCells = new Set()
+      let anyFound = false
+
+      if (def.series) {
+        // Same-series: any two blocks of this series at least minDist apart
+        const pool = blocks.filter(b => b.series === def.series)
+        for (let i = 0; i < pool.length; i++) {
+          for (let j = i + 1; j < pool.length; j++) {
+            const a = pool[i], b = pool[j]
+            if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) >= def.minDist) {
+              qualifyingCells.add(`${a.r},${a.c}`)
+              qualifyingCells.add(`${b.r},${b.c}`)
+              anyFound = true
+            }
+          }
+        }
+      } else {
+        // Cross-series/design: A matches seriesA/designA, B matches seriesB/designB
+        for (const a of blocks) {
+          const aMatch = def.designA ? a.designId === def.designA : a.series === def.seriesA
+          if (!aMatch) continue
+          for (const b of blocks) {
+            if (b.r === a.r && b.c === a.c) continue
+            const bMatch = def.designB ? b.designId === def.designB : b.series === def.seriesB
+            if (!bMatch) continue
+            if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) >= def.minDist) {
+              qualifyingCells.add(`${a.r},${a.c}`)
+              qualifyingCells.add(`${b.r},${b.c}`)
+              anyFound = true
+            }
+          }
+        }
+      }
+
+      // Progress: number of qualifying designs on grid (helps player see they're close)
+      const qualifyingCount = def.series
+        ? (seriesCount[def.series] ?? 0)
+        : Math.min(
+            blocks.filter(b => def.designA ? b.designId === def.designA : b.series === def.seriesA).length,
+            1
+          ) + Math.min(
+            blocks.filter(b => def.designB ? b.designId === def.designB : b.series === def.seriesB).length,
+            1
+          )
+
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: anyFound, progress: anyFound ? 2 : qualifyingCount, required: 2 })
+      if (!anyFound) continue
+
+      for (const key of qualifyingCells) {
+        const [r, c] = key.split(',').map(Number)
+        bonusMap[r][c] += def.own
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
+      }
+    }
+
+    // ── Core-radius (anchor + N satellites within radius cells) ──────────────
+    else if (def.type === 'core_radius') {
+      const coreCells      = new Set()
+      const satelliteCells = new Set()
+      let anyFound     = false
+      let bestProgress = 0
+
+      for (const core of blocks) {
+        const coreMatch = def.coreDesignId
+          ? core.designId === def.coreDesignId
+          : (def.coreSeries ? core.series === def.coreSeries : false)
+        if (!coreMatch) continue
+
+        const nearSatellites = blocks.filter(sat => {
+          if (sat.r === core.r && sat.c === core.c) return false
+          const satMatch = def.satelliteSeries
+            ? sat.series === def.satelliteSeries
+            : false
+          return satMatch && Math.abs(sat.r - core.r) + Math.abs(sat.c - core.c) <= def.radius
+        })
+
+        bestProgress = Math.max(bestProgress, nearSatellites.length)
+
+        if (nearSatellites.length >= def.requiredSatellites) {
+          anyFound = true
+          coreCells.add(`${core.r},${core.c}`)
+          for (const sat of nearSatellites) satelliteCells.add(`${sat.r},${sat.c}`)
+        }
+      }
+
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: anyFound, progress: bestProgress, required: def.requiredSatellites })
+      if (!anyFound) continue
+
+      for (const key of coreCells) {
+        const [r, c] = key.split(',').map(Number)
+        bonusMap[r][c] += def.ownCore
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
+      }
+      for (const key of satelliteCells) {
+        const [r, c] = key.split(',').map(Number)
+        bonusMap[r][c] += def.ownSatellite
+        tryAssignMap(r, c, synergyId, def)
+      }
+    }
+
+    // ── Block-type count (N blocks of same blockType anywhere) ────────────────
+    else if (def.type === 'block_type_count') {
+      const count  = typeCount[def.blockType] ?? 0
+      const active = count >= required
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: count, required: def.required })
+      if (!active) continue
+
+      for (const { r, c, blockType } of blocks) {
+        if (blockType !== def.blockType) continue
+        bonusMap[r][c] += def.own
+        tryAssignMap(r, c, synergyId, def)
+        applyRadiation(r, c, def)
+      }
     }
   }
 

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
 import BlockSlot from './BlockSlot'
 import Block from './Block'
 import RadialWheel from './RadialWheel'
 import { GRID_SIZE, TICK_MS } from '../../lib/constants'
+import { DESIGNS } from '../../data/designLibrary'
+import { DesignTooltipBody } from '../ui/DeckSelector'
 
 const WAVE_DIRS = [
   { dir: 'up',         icon: '↑', label: 'Up' },
@@ -26,6 +28,21 @@ export default function Grid() {
   const [wheel, setWheel]       = useState(null)
   // movingBlock: null | { blockId, fromRow, fromCol }
   const [movingBlock, setMoving] = useState(null)
+  // descPanel: null | { block, design, x, y }
+  const [descPanel, setDescPanel] = useState(null)
+
+  const handleBlockRightClick = useCallback((row, col, block, e) => {
+    const design = DESIGNS.find(d => d.id === block.designId)
+    if (!design) return
+    setDescPanel({ block, design, x: e.clientX, y: e.clientY })
+  }, [])
+
+  useEffect(() => {
+    if (!descPanel) return
+    function onKey(e) { if (e.key === 'Escape') setDescPanel(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [descPanel])
 
   // Production pulse tracker
   useEffect(() => {
@@ -172,6 +189,7 @@ export default function Grid() {
               onBlockSelect={null}
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
+              onBlockRightClick={handleBlockRightClick}
               moveTarget={!!movingBlock && !grid[r][c]}
               moveSource={movingBlock?.fromRow === r && movingBlock?.fromCol === c}
             />
@@ -188,6 +206,33 @@ export default function Grid() {
       {wheel && items.length > 0 && (
         <RadialWheel x={wheel.x} y={wheel.y} items={items} onDismiss={dismiss} />
       )}
+
+      {/* Right-click design description panel */}
+      {descPanel && (() => {
+        const tipW = 180
+        const margin = 12
+        const x = descPanel.x + margin + tipW > window.innerWidth
+          ? descPanel.x - tipW - margin
+          : descPanel.x + margin
+        const y = Math.min(descPanel.y - 8, window.innerHeight - 320)
+        return (
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={() => setDescPanel(null)} />
+            <div
+              style={{ position: 'fixed', left: x, top: y, width: tipW, zIndex: 56, background: '#0d0d22' }}
+              className="rounded-xl border-2 border-pixel-blue/40 p-3 flex flex-col gap-2"
+            >
+              <DesignTooltipBody design={descPanel.design} />
+              {descPanel.block.activeSynergy && (
+                <div className="text-xs text-pixel-green font-bold border-t border-game-border pt-1">
+                  ✦ {descPanel.block.activeSynergy.replace(/_/g, ' ')} active
+                </div>
+              )}
+              <div className="text-[10px] text-gray-700 border-t border-game-border pt-1">right-click to close</div>
+            </div>
+          </>
+        )
+      })()}
     </div>
   )
 }

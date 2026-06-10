@@ -5,9 +5,10 @@ import Block from './Block'
 export default function BlockSlot({
   row, col, block, cellSize = 48,
   selectedBlockId, onBlockSelect, pulsing,
-  onCellClick,       // (row, col, event) → opens radial wheel
-  moveTarget = false, // this empty cell is a valid move destination
-  moveSource = false, // this block is currently being moved
+  onCellClick,          // (row, col, event) → opens radial wheel
+  onBlockRightClick,    // (row, col, block, event) → show description overlay
+  moveTarget = false,
+  moveSource = false,
 }) {
   const { placeBlock, removeBlock, moveBlock } = useGameStore()
   const [dragOver, setDragOver] = useState(false)
@@ -46,7 +47,7 @@ export default function BlockSlot({
 
   function handleRightClick(e) {
     e.preventDefault()
-    if (block) removeBlock(row, col)
+    if (block && onBlockRightClick) onBlockRightClick(row, col, block, e)
   }
 
   const isSelected = block && block.id === selectedBlockId
