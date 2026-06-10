@@ -122,7 +122,7 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
-  function dismiss() { dismiss(); onDone?.() }
+  function dismiss() { setDismissed(true); onDone?.() }
 
   // Advance after inventory open animation finishes (~380ms spring)
   useEffect(() => {
