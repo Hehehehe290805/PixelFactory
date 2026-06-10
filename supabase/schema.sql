@@ -84,31 +84,35 @@ CREATE POLICY "Users manage own endless scores" ON endless_scores FOR ALL USING 
 CREATE POLICY "Anyone can view endless scores" ON endless_scores FOR SELECT USING (true);
 
 -- ── Auto-create profile on sign-up ──────────────────────────────────────────
--- This trigger runs with SECURITY DEFINER so it bypasses RLS even when email
--- confirmation is pending (no session yet). The username comes from the metadata
--- passed in supabase.auth.signUp({ options: { data: { username } } }).
+-- Fires on INSERT (new signup) and UPDATE (email confirmation).
+-- Profile is only created once email_confirmed_at transitions from NULL → set,
+-- so unverified users never get a profile row.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, gold)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substring(NEW.id::text, 1, 8)),
-    0
-  );
+  IF NEW.email_confirmed_at IS NOT NULL AND (OLD IS NULL OR OLD.email_confirmed_at IS NULL) THEN
+    INSERT INTO public.profiles (id, username, gold)
+    VALUES (
+      NEW.id,
+      COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substring(NEW.id::text, 1, 8)),
+      0
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
+  AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ── Auto-delete accounts marked for deletion > 30 days ago ──────────────────
+-- Not present as supabase free tier does not support cron jobs.
 -- Run this as a Supabase cron job (pg_cron extension) or call it from a
 -- scheduled Edge Function. It hard-deletes auth.users (cascades to profiles).
 -- CREATE EXTENSION IF NOT EXISTS pg_cron;
