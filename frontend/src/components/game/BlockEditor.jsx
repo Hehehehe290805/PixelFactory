@@ -140,14 +140,24 @@ export default function BlockEditor({ blockId, onClose, isTutorial = false }) {
         </button>
       </div>
 
-      <button
-        data-tutorial="editor-done"
-        onClick={onClose}
-        disabled={isTutorial && block.pixelCount < 5}
-        className="btn btn-primary w-full text-sm disabled:opacity-40"
-      >
-        {isTutorial && block.pixelCount < 5 ? `Paint ${5 - block.pixelCount} more pixel${5 - block.pixelCount !== 1 ? 's' : ''}` : 'Done'}
-      </button>
+      {(() => {
+        const minPx = isTutorial ? 5 : 1
+        const needed = minPx - block.pixelCount
+        const disabled = block.pixelCount < minPx
+        const label = disabled
+          ? (isTutorial ? `Paint ${needed} more pixel${needed !== 1 ? 's' : ''}` : 'Paint at least 1 pixel')
+          : 'Done'
+        return (
+          <button
+            data-tutorial="editor-done"
+            onClick={onClose}
+            disabled={disabled}
+            className="btn btn-primary w-full text-sm disabled:opacity-40"
+          >
+            {label}
+          </button>
+        )
+      })()}
     </div>
   )
 }
