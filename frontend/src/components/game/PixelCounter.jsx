@@ -3,16 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 
 export default function PixelCounter({ requiredOutput }) {
-  const { totalPixelsProduced, pixelsSpent, currentPxPerSecond } = useGameStore()
+  const { totalPixelsProduced, pixelsSpent, currentPxPerSecond, gamePaused } = useGameStore()
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
 
-  // Floating "+N px" animation — fires once per second while producing
+  // Floating "+N px" animation — fires once per second while producing and not paused
   const [floatKey, setFloatKey] = useState(0)
   useEffect(() => {
+    if (gamePaused) return
     const t = setInterval(() => setFloatKey(k => k + 1), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [gamePaused])
 
   return (
     <div className="card">

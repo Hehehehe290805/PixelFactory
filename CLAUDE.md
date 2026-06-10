@@ -291,6 +291,8 @@ Currency: **produced pixels** (`totalPixelsProduced − pixelsSpentInShop`). Spe
 
 `levelCost` values are ~35% lower than their original values (reduced for balance — early game shop was unaffordable).
 
+**Purchase feedback**: each item flashes green border/bg on success or red on failure for 420ms. Items are semi-transparent when unaffordable, full opacity when affordable. No cursor style changes on items.
+
 Only shows colors and blocks the player has unlocked through campaign or the permanent Shop.
 
 ### Permanent Shop (Shop.jsx — main menu)
@@ -349,8 +351,10 @@ Base rate formula: `effectivePixels / 37.5` px/s
 - Timer countdown in `Level.jsx` / stopwatch in `Endless.jsx` also pauses.
 - **Auto-pause on editor**: Opening `BlockEditor` saves the current pause state and forces `gamePaused=true`. Closing the editor restores the previous state.
 - **Pause modal only shows on manual pause** — it is suppressed when `selectedBlockId` or `pickerBlockId` is set (editor/template picker open). This prevents Start Blank, Paint, and similar actions from triggering the pause screen.
+- **`beforeunload` warning**: `Level.jsx` and `Endless.jsx` register a `beforeunload` handler when a run is in progress (not pre-level, not complete) to warn before refresh/close.
 - Pause modal (z-70) shows **Continue**, **Settings**, **Exit Level** (no ✕ prefix).
 - Endless HUD has no Exit button — use the pause modal to exit.
+- **Floating +N animation** in `PixelCounter` respects `gamePaused` — the interval is cleared and restarted when pause state changes.
 
 ---
 
@@ -390,7 +394,11 @@ Change direction: click a placed block on the grid → "〰 Wave" option → 8-d
 
 Level 1 only. 7 steps, rendered as a fixed card (top-right, z-60).
 
-**Spotlight grayout**: A dark backdrop div at z-40 uses a CSS `clip-path` polygon with a rectangular "hole" cut out at the current step's target element (`data-tutorial` attribute). The hole lets pointer events pass through to the target. All other UI is blocked. The spotlight re-measures on step change, `selectedBlockId` change, and `inventoryOpen` change (350ms delay on the latter to wait for the expand animation).
+**Spotlight grayout**: A dark backdrop div at z-40 uses a CSS `clip-path` polygon with a rectangular "hole" cut out at the current step's target element (`data-tutorial` attribute). The hole lets pointer events pass through to the target. All other UI is blocked. The spotlight clears immediately on step change, then re-measures after 200ms. It also re-measures after `inventoryOpen` changes (350ms delay for animation).
+
+**Editor behaviour during tutorial**: The backdrop click-to-close is disabled for `config.tutorial` levels — the only way to close the editor is the "Done" button. This prevents accidental dismissal during the `paint_pixels` step.
+
+**Step auto-advance timing**: `open_inventory` advances 380ms after `inventoryOpen` becomes true (lets the spring animation finish before measuring `inventory-panel`). `close_editor` advances automatically when `selectedBlockId` becomes null (user clicked Done).
 
 **z-index scheme during tutorial:**
 - Game UI: z-0 to z-20
@@ -574,6 +582,7 @@ Key additions beyond basic CRUD policies:
 - **Base path**: `/PixelFactory/` (case-sensitive, must match repo name)
 - **Secrets needed**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` in GitHub repo secrets
 - **After deleting gh-pages branch**: set Pages source to "GitHub Actions" in repo Settings → Pages
+- **SPA refresh / 404 fix**: `public/404.html` redirects unknown paths to `/PixelFactory/?p=<encoded-path>`. `index.html` reads `?p=` on load and calls `history.replaceState` to restore the correct route before React mounts.
 
 ---
 

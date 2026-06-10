@@ -5,8 +5,6 @@ import { useSettingsStore } from '../../store/settingsStore'
 
 const PAD = 14
 
-// Steps: targetSel = CSS selector for the spotlight hole
-// waitFor = condition key that auto-advances the step
 const STEPS = [
   {
     id: 'welcome',
@@ -28,7 +26,7 @@ const STEPS = [
     title: 'Click a block',
     body: 'Click any block in the inventory to open the pixel editor.',
     waitFor: 'blockSelected',
-    targetSel: '[data-tutorial="inventory-blocks"]',
+    targetSel: '[data-tutorial="inventory-panel"]',
     hint: 'Click a block in the inventory',
   },
   {
@@ -36,23 +34,24 @@ const STEPS = [
     title: 'Paint at least 5 pixels',
     body: 'Click or drag on the 16×16 canvas to paint pixels. More pixels = faster production!',
     waitFor: 'pixelsPainted',
-    targetSel: '[data-tutorial="editor-canvas"]',
+    targetSel: null,
     hint: 'Paint pixels on the canvas',
   },
   {
     id: 'close_editor',
     title: 'Close the editor',
-    body: 'Click "Done" to close the editor. Then you\'ll drag your block onto the grid.',
-    waitFor: null,
-    targetSel: '[data-tutorial="editor-done"]',
+    body: 'Click "Done" to save your painting and close the editor.',
+    waitFor: 'editorClosed',
+    targetSel: null,
+    hint: 'Click "Done" to continue →',
   },
   {
     id: 'place_block',
     title: 'Place your block on the grid',
-    body: 'Open the inventory bar ▲ again, then drag your block to any cell on the 12×12 grid.',
+    body: 'Click any empty cell on the grid — then choose your painted block. You can also open the inventory ▲ and drag it directly.',
     waitFor: 'blockPlaced',
     targetSel: '[data-tutorial="grid"]',
-    hint: 'Drag a block from the inventory onto the grid',
+    hint: 'Click an empty grid cell to place your block',
   },
   {
     id: 'watch',
@@ -98,11 +97,17 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
     setSpotlight(getSpotlight(step.targetSel))
   }, [step?.targetSel])
 
+  // Clear spotlight immediately when step changes, then re-measure
   useEffect(() => {
+    setSpotlight(null)
     refreshSpotlight()
     const t = setTimeout(refreshSpotlight, 200)
     return () => clearTimeout(t)
-  }, [refreshSpotlight, stepIdx, selectedBlockId])
+  }, [stepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    refreshSpotlight()
+  }, [refreshSpotlight, selectedBlockId])
 
   // Re-measure after inventory open/close animation completes
   useEffect(() => {
@@ -117,7 +122,7 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
-  // Advance after inventory open animation finishes (~350ms spring)
+  // Advance after inventory open animation finishes (~380ms spring)
   useEffect(() => {
     if (!active || !showTutorial || dismissed || !step) return
     if (step.waitFor !== 'inventoryOpen' || !inventoryOpen) return
@@ -127,11 +132,12 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
 
   useEffect(() => {
     if (!active || !showTutorial || dismissed || !step) return
-    if (step.waitFor === 'blockSelected'  && selectedBlockId) advance()
-    if (step.waitFor === 'pixelsPainted'  && totalPainted >= 5) advance()
-    if (step.waitFor === 'blockPlaced'    && blocksOnGrid >= 1) advance()
-    if (step.waitFor === 'producing'      && totalPixelsProduced > 0) advance()
-  }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
+    if (step.waitFor === 'blockSelected' && selectedBlockId) advance()
+    if (step.waitFor === 'pixelsPainted' && totalPainted >= 5) advance()
+    if (step.waitFor === 'editorClosed'  && !selectedBlockId) advance()
+    if (step.waitFor === 'blockPlaced'   && blocksOnGrid >= 1) advance()
+    if (step.waitFor === 'producing'     && totalPixelsProduced > 0) advance()
+  }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!active || !showTutorial || dismissed || stepIdx >= STEPS.length) return null
 

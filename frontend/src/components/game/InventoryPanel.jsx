@@ -74,6 +74,7 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenS
       <AnimatePresence>
         {open && (
           <motion.div
+            data-tutorial="inventory-panel"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 300, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

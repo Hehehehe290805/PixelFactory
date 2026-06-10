@@ -81,6 +81,14 @@ export default function Endless() {
     }
   }, [selectedBlockId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Warn before refresh/close when run is in progress
+  useEffect(() => {
+    if (phase !== 'playing') return
+    function warn(e) { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [phase])
+
   // Stopwatch — pauses when gamePaused
   useEffect(() => {
     if (phase !== 'playing' || gamePaused) return

@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PixelFactory</title>
+    <script>
+      // Restore path after GitHub Pages 404 redirect (see public/404.html)
+      (function () {
+        var s = window.location.search;
+        if (s && s.indexOf('?p=') === 0) {
+          window.history.replaceState(null, '', decodeURIComponent(s.slice(3)));
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -117,6 +117,14 @@ export default function Level() {
     }
   }, [selectedBlockId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Warn before refresh/close when level is in progress
+  useEffect(() => {
+    if (preLevelOpen || resultShown) return
+    function warn(e) { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [preLevelOpen, resultShown])
+
   useEffect(() => {
     function onVisibilityChange() {
       if (document.hidden) {
@@ -292,7 +300,7 @@ export default function Level() {
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/60 px-4"
           style={{ zIndex: 50 }}
-          onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}
+          onClick={config.tutorial ? undefined : e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
           <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
         </div>

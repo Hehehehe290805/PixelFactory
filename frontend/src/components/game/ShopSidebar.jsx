@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGameStore, createBlock } from '../../store/gameStore'
 import { PIXEL_COLORS, BLOCK_TYPES } from '../../lib/constants'
 import { useUnlocks } from '../../lib/unlocks'
@@ -8,11 +9,19 @@ export default function ShopSidebar() {
     buyShopItem,
   } = useGameStore()
   const { isPixelUnlocked, isBlockUnlocked } = useUnlocks()
+  const [flash, setFlash] = useState(null) // { key, ok }
 
   const balance = Math.floor(totalPixelsProduced - pixelsSpentInShop)
 
+  function doFlash(key, ok) {
+    setFlash({ key, ok })
+    setTimeout(() => setFlash(f => f?.key === key ? null : f), 420)
+  }
+
   function handleBuyColor(color, qty, cost) {
-    if (!buyShopItem(cost)) return
+    const ok = buyShopItem(cost)
+    doFlash(`color-${color}`, ok)
+    if (!ok) return
     const inv = { ...useGameStore.getState().pixelInventory }
     inv[color] = (inv[color] ?? 0) + qty
     useGameStore.setState({ pixelInventory: inv })
@@ -20,15 +29,16 @@ export default function ShopSidebar() {
 
   function handleBuyBlock(type) {
     const bt = BLOCK_TYPES[type]
-    if (!buyShopItem(bt.levelCost)) return
+    const ok = buyShopItem(bt.levelCost)
+    doFlash(`block-${type}`, ok)
+    if (!ok) return
     const newBlock = createBlock(type)
     useGameStore.setState(s => ({ inventory: [...s.inventory, newBlock] }))
   }
 
-  // Unlocked block types the player can buy during the level
   const availableBlocks = Object.entries(BLOCK_TYPES)
     .filter(([key]) => isBlockUnlocked(key))
-    .filter(([key]) => key !== 'forge') // forge only earns on complete, no point buying mid-level
+    .filter(([key]) => key !== 'forge')
 
   return (
     <div
@@ -53,20 +63,28 @@ export default function ShopSidebar() {
           <div className="flex flex-col gap-1">
             {Object.entries(PIXEL_COLORS)
               .filter(([key]) => isPixelUnlocked(key))
-              .map(([key, meta]) => (
-                <button
-                  key={key}
-                  onClick={() => handleBuyColor(key, 10, 20)}
-                  disabled={balance < 20}
-                  className={`rounded-xl border flex items-center gap-2 px-2.5 py-1.5 transition
-                    ${balance >= 30 ? 'hover:border-game-border2 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
-                  style={{ background: '#0d0d22', borderColor: meta.hex + '55' }}
-                >
-                  <div className="w-3.5 h-3.5 rounded-sm flex-shrink-0" style={{ backgroundColor: meta.hex }} />
-                  <span className="text-xs font-bold flex-1 text-left capitalize" style={{ color: meta.hex }}>{key}</span>
-                  <span className="text-xs font-black text-gray-500">{pixelInventory[key] ?? 0}</span>
-                </button>
-              ))}
+              .map(([key, meta]) => {
+                const fk = `color-${key}`
+                const canAfford = balance >= 20
+                const isSuccess = flash?.key === fk && flash.ok
+                const isFail    = flash?.key === fk && !flash.ok
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleBuyColor(key, 10, 20)}
+                    className="rounded-xl border flex items-center gap-2 px-2.5 py-1.5 transition-all"
+                    style={{
+                      background: isSuccess ? '#00d49a22' : isFail ? '#f03e4e22' : '#0d0d22',
+                      borderColor: isSuccess ? '#00d49a' : isFail ? '#f03e4e' : meta.hex + '55',
+                      opacity: canAfford ? 1 : 0.4,
+                    }}
+                  >
+                    <div className="w-3.5 h-3.5 rounded-sm flex-shrink-0" style={{ backgroundColor: meta.hex }} />
+                    <span className="text-xs font-bold flex-1 text-left capitalize" style={{ color: meta.hex }}>{key}</span>
+                    <span className="text-xs font-black text-gray-500">{pixelInventory[key] ?? 0}</span>
+                  </button>
+                )
+              })}
           </div>
         </div>
 
@@ -74,21 +92,27 @@ export default function ShopSidebar() {
         <div className="pb-3">
           <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1.5">Blocks</div>
           <div className="flex flex-col gap-1">
-            {availableBlocks.map(([key, bt]) => (
-              <button
-                key={key}
-                onClick={() => handleBuyBlock(key)}
-                disabled={balance < bt.levelCost}
-                className={`rounded-xl border-2 flex items-center gap-2 px-2.5 py-1.5 transition text-left
-                  ${balance >= bt.levelCost
-                    ? 'border-game-border hover:border-pixel-blue cursor-pointer'
-                    : 'border-game-border opacity-40 cursor-not-allowed'}`}
-                style={{ background: '#0d0d22' }}
-              >
-                <span className="text-xs font-black text-white flex-1 leading-tight">{bt.label}</span>
-                <span className="text-xs font-black text-pixel-blue flex-shrink-0">{bt.levelCost}px</span>
-              </button>
-            ))}
+            {availableBlocks.map(([key, bt]) => {
+              const fk = `block-${key}`
+              const canAfford = balance >= bt.levelCost
+              const isSuccess = flash?.key === fk && flash.ok
+              const isFail    = flash?.key === fk && !flash.ok
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleBuyBlock(key)}
+                  className="rounded-xl border-2 flex items-center gap-2 px-2.5 py-1.5 transition-all text-left"
+                  style={{
+                    background: isSuccess ? '#00d49a22' : isFail ? '#f03e4e22' : '#0d0d22',
+                    borderColor: isSuccess ? '#00d49a' : isFail ? '#f03e4e' : canAfford ? '#36366a' : '#36366a',
+                    opacity: canAfford ? 1 : 0.4,
+                  }}
+                >
+                  <span className="text-xs font-black text-white flex-1 leading-tight">{bt.label}</span>
+                  <span className="text-xs font-black text-pixel-blue flex-shrink-0">{bt.levelCost}px</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 

@@ -2,9 +2,9 @@
 <html>
   <head>
     <script>
-      const path = window.location.pathname;
+      // Redirect unknown paths back to the SPA base, preserving the path as ?p=
       window.location.replace(
-        window.location.origin + '/?p=' + encodeURIComponent(path)
+        window.location.origin + '/PixelFactory/?p=' + encodeURIComponent(window.location.pathname)
       );
     </script>
   </head>
