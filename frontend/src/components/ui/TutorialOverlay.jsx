@@ -117,14 +117,21 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
+  // Advance after inventory open animation finishes (~350ms spring)
   useEffect(() => {
     if (!active || !showTutorial || dismissed || !step) return
-    if (step.waitFor === 'inventoryOpen'  && inventoryOpen) advance()
+    if (step.waitFor !== 'inventoryOpen' || !inventoryOpen) return
+    const t = setTimeout(advance, 380)
+    return () => clearTimeout(t)
+  }, [inventoryOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!active || !showTutorial || dismissed || !step) return
     if (step.waitFor === 'blockSelected'  && selectedBlockId) advance()
     if (step.waitFor === 'pixelsPainted'  && totalPainted >= 5) advance()
     if (step.waitFor === 'blockPlaced'    && blocksOnGrid >= 1) advance()
     if (step.waitFor === 'producing'      && totalPixelsProduced > 0) advance()
-  }, [inventoryOpen, selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
+  }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
 
   if (!active || !showTutorial || dismissed || stepIdx >= STEPS.length) return null
 
