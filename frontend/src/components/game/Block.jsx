@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { BLOCK_CANVAS_SIZE, PIXEL_COLORS } from '../../lib/constants'
 
 const CELL = 3
@@ -41,6 +42,7 @@ function getDominantColor(pixelLayout, pixelCount) {
 export default function Block({ block, size = 48, showPulse = false, onClick }) {
   const canvasRef = useRef(null)
   const [pulsing, setPulsing] = useState(false)
+  const [floatKey, setFloatKey] = useState(0)
 
   useEffect(() => { drawCanvas() }, [block.pixelLayout])
 
@@ -81,52 +83,75 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
     ? Math.max(0.4, Math.min(8, 37.5 / block.pixelCount))
     : 3
 
+  const floatAmount = `+${Math.max(1, Math.round(block.pixelCount / 37.5))}`
+
   return (
     <div
       onClick={onClick}
-      className="relative rounded overflow-hidden cursor-pointer select-none"
+      className="relative rounded cursor-pointer select-none"
       style={{
         width: size, height: size,
         boxShadow: pulsing ? `0 0 10px 3px ${fillHex}66` : undefined,
         transition: 'box-shadow 0.35s ease-out',
       }}
     >
-      <canvas
-        ref={canvasRef}
-        width={canvasSize}
-        height={canvasSize}
-        style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
-      />
-
-      {/* Pixel-fill indicator — subtle static overlay showing how full the block is */}
-      {fillRatio > 0 && (
-        <div
-          className="absolute bottom-0 left-0 right-0 pointer-events-none"
-          style={{
-            height: `${fillRatio * 100}%`,
-            backgroundColor: `${fillHex}10`,
-            transition: 'height 0.2s ease-out',
-          }}
+      {/* Clipped inner layer — canvas + overlays */}
+      <div className="absolute inset-0 rounded overflow-hidden">
+        <canvas
+          ref={canvasRef}
+          width={canvasSize}
+          height={canvasSize}
+          style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
         />
-      )}
 
-      {/* Directional wave — brightens painted pixels as if they're surging with energy */}
-      {isActive && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `linear-gradient(
-              ${waveDir === 'right' || waveDir === 'left' ? '90deg' : '0deg'},
-              transparent 0%,
-              rgba(255,255,255,0.55) 50%,
-              transparent 100%
-            )`,
-            mixBlendMode: 'screen',
-            transformOrigin: waveConf.origin,
-            animation: `${waveConf.anim} ${cycleDuration.toFixed(2)}s ease-in-out infinite`,
-          }}
-        />
-      )}
+        {/* Pixel-fill indicator */}
+        {fillRatio > 0 && (
+          <div
+            className="absolute bottom-0 left-0 right-0 pointer-events-none"
+            style={{
+              height: `${fillRatio * 100}%`,
+              backgroundColor: `${fillHex}10`,
+              transition: 'height 0.2s ease-out',
+            }}
+          />
+        )}
+
+        {/* Directional wave */}
+        {isActive && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            onAnimationIteration={() => setFloatKey(k => k + 1)}
+            style={{
+              background: `linear-gradient(
+                ${waveDir === 'right' || waveDir === 'left' ? '90deg' : '0deg'},
+                transparent 0%,
+                rgba(255,255,255,0.55) 50%,
+                transparent 100%
+              )`,
+              mixBlendMode: 'screen',
+              transformOrigin: waveConf.origin,
+              animation: `${waveConf.anim} ${cycleDuration.toFixed(2)}s ease-in-out infinite`,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Float — rises above the block on each wave cycle */}
+      <AnimatePresence>
+        {floatKey > 0 && (
+          <motion.div
+            key={floatKey}
+            initial={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 0, y: -20 }}
+            exit={{}}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="absolute pointer-events-none select-none font-black text-pixel-green"
+            style={{ fontSize: 10, bottom: '100%', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', zIndex: 50 }}
+          >
+            {floatAmount}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Active set badge (top-right dot) */}
       {block.activeSet && (
