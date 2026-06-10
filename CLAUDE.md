@@ -629,6 +629,56 @@ A quiz appears in every **between-wave** overlay. Answering correctly grants bon
 
 ---
 
+## Parallel Computing Concepts (CCS-309 Reference)
+
+PixelFactory is built as a playable metaphor for parallel and distributed computing. Each mechanic maps directly to a PDC concept.
+
+### Core Mapping
+
+| Game Mechanic | PDC Concept |
+|---|---|
+| Each block on the grid | Independent parallel thread/process |
+| All blocks ticking simultaneously every 100ms | Parallel execution — threads run concurrently |
+| 100ms production tick (`ProductionEngine`) | Synchronization barrier — all threads evaluated at the same time before results are merged |
+| `totalPixelsProduced` (append-only, never decremented) | Thread-safe shared accumulator; write conflicts avoided by design |
+| `gamePaused` flag | Global barrier — halts all thread execution simultaneously |
+| `gameSpeed` multiplier (0.5×–10×) | Clock frequency scaling — affects both computation rate and timer |
+| Set bonuses (adjacent blocks of same set) | Inter-thread communication / data dependency — blocks gain bonuses based on neighbors' state |
+| Color dominance (+25% to 8 surrounding blocks) | Broadcast communication — one thread's state radiates to all neighbors |
+| Synergy bonus (same-set orthogonal pair) | Peer-to-peer thread synchronization — two threads cooperating for mutual gain |
+| Radiation (set bonus spreading to neighbors) | Message passing between processes |
+| Wave animation direction | Visual representation of data flow / pipeline direction |
+| Block move cooldown (5s reset) | Thread migration cost — moving a process to a new core has overhead |
+| Reactor ramp (50%→200% over 15s, resets on move) | Thread warm-up / cache locality — performance degrades when a thread is migrated |
+| Echo block (+4% per 10s stationary, max +80%) | Long-running thread optimization — threads that stay on one core accumulate cache benefits |
+| Splitter block (gives neighbors +20% of own rate) | Work distribution — one thread offloads computation to adjacent workers |
+| Conductor block (borrows neighbor's set bonus) | Resource sharing between threads |
+| Void block (0 output, +15% to all 8 neighbors) | Dedicated coordinator thread — produces nothing directly but accelerates all workers |
+| 12×12 grid (144 possible threads) | Thread pool with fixed maximum concurrency |
+| Level required output (win condition) | Throughput target — parallel system must hit a minimum aggregate output |
+| In-level shop (buy resources mid-level) | Dynamic resource allocation during execution |
+
+### Production Engine as Parallel Scheduler
+
+`productionEngine.js` (`computeTick`) acts as the scheduler:
+1. **First pass** — evaluate each block independently (base rate × set bonus × synergy)
+2. **Second pass** — apply inter-block effects (Cross Amp flat adds, Splitter boosts, grid-style modifiers)
+3. **Merge** — sum all thread outputs into a single tick total, scaled by `gameSpeed`
+
+This mirrors a parallel reduce: independent per-thread computation followed by a global aggregation step.
+
+### Shared Memory Model
+
+- `grid` is the shared memory space — all threads (blocks) read neighbor state but only write to their own cell
+- `totalPixelsProduced` is the shared output counter — only ever incremented (no decrement), avoiding race conditions by design
+- `pixelInventory` is a per-resource shared pool — consumed atomically via store actions
+
+### Learning System Connection
+
+The in-game learning cards (`LearningContent.js`) explicitly teach these PDC concepts in sequence across levels 1–30, and quiz players from level 13 onward. The game mechanic and the lesson for each level are intentionally aligned.
+
+---
+
 ## Planned Features (not yet implemented)
 
 - **Template sharing**: users upload templates to a shared gallery (needs Supabase `shared_templates` table)
