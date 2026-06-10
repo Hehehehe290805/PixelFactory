@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { createBlock, useGameStore } from '../../store/gameStore'
 import { getStartingPixelBudget } from '../../lib/constants'
@@ -94,7 +94,10 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
   const [deck, setDeck]           = useState(() => deckSelection ?? [])
   const [seriesFilter, setFilter] = useState('all')
   const [hoveredId, setHoveredId] = useState(null)
+  const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
   const [phase, setPhase]         = useState('select') // 'select' | 'prebuy'
+
+  const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   const allSeries = useMemo(() => {
     const s = new Set(unlockedDesigns.map(d => d.series))
@@ -162,52 +165,61 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
           ))}
         </div>
 
-        {/* Design grid + hover tooltip */}
-        <div className="flex flex-1 gap-3 min-h-0">
-          <div className="flex-1 overflow-y-auto">
-            <div className="grid grid-cols-5 gap-2">
-              {filtered.map(design => {
-                const selected = deck.includes(design.id)
-                const disabled = !selected && deck.length >= MAX_DECK
-                return (
-                  <button
-                    key={design.id}
-                    onClick={() => !disabled && toggleDesign(design.id)}
-                    onMouseEnter={() => setHoveredId(design.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    className={`relative rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition
-                      ${selected    ? 'border-pixel-green bg-pixel-green/10'
-                      : disabled    ? 'border-game-border opacity-30 cursor-not-allowed'
-                                    : 'border-game-border hover:border-pixel-blue cursor-pointer'}`}
-                    style={{ background: selected ? undefined : '#0d0d22' }}
-                  >
-                    <DesignMiniThumb design={design} size={44} />
-                    <span className="text-[10px] font-black text-center leading-tight text-gray-300 truncate w-full">{design.name}</span>
-                    {selected && (
-                      <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-pixel-green flex items-center justify-center">
-                        <span style={{ fontSize: 8, color: '#000', fontWeight: 900 }}>✓</span>
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+        {/* Design grid */}
+        <div className="flex-1 overflow-y-auto min-h-0" onMouseMove={handleMouseMove}>
+          <div className="grid grid-cols-5 gap-2">
+            {filtered.map(design => {
+              const selected = deck.includes(design.id)
+              const disabled = !selected && deck.length >= MAX_DECK
+              return (
+                <button
+                  key={design.id}
+                  onClick={() => !disabled && toggleDesign(design.id)}
+                  onMouseEnter={() => setHoveredId(design.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className={`relative rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition
+                    ${selected    ? 'border-pixel-green bg-pixel-green/10'
+                    : disabled    ? 'border-game-border opacity-30 cursor-not-allowed'
+                                  : 'border-game-border hover:border-pixel-blue cursor-pointer'}`}
+                  style={{ background: selected ? undefined : '#0d0d22' }}
+                >
+                  <DesignMiniThumb design={design} size={44} />
+                  <span className="text-[10px] font-black text-center leading-tight text-gray-300 truncate w-full">{design.name}</span>
+                  {selected && (
+                    <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-pixel-green flex items-center justify-center">
+                      <span style={{ fontSize: 8, color: '#000', fontWeight: 900 }}>✓</span>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
           </div>
+        </div>
 
-          {/* Hover detail panel */}
-          {hoveredDesign && (
-            <div className="flex-shrink-0 w-44 rounded-xl border-2 border-game-border p-3 flex flex-col gap-2" style={{ background: '#0d0d22' }}>
+        {/* Hover tooltip — fixed, follows cursor, never affects layout */}
+        {hoveredDesign && (() => {
+          const tipW = 168
+          const margin = 16
+          const x = mousePos.x + margin + tipW > window.innerWidth
+            ? mousePos.x - tipW - margin
+            : mousePos.x + margin
+          const y = Math.min(mousePos.y - 8, window.innerHeight - 260)
+          return (
+            <div
+              style={{ position: 'fixed', left: x, top: y, width: tipW, zIndex: 200, pointerEvents: 'none', background: '#0d0d22' }}
+              className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
+            >
               <DesignMiniThumb design={hoveredDesign} size={80} centered />
               <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
               <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
-              <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace('_', ' ')}</div>
+              <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
               <div className="text-xs text-gray-400 leading-snug">{hoveredDesign.desc}</div>
-              <div className="text-xs text-pixel-yellow font-bold mt-auto">
+              <div className="text-xs text-pixel-yellow font-bold">
                 {getDesignLevelCost(hoveredDesign, bargain)}px in shop
               </div>
             </div>
-          )}
-        </div>
+          )
+        })()}
 
         {/* Footer */}
         <div className="flex gap-3 mt-4 flex-shrink-0">

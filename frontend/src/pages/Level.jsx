@@ -54,8 +54,9 @@ export default function Level() {
   const [goldEarned, setGoldEarned]         = useState(0)
   const tabHiddenAtRef = useRef(null)
 
-  // Deck / pre-buy flow
-  const [deckPhase, setDeckPhase] = useState(true)  // true = DeckSelector open
+  // Deck / pre-buy flow — tutorial skips the deck selector entirely
+  const isTutorial = config?.tutorial === true
+  const [deckPhase, setDeckPhase] = useState(!isTutorial)
   const [activeDeck, setActiveDeck] = useState([])   // designIds for current level
 
   // Design choice modal (offered after certain level completions)
@@ -88,6 +89,11 @@ export default function Level() {
 
   useEffect(() => {
     if (!config) { navigate('/campaign'); return }
+    if (config.tutorial) {
+      startLevel([])
+      setTimeRemaining(effectiveTimeLimit)
+      setElapsedSeconds(0)
+    }
     return () => resetLevel()
   }, [levelNum]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -167,9 +173,14 @@ export default function Level() {
     setResultShown(false)
     setLearningShown(false)
     setElapsedSeconds(0)
-    setDeckPhase(true)
     setDesignChoicePair(null)
     resetLevel()
+    if (isTutorial) {
+      startLevel([])
+      setTimeRemaining(effectiveTimeLimit)
+    } else {
+      setDeckPhase(true)
+    }
   }
 
   function handleStarResultContinue() {
