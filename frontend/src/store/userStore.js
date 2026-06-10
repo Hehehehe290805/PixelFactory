@@ -6,12 +6,12 @@ export const useUserStore = create((set, get) => ({
   user: null,
   profile: null,
   gold: 0,
-  templates: [],
   achievements: new Set(),
-  discoveredSets: new Set(),
   campaignProgress: {},
   cumulativeGreedyGold: 0,
   quizStats: { correct: 0, total: 0 },
+  unlockedDesigns: [],    // array of designId strings, persisted to DB
+  endlessMinutes: 0,      // accumulated endless mode minutes (for 20-min unlock)
   loading: false,
   error: null,
   toastQueue: [],
@@ -22,7 +22,7 @@ export const useUserStore = create((set, get) => ({
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) await get().loadProfile(session.user)
-      else set({ user: null, profile: null, gold: 0, achievements: new Set(), discoveredSets: new Set() })
+      else set({ user: null, profile: null, gold: 0, achievements: new Set(), unlockedDesigns: [] })
     })
   },
 
@@ -49,12 +49,17 @@ export const useUserStore = create((set, get) => ({
       progress[row.level_number] = { stars: row.stars, best_time_seconds: row.best_time_seconds }
     }
 
+    // Load unlocked designs from DB (stored as JSON array in profiles.unlocked_designs)
+    const unlockedDesigns = profileRes.data.unlocked_designs ?? []
+
     set({
       profile: profileRes.data,
       gold: profileRes.data.gold,
       achievements: unlockedKeys,
       campaignProgress: progress,
       quizStats: { correct: profileRes.data.quiz_correct ?? 0, total: profileRes.data.quiz_total ?? 0 },
+      unlockedDesigns,
+      endlessMinutes: profileRes.data.endless_minutes ?? 0,
       loading: false,
     })
   },
@@ -109,7 +114,7 @@ export const useUserStore = create((set, get) => ({
 
   async logout() {
     await supabase.auth.signOut()
-    set({ user: null, profile: null, gold: 0, templates: [], achievements: new Set(), discoveredSets: new Set(), campaignProgress: {} })
+    set({ user: null, profile: null, gold: 0, achievements: new Set(), campaignProgress: {}, unlockedDesigns: [], endlessMinutes: 0 })
   },
 
   // ── Profile CRUD ───────────────────────────────────────────────────────────
@@ -213,42 +218,42 @@ export const useUserStore = create((set, get) => ({
     set(s => ({ toastQueue: s.toastQueue.slice(1) }))
   },
 
-  addDiscoveredSets(setNames) {
-    const state = get()
-    const combined = new Set([...state.discoveredSets, ...setNames])
-    if (combined.size !== state.discoveredSets.size) set({ discoveredSets: combined })
-  },
-
   addCumulativeGreedyGold(amount) {
     set(s => ({ cumulativeGreedyGold: s.cumulativeGreedyGold + amount }))
   },
 
-  async saveTemplate(name, pixelLayout, setType) {
+  // Unlock a design by id; persists to DB
+  async unlockDesign(designId) {
     const state = get()
-    const newTemplate = {
-      id: `local_${Date.now()}`,
-      name,
-      pixel_layout: pixelLayout,
-      set_type: setType ?? null,
-      is_official: false,
-    }
-    const newTemplates = [...state.templates, newTemplate]
-    const toasts = state.achievements.has('save_template') ? [] : [{ key: 'save_template', ...ACHIEVEMENTS['save_template'] }]
-    const newAch  = toasts.length ? new Set([...state.achievements, 'save_template']) : state.achievements
-    set({ templates: newTemplates, achievements: newAch, toastQueue: [...state.toastQueue, ...toasts] })
-
+    if (state.unlockedDesigns.includes(designId)) return
+    const next = [...state.unlockedDesigns, designId]
+    set({ unlockedDesigns: next })
     if (state.user) {
-      const { data } = await supabase.from('block_templates').insert({
-        user_id: state.user.id,
-        name,
-        pixel_layout: pixelLayout,
-        set_type: setType ?? null,
-        is_official: false,
-      }).select().single()
-      if (data) {
-        set(s => ({ templates: s.templates.map(t => t.id === newTemplate.id ? data : t) }))
-      }
+      await supabase.from('profiles').update({ unlocked_designs: next }).eq('id', state.user.id)
     }
+  },
+
+  // Unlock multiple designs at once (e.g. starters at tutorial completion)
+  async unlockDesigns(designIds) {
+    const state = get()
+    const toAdd = designIds.filter(id => !state.unlockedDesigns.includes(id))
+    if (!toAdd.length) return
+    const next = [...state.unlockedDesigns, ...toAdd]
+    set({ unlockedDesigns: next })
+    if (state.user) {
+      await supabase.from('profiles').update({ unlocked_designs: next }).eq('id', state.user.id)
+    }
+  },
+
+  // Track endless minutes for 20-min design unlock
+  addEndlessMinutes(minutes) {
+    set(s => {
+      const next = s.endlessMinutes + minutes
+      if (s.user) {
+        supabase.from('profiles').update({ endless_minutes: next }).eq('id', s.user.id)
+      }
+      return { endlessMinutes: next }
+    })
   },
 
   async saveQuizResult(wasCorrect) {

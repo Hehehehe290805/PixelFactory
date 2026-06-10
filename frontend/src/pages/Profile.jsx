@@ -1,142 +1,160 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
-import { PIXEL_COLORS, BLOCK_CANVAS_SIZE } from '../lib/constants'
-import { OFFICIAL_TEMPLATES } from '../lib/officialTemplates'
+import { DESIGNS, ALL_SERIES } from '../data/designLibrary'
+import { useDesignUnlocks } from '../lib/designUnlocks'
+import { DesignMiniThumb } from '../components/ui/DeckSelector'
 
-const CELL = 8
-
-const SET_COLORS = {
-  PRIMARY: '#e63946',  MIDNIGHT: '#9b5de5', PHILIPPINES: '#ffd166',
-  GRASS: '#06d6a0',    SUNSET: '#f4a261',
-  SILVER_MIST: '#9db4cc', NEON_RUSH: '#39ff14', AURORA: '#a0c4ff',
-  SUNRISE: '#ffc000',  OCEAN: '#1499cc',    FIRE: '#f03e4e',
-  ROYAL: '#a066f0',    EMBER: '#f59342',    TROPICS: '#00d49a',
-  CORAL: '#f03e4e',
-}
-
-// Full preview — shown once the set has been discovered
-function TemplatePreview({ pixelLayout }) {
-  return (
-    <div
-      className="border border-game-border rounded overflow-hidden flex-shrink-0"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${BLOCK_CANVAS_SIZE}, ${CELL}px)`,
-        width: BLOCK_CANVAS_SIZE * CELL,
-        height: BLOCK_CANVAS_SIZE * CELL,
-        imageRendering: 'pixelated',
-      }}
-    >
-      {Array.from({ length: BLOCK_CANVAS_SIZE }, (_, r) =>
-        Array.from({ length: BLOCK_CANVAS_SIZE }, (_, c) => {
-          const color = pixelLayout[r]?.[c]
-          return (
-            <div
-              key={`${r}-${c}`}
-              style={{ backgroundColor: color ? PIXEL_COLORS[color]?.hex : '#0f0f1a' }}
-            />
-          )
-        })
-      )}
-    </div>
-  )
-}
-
-// Hidden preview — shown before the set is discovered
-function LockedPreview({ setType }) {
-  const size = BLOCK_CANVAS_SIZE * CELL
-  const color = SET_COLORS[setType] ?? '#555'
-  return (
-    <div
-      className="border border-game-border rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
-      style={{
-        width: size, height: size,
-        background: `radial-gradient(circle at center, ${color}18 0%, #0a0a18 70%)`,
-        border: `1px solid ${color}33`,
-      }}
-    >
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-3xl font-black" style={{ color: color + '44' }}>?</div>
-        <div className="text-xs font-black uppercase tracking-widest text-center" style={{ color: color + '66', fontSize: 9 }}>
-          {setType}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TemplateCard({ template, official = false, discovered = true }) {
-  const setColor = SET_COLORS[template.set_type] ?? '#888'
-  return (
-    <div
-      className="bg-game-card border border-game-border rounded-xl p-3 flex flex-col gap-2 transition"
-      style={{ borderColor: discovered ? undefined : '#1e1e3a' }}
-    >
-      {official && !discovered
-        ? <LockedPreview setType={template.set_type} />
-        : <TemplatePreview pixelLayout={template.pixel_layout} />
-      }
-      <div>
-        <div className="text-white text-sm font-semibold">
-          {official && !discovered ? '???' : template.name}
-        </div>
-        {template.set_type && (
-          <div className="text-xs font-semibold mt-0.5" style={{ color: discovered ? setColor : setColor + '55' }}>
-            {template.set_type}
-          </div>
-        )}
-        {official && (
-          <div className="text-xs mt-0.5" style={{ color: discovered ? '#ffd166' : '#333' }}>
-            {discovered ? 'Official' : 'Discover in-level to unlock'}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const COLOR_HEX = {
+  red:'#f03e4e', orange:'#f59342', yellow:'#ffd166', green:'#00d49a',
+  blue:'#1499cc', violet:'#a066f0', white:'#f0f0fa', silver:'#9db4cc',
+  gold:'#ffc000', neon:'#39ff14', rainbow:'#ff6b9d',
 }
 
 export default function Profile() {
-  const { user, templates, discoveredSets } = useUserStore()
+  const { user } = useUserStore()
+  const { isDesignUnlocked, unlockedDesigns } = useDesignUnlocks()
+  const [seriesFilter, setSeriesFilter] = useState('all')
+  const [hoveredId, setHoveredId]       = useState(null)
+
+  const filtered = seriesFilter === 'all'
+    ? DESIGNS
+    : DESIGNS.filter(d => d.series === seriesFilter)
+
+  const hoveredDesign = hoveredId ? DESIGNS.find(d => d.id === hoveredId) : null
+  const unlockedCount = unlockedDesigns.length
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-game-bg flex items-center justify-center">
+        <div className="card text-center max-w-sm mx-4" style={{ padding: '2rem' }}>
+          <div className="text-2xl font-black text-white mb-3 pixel-heading">Design Collection</div>
+          <p className="text-gray-500 text-sm mb-6">Log in to track your unlocked designs across sessions.</p>
+          <Link to="/" className="btn btn-primary text-base">← Back to Home</Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
-          <h1 className="text-3xl font-black text-white pixel-heading">Block Templates</h1>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
+            <div>
+              <h1 className="text-3xl font-black text-white pixel-heading">Collection</h1>
+              <p className="text-xs text-gray-500 font-semibold mt-0.5">
+                {unlockedCount} / {DESIGNS.length} designs unlocked
+              </p>
+            </div>
+          </div>
+          <div className="card-sm px-4 py-2 text-right">
+            <div className="text-xl font-black text-white">{unlockedCount}</div>
+            <div className="text-xs text-gray-600 uppercase font-bold">unlocked</div>
+          </div>
         </div>
 
-        {/* Official templates */}
-        <h2 className="text-xs text-gray-500 uppercase tracking-widest mb-3">
-          Official — {OFFICIAL_TEMPLATES.filter(t => discoveredSets.has(t.set_type)).length} / {OFFICIAL_TEMPLATES.length} discovered
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-10">
-          {OFFICIAL_TEMPLATES.map(t => (
-            <TemplateCard
-              key={t.id}
-              template={t}
-              official
-              discovered={discoveredSets.has(t.set_type)}
-            />
+        {/* Series filter */}
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {['all', ...ALL_SERIES].map(s => (
+            <button
+              key={s}
+              onClick={() => setSeriesFilter(s)}
+              className={`text-xs font-black px-2.5 py-1 rounded-lg border transition capitalize
+                ${seriesFilter === s
+                  ? 'bg-pixel-blue/20 border-pixel-blue text-pixel-blue'
+                  : 'border-game-border text-gray-500 hover:text-white'}`}
+            >
+              {s}
+              {s !== 'all' && (
+                <span className="ml-1 opacity-50">
+                  {DESIGNS.filter(d => d.series === s && isDesignUnlocked(d.id)).length}/
+                  {DESIGNS.filter(d => d.series === s).length}
+                </span>
+              )}
+            </button>
           ))}
         </div>
 
-        {/* Player templates */}
-        <h2 className="text-xs text-gray-500 uppercase tracking-widest mb-3">Your Templates</h2>
-        {!user ? (
-          <div className="text-center py-8">
-            <p className="text-gray-400 mb-3">Log in to save your own templates.</p>
-            <Link to="/" className="text-pixel-blue hover:underline text-sm">Home → Login</Link>
+        {/* Grid + detail panel */}
+        <div className="flex gap-4">
+          {/* Design grid */}
+          <div className="flex-1">
+            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10">
+              {filtered.map(design => {
+                const unlocked = isDesignUnlocked(design.id)
+                return (
+                  <div
+                    key={design.id}
+                    onMouseEnter={() => setHoveredId(design.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition cursor-default
+                      ${hoveredId === design.id
+                        ? 'border-pixel-blue bg-pixel-blue/5'
+                        : unlocked ? 'border-pixel-green/30 bg-pixel-green/5' : 'border-game-border'}`}
+                    title={unlocked ? design.name : '???'}
+                  >
+                    {unlocked ? (
+                      <DesignMiniThumb design={design} size={36} />
+                    ) : (
+                      <div
+                        className="rounded overflow-hidden"
+                        style={{ width: 36, height: 36, background: '#111128', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <span className="text-gray-700 font-black text-lg">?</span>
+                      </div>
+                    )}
+                    <span
+                      className="text-[9px] font-black text-center leading-tight truncate w-full"
+                      style={{ color: unlocked ? '#a0aec0' : '#4a5568' }}
+                    >
+                      {unlocked ? design.name : '???'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        ) : templates.length === 0 ? (
-          <p className="text-gray-600 text-sm italic">
-            No templates saved yet. Discover a pixel set in-level to be prompted to save it.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {templates.map(t => <TemplateCard key={t.id} template={t} />)}
-          </div>
-        )}
+
+          {/* Hover detail */}
+          {hoveredDesign && (
+            <div
+              className="flex-shrink-0 w-48 rounded-xl border-2 border-game-border p-3 flex flex-col gap-2 h-fit sticky top-8"
+              style={{ background: '#0d0d22' }}
+            >
+              {isDesignUnlocked(hoveredDesign.id) ? (
+                <>
+                  <DesignMiniThumb design={hoveredDesign} size={80} centered />
+                  <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
+                  <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
+                  <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
+                  <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
+                  <div className="text-xs text-gray-600">{hoveredDesign.pixelCount} pixels</div>
+                  <div className="text-[10px] text-gray-700 capitalize italic">{hoveredDesign.unlockSource.replace(/_/g, ' ')}</div>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 mx-auto rounded-xl bg-gray-900 flex items-center justify-center">
+                    <span className="text-gray-600 text-3xl font-black">?</span>
+                  </div>
+                  <div className="text-sm font-black text-gray-600">???</div>
+                  <div className="text-xs text-gray-700 capitalize">{hoveredDesign.series}</div>
+                  <div className="text-xs text-gray-700 leading-snug">
+                    {hoveredDesign.unlockSource === 'starter'        ? 'Complete the tutorial' :
+                     hoveredDesign.unlockSource === 'campaign_choice' ? 'Earned by completing campaign levels' :
+                     hoveredDesign.unlockSource === 'shop'           ? 'Available in the Shop' :
+                     hoveredDesign.unlockSource === 'endless_20min'  ? 'Survive 20 min in Endless' :
+                     hoveredDesign.unlockSource === 'quiz_25'        ? 'Answer 25 quiz questions correctly' :
+                     hoveredDesign.unlockSource === 'quiz_50'        ? 'Answer 50 quiz questions correctly' :
+                     'Special unlock'}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

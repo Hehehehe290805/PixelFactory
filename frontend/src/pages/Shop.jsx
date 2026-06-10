@@ -2,24 +2,26 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
-import { GRID_STYLES, BLOCK_TYPES, PIXEL_COLORS } from '../lib/constants'
+import { GRID_STYLES, BLOCK_TYPES } from '../lib/constants'
+import { getShopDesigns } from '../data/designLibrary'
+import { DesignMiniThumb } from '../components/ui/DeckSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const SPECIAL_BLOCK_KEYS  = ['overflow', 'mirror', 'catalyst', 'void', 'amplifier', 'resonator', 'reactor', 'conductor', 'prism']
-const SPECIAL_PIXEL_KEYS  = ['rainbow', 'silver', 'gold', 'neon']
-const TEMPLATE_SLOT_COST  = 200
+// Block types gated behind permanent shop unlock (enable shop designs of that type in deck)
+const GATED_BLOCK_TYPES = ['overflow', 'mirror', 'catalyst', 'void']
+const GATED_BLOCK_COSTS = { overflow: 300, mirror: 250, catalyst: 350, void: 200 }
 
 const SPEED_ITEMS = [
-  { speed: 0.5, label: '0.5× Slow',    cost: 150,  desc: 'Half game speed — more time to think' },
-  { speed: 2,   label: '2× Fast',      cost: 250,  desc: 'Double game speed and timer' },
-  { speed: 5,   label: '5× Turbo',     cost: 500,  desc: '5× game speed and timer' },
-  { speed: 10,  label: '10× Max',      cost: 1000, desc: '10× game speed and timer' },
+  { speed: 0.5, label: '0.5× Slow',  cost: 150,  desc: 'Half game speed — more time to think' },
+  { speed: 2,   label: '2× Fast',    cost: 250,  desc: 'Double game speed and timer' },
+  { speed: 5,   label: '5× Turbo',   cost: 500,  desc: '5× game speed and timer' },
+  { speed: 10,  label: '10× Max',    cost: 1000, desc: '10× game speed and timer' },
 ]
 
 export default function Shop() {
   const navigate = useNavigate()
-  const { gold, addGold, unlockAchievements, achievements } = useUserStore()
-  const { activeGridStyle, setGridStyle, isBlockUnlocked, isPixelUnlocked, unlockBlock, unlockPixel, purchasedSpeeds, purchaseSpeed } = useShopStore()
+  const { gold, addGold, unlockedDesigns: unlockedDesignIds = [], unlockDesign } = useUserStore()
+  const { activeGridStyle, setGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked } = useShopStore()
   const [toast, setToast] = useState(null)
 
   function buy(cost, label, onSuccess) {
@@ -29,6 +31,8 @@ export default function Shop() {
     setToast(label)
     setTimeout(() => setToast(null), 2500)
   }
+
+  const shopDesigns = getShopDesigns()
 
   return (
     <div className="min-h-screen bg-game-bg px-4 py-8">
@@ -46,10 +50,9 @@ export default function Shop() {
 
         {/* Grid Styles */}
         <Section title="Grid Styles">
-          <p className="text-xs font-semibold text-gray-600 mb-3">One active at a time. Active style shown with a blue border.</p>
+          <p className="text-xs font-semibold text-gray-600 mb-3">One active at a time.</p>
           {Object.entries(GRID_STYLES).map(([key, style]) => {
             const active    = activeGridStyle === key
-            const owned     = key === 'base' || active
             const canAfford = gold >= style.cost
             return (
               <div key={key}
@@ -69,10 +72,8 @@ export default function Shop() {
                   <button
                     onClick={() => {
                       if (active) return
-                      if (style.cost === 0 || gold >= style.cost) {
-                        if (style.cost > 0 && !active) buy(style.cost, style.label, () => setGridStyle(key))
-                        else setGridStyle(key)
-                      }
+                      if (style.cost > 0 && !active) buy(style.cost, style.label, () => setGridStyle(key))
+                      else setGridStyle(key)
                     }}
                     disabled={!canAfford && !active}
                     className={`btn text-xs px-3 py-2 ${active ? 'btn-secondary opacity-50' : canAfford ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
@@ -85,12 +86,16 @@ export default function Shop() {
           })}
         </Section>
 
-        {/* Special Blocks */}
-        <Section title="Special Blocks (Unlock for in-level use)">
-          {SPECIAL_BLOCK_KEYS.map(key => {
+        {/* Block Type Unlocks (gate for shop designs) */}
+        <Section title="Block Type Unlocks">
+          <p className="text-xs font-semibold text-gray-600 mb-3">
+            Unlocking a block type enables shop designs of that type to appear in your deck selector.
+          </p>
+          {GATED_BLOCK_TYPES.map(key => {
             const bt     = BLOCK_TYPES[key]
-            const owned  = isBlockUnlocked(key)
-            const canAff = gold >= bt.shopCost
+            const owned  = isBlockTypeUnlocked(key)
+            const cost   = GATED_BLOCK_COSTS[key]
+            const canAff = gold >= cost
             return (
               <div key={key} className={`card flex items-center justify-between gap-4 ${owned ? 'border-pixel-green/40' : ''}`} style={{ padding: '1rem 1.25rem' }}>
                 <div className="min-w-0">
@@ -99,47 +104,9 @@ export default function Shop() {
                     {owned && <span className="text-pixel-green text-xs font-black">✓</span>}
                   </div>
                   <div className="text-gray-500 text-xs font-semibold mt-0.5 leading-snug">{bt.desc}</div>
-                  {owned && <div className="text-gray-600 text-xs mt-0.5">In-level cost: {bt.levelCost} px</div>}
                 </div>
                 <button
-                  onClick={() => buy(bt.shopCost, bt.label, () => unlockBlock(key))}
-                  disabled={owned || !canAff}
-                  className={`btn flex-shrink-0 text-sm px-4 py-2 ${owned ? 'btn-secondary opacity-50 cursor-default' : canAff ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
-                >
-                  {owned ? 'Owned' : `${bt.shopCost} g`}
-                </button>
-              </div>
-            )
-          })}
-        </Section>
-
-        {/* Special Pixels */}
-        <Section title="Special Pixel Unlocks">
-          {SPECIAL_PIXEL_KEYS.map(key => {
-            const px     = PIXEL_COLORS[key]
-            const owned  = isPixelUnlocked(key)
-            const cost   = { rainbow: 1000, silver: 400, gold: 600, neon: 500 }[key] ?? 500
-            const canAff = gold >= cost
-            return (
-              <div key={key} className={`card flex items-center justify-between gap-4 ${owned ? 'border-pixel-green/40' : ''}`} style={{ padding: '1rem 1.25rem' }}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-6 h-6 rounded-lg flex-shrink-0 border-2 border-black/20" style={{ backgroundColor: px.hex }} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-black text-sm">{px.label}</span>
-                      {owned && <span className="text-pixel-green text-xs font-black">✓</span>}
-                    </div>
-                    <div className="text-gray-500 text-xs font-semibold">{px.desc ?? `${px.label} pixel — unlocks in BlockEditor`}</div>
-                    {owned && <div className="text-gray-600 text-xs">In-level cost: {px.cost} px each</div>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    buy(cost, px.label + ' Pixel', () => {
-                      unlockPixel(key)
-                      if (key === 'rainbow' && !achievements.has('rainbow_unlock')) unlockAchievements(['rainbow_unlock'])
-                    })
-                  }}
+                  onClick={() => buy(cost, bt.label, () => unlockBlock(key))}
                   disabled={owned || !canAff}
                   className={`btn flex-shrink-0 text-sm px-4 py-2 ${owned ? 'btn-secondary opacity-50 cursor-default' : canAff ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
                 >
@@ -150,9 +117,46 @@ export default function Shop() {
           })}
         </Section>
 
+        {/* Shop-Only Designs */}
+        <Section title="Exclusive Designs (30)">
+          <p className="text-xs font-semibold text-gray-600 mb-3">
+            Special designs unavailable through campaign. Buy to add to your permanent collection.
+          </p>
+          <div className="space-y-2">
+            {shopDesigns.map(design => {
+              const owned  = unlockedDesignIds.includes(design.id)
+              const cost   = design.shopCost
+              const canAff = gold >= cost
+              return (
+                <div key={design.id}
+                  className={`card flex items-center gap-3 ${owned ? 'border-pixel-green/40' : ''}`}
+                  style={{ padding: '0.875rem 1rem' }}
+                >
+                  <DesignMiniThumb design={design} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-black text-sm">{design.name}</span>
+                      {owned && <span className="text-pixel-green text-xs font-black">✓</span>}
+                    </div>
+                    <div className="text-gray-500 text-xs leading-snug">{design.desc}</div>
+                    <div className="text-gray-600 text-[10px] capitalize">{design.series} · {design.blockType.replace(/_/g, ' ')}</div>
+                  </div>
+                  <button
+                    onClick={() => buy(cost, design.name, () => unlockDesign(design.id))}
+                    disabled={owned || !canAff}
+                    className={`btn flex-shrink-0 text-sm px-3 py-2 ${owned ? 'btn-secondary opacity-50 cursor-default' : canAff ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
+                  >
+                    {owned ? 'Owned' : `${cost} g`}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </Section>
+
         {/* Speed Boosts */}
-        <Section title="Speed Boosts (permanent, all levels)">
-          <p className="text-xs font-semibold text-gray-600 mb-3">Unlocks speed buttons in the level HUD. Both production and the timer run at the chosen speed.</p>
+        <Section title="Speed Boosts (permanent)">
+          <p className="text-xs font-semibold text-gray-600 mb-3">Both production and the timer run at the chosen speed.</p>
           {SPEED_ITEMS.map(({ speed, label, cost, desc }) => {
             const owned  = purchasedSpeeds.includes(speed)
             const canAff = gold >= cost
@@ -175,23 +179,6 @@ export default function Shop() {
               </div>
             )
           })}
-        </Section>
-
-        {/* Other */}
-        <Section title="Other">
-          <div className="card flex items-center justify-between gap-4" style={{ padding: '1rem 1.25rem' }}>
-            <div>
-              <span className="text-white font-black text-sm">Template Slot +1</span>
-              <div className="text-gray-500 text-xs font-semibold mt-0.5">Adds one more saved block template slot (base: 5)</div>
-            </div>
-            <button
-              onClick={() => buy(TEMPLATE_SLOT_COST, 'Template Slot', () => {})}
-              disabled={gold < TEMPLATE_SLOT_COST}
-              className={`btn text-sm px-4 py-2 ${gold >= TEMPLATE_SLOT_COST ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
-            >
-              {TEMPLATE_SLOT_COST} g
-            </button>
-          </div>
         </Section>
       </div>
 

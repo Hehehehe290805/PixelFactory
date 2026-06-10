@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Run once if adding columns to an existing table:
 -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_correct INTEGER DEFAULT 0;
 -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_total INTEGER DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_designs JSONB DEFAULT '[]';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS endless_minutes FLOAT DEFAULT 0;
 
 -- Inventory: pixels and blocks owned outside of levels
 CREATE TABLE IF NOT EXISTS inventory (

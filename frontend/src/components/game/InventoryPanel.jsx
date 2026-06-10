@@ -3,21 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
 import Block from './Block'
-import { PIXEL_COLORS } from '../../lib/constants'
+import { DESIGNS } from '../../data/designLibrary'
 
-const SET_COLORS = {
-  PRIMARY: '#f03e4e', MIDNIGHT: '#a066f0', PHILIPPINES: '#ffd166',
-  GRASS: '#00d49a', SUNSET: '#f59342',
-  SILVER_MIST: '#9db4cc', NEON_RUSH: '#39ff14', AURORA: '#a0c4ff',
-  SUNRISE: '#ffc000', OCEAN: '#1499cc', FIRE: '#f03e4e',
-  ROYAL: '#a066f0', EMBER: '#f59342', TROPICS: '#00d49a', CORAL: '#f87171',
-}
-
-export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenStateChange }) {
-  const { inventory, pixelInventory } = useGameStore()
+export default function InventoryPanel({ onOpenStateChange }) {
+  const { inventory } = useGameStore()
   const cellSize = useGridCellSize()
   const blockSize = Math.min(cellSize, 52)
   const [open, setOpen] = useState(false)
+  const [hoveredId, setHoveredId] = useState(null)
 
   function toggle() {
     const next = !open
@@ -25,7 +18,8 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenS
     onOpenStateChange?.(next)
   }
 
-  const pixelEntries = Object.entries(PIXEL_COLORS).filter(([k]) => (pixelInventory[k] ?? 0) > 0)
+  const hovered = hoveredId ? inventory.find(b => b.id === hoveredId) : null
+  const hoveredDesign = hovered ? DESIGNS.find(d => d.id === hovered.designId) : null
 
   return (
     <div className="relative flex-shrink-0 select-none">
@@ -41,23 +35,24 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenS
           Inventory
         </span>
         <span className="text-xs font-bold text-gray-700 flex-shrink-0">
-          {inventory.length} block{inventory.length !== 1 ? 's' : ''}
+          {inventory.length} design{inventory.length !== 1 ? 's' : ''}
         </span>
 
-        {/* Pixel chips summary */}
+        {/* Mini design chips */}
         <div className="flex-1 flex flex-wrap gap-1 overflow-hidden justify-end">
-          {pixelEntries.map(([key, meta]) => (
+          {inventory.slice(0, 8).map(b => (
             <div
-              key={key}
-              className="flex items-center gap-0.5 rounded-lg border px-1.5 py-0.5 flex-shrink-0"
-              style={{ backgroundColor: meta.hex + '18', borderColor: meta.hex + '55' }}
+              key={b.id}
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-game-border text-gray-400 truncate max-w-16"
+              style={{ background: '#0d0d22' }}
             >
-              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: meta.hex }} />
-              <span className="text-xs font-black font-mono" style={{ color: meta.hex }}>{pixelInventory[key]}</span>
+              {b.name}
             </div>
           ))}
-          {pixelEntries.length === 0 && (
-            <span className="text-xs font-semibold text-gray-700 italic">No pixels</span>
+          {inventory.length > 8 && (
+            <div className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-game-border text-gray-600">
+              +{inventory.length - 8}
+            </div>
           )}
         </div>
 
@@ -70,106 +65,99 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenS
         </motion.span>
       </button>
 
-      {/* ── Expanded panel — two columns: Blocks | Pixels ── */}
+      {/* ── Expanded panel ── */}
       <AnimatePresence>
         {open && (
           <motion.div
             data-tutorial="inventory-panel"
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 300, opacity: 1 }}
+            animate={{ height: 280, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 34 }}
             className="absolute bottom-full left-0 right-0 z-20 overflow-hidden border-t-2 border-game-border flex"
             style={{ background: '#0a0a1e' }}
           >
-            {/* Left: Blocks */}
-            <div data-tutorial="inventory-blocks" className="flex-1 flex flex-col border-r border-game-border overflow-hidden">
-              <div className="px-2 pt-2 pb-1 flex-shrink-0">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-600">Blocks</span>
+            {/* Design grid */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-2 pt-2 pb-1 flex-shrink-0 flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-widest text-gray-600">In Hand</span>
+                <span className="text-xs text-gray-700">{inventory.length} designs</span>
               </div>
               <div className="overflow-y-auto flex-1 px-2 pb-2">
                 {inventory.length === 0 ? (
-                  <p className="text-xs font-semibold text-gray-700 italic text-center py-6">All placed</p>
+                  <p className="text-xs font-semibold text-gray-700 italic text-center py-6">All placed on grid</p>
                 ) : (
                   <div
                     className="grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${blockSize + 24}px, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${blockSize + 16}px, 1fr))` }}
                   >
-                    {inventory.map(block => {
-                      const selected = block.id === selectedBlockId
-                      return (
-                        <div
-                          key={block.id}
-                          draggable
-                          onDragStart={e => {
-                            e.dataTransfer.setData('application/json', JSON.stringify({ source: 'inventory', blockId: block.id }))
-                            setOpen(false)
-                            onOpenStateChange?.(false)
-                          }}
-                          onClick={() => {
-                            onBlockSelect(selected ? null : block.id)
-                            setOpen(false)
-                            onOpenStateChange?.(false)
-                          }}
-                          className="flex flex-col items-center gap-1 rounded-xl border-2 cursor-pointer transition-all p-2"
-                          style={{
-                            background:  selected ? 'rgba(20,153,204,0.12)' : '#111128',
-                            borderColor: selected ? '#1499cc' : '#36366a',
-                          }}
-                        >
-                          <div className="rounded-lg overflow-hidden border flex-shrink-0"
-                            style={{ borderColor: selected ? '#1499cc55' : '#36366a' }}>
-                            <Block block={block} size={blockSize} />
-                          </div>
-                          <div className="text-center w-full">
-                            <div className="text-xs font-black text-gray-300 capitalize leading-tight truncate" style={{ fontSize: 10 }}>
-                              {block.type.replace(/_/g, ' ')}
-                            </div>
-                            <div className="font-bold text-gray-600 leading-tight" style={{ fontSize: 9 }}>{block.pixelCount}px</div>
-                            {block.activeSet && (
-                              <div className="font-black leading-tight truncate" style={{ color: SET_COLORS[block.activeSet] ?? '#aaa', fontSize: 8 }}>
-                                {block.activeSet}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Pixels */}
-            <div className="flex flex-col overflow-hidden" style={{ width: 140, minWidth: 120 }}>
-              <div className="px-2 pt-2 pb-1 flex-shrink-0">
-                <span className="text-xs font-black uppercase tracking-widest text-gray-600">Pixels</span>
-              </div>
-              <div className="overflow-y-auto flex-1 px-2 pb-2">
-                {pixelEntries.length === 0 ? (
-                  <p className="text-xs font-semibold text-gray-700 italic text-center py-6">None</p>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {pixelEntries.map(([key, meta]) => (
-                      <div
-                        key={key}
-                        className="flex items-center gap-2 rounded-xl border px-2.5 py-2"
-                        style={{ background: meta.hex + '12', borderColor: meta.hex + '44' }}
-                      >
-                        <div className="w-5 h-5 rounded-md flex-shrink-0 border border-black/20" style={{ backgroundColor: meta.hex }} />
-                        <span className="text-xs font-bold capitalize flex-1" style={{ color: meta.hex }}>{key}</span>
-                        <span className="text-sm font-black font-mono" style={{ color: meta.hex }}>
-                          {pixelInventory[key]}
-                        </span>
-                      </div>
+                    {inventory.map(block => (
+                      <InventoryDesignCard
+                        key={block.id}
+                        block={block}
+                        blockSize={blockSize}
+                        hovered={hoveredId === block.id}
+                        onHover={setHoveredId}
+                        onLeave={() => setHoveredId(null)}
+                        onDragStart={() => { setOpen(false); onOpenStateChange?.(false) }}
+                      />
                     ))}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Hover tooltip panel */}
+            {hoveredDesign && (
+              <div
+                className="flex-shrink-0 w-44 border-l-2 border-game-border flex flex-col gap-2 p-3 overflow-y-auto"
+                style={{ background: '#0d0d22' }}
+              >
+                <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
+                <div className="text-xs text-pixel-blue font-bold capitalize">{hoveredDesign.blockType.replace(/_/g, ' ')}</div>
+                <div className="text-xs text-gray-500 capitalize">{hoveredDesign.series}</div>
+                <div className="text-xs text-gray-300 leading-snug">{hoveredDesign.desc}</div>
+                {hovered?.activeSynergy && (
+                  <div className="text-xs text-pixel-green font-bold">✦ {hovered.activeSynergy.replace(/_/g, ' ')}</div>
+                )}
+                <div className="text-xs text-gray-600">{hoveredDesign.pixelCount}px</div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function InventoryDesignCard({ block, blockSize, hovered, onHover, onLeave, onDragStart }) {
+  return (
+    <div
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ source: 'inventory', blockId: block.id }))
+        onDragStart()
+      }}
+      onMouseEnter={() => onHover(block.id)}
+      onMouseLeave={onLeave}
+      className="flex flex-col items-center gap-1 rounded-xl border-2 cursor-grab transition-all p-1.5"
+      style={{
+        background:   '#111128',
+        borderColor:  hovered ? '#1499cc' : (block.activeSynergy ? '#00d49a55' : '#36366a'),
+      }}
+    >
+      <div className="rounded-lg overflow-hidden border flex-shrink-0"
+        style={{ borderColor: hovered ? '#1499cc55' : '#36366a44' }}>
+        <Block block={block} size={blockSize} />
+      </div>
+      <div className="text-center w-full">
+        <div className="font-black text-gray-300 leading-tight truncate" style={{ fontSize: 9 }}>
+          {block.name}
+        </div>
+        <div className="font-bold text-gray-600 leading-tight capitalize" style={{ fontSize: 8 }}>
+          {block.type.replace(/_/g, ' ')}
+        </div>
+      </div>
     </div>
   )
 }

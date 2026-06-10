@@ -1,54 +1,27 @@
-// ── Pixel Colors ─────────────────────────────────────────────────────────────
-// special: true  → must be unlocked in Shop before appearing in BlockEditor
-// outputMult     → how many "pixels worth" this counts for in baseRate()
-// goldPerPixel   → bonus gold per pixel of this type on level complete
-
-export const PIXEL_COLORS = {
-  // Standard (always available)
-  white:   { label: 'White',   hex: '#f0f0fa', cost: 1,  outputMult: 1   },
-  red:     { label: 'Red',     hex: '#f03e4e', cost: 3,  outputMult: 1   },
-  orange:  { label: 'Orange',  hex: '#f59342', cost: 3,  outputMult: 1   },
-  yellow:  { label: 'Yellow',  hex: '#ffd166', cost: 3,  outputMult: 1   },
-  green:   { label: 'Green',   hex: '#00d49a', cost: 3,  outputMult: 1   },
-  blue:    { label: 'Blue',    hex: '#1499cc', cost: 3,  outputMult: 1   },
-  violet:  { label: 'Violet',  hex: '#a066f0', cost: 3,  outputMult: 1   },
-
-  // Unlockable specials
-  rainbow: { label: 'Rainbow', hex: '#ff6b9d', cost: 1,  outputMult: 1,   special: true },
-  silver:  { label: 'Silver',  hex: '#9db4cc', cost: 2,  outputMult: 2,   special: true, desc: 'Worth 2× for output, neutral for sets' },
-  gold:    { label: 'Gold',    hex: '#ffc000', cost: 8,  outputMult: 1,   goldPerPixel: 5, special: true, desc: '+5 gold per pixel on level complete' },
-  neon:    { label: 'Neon',    hex: '#39ff14', cost: 5,  outputMult: 1.5, special: true, desc: 'Worth 1.5× for output' },
-}
-
 // ── Block Types ───────────────────────────────────────────────────────────────
+// Each design in the design library bundles one of these block types.
+// desc is shown as the hover tooltip in DeckSelector and ShopSidebar.
 
 export const BLOCK_TYPES = {
-  // Base set
-  base:          { label: 'Base',          shopCost: 50,   levelCost: 13,  desc: 'Workhorse. Output = pixelCount × 0.8 px/s' },
-  doubler:       { label: 'Doubler',       shopCost: 150,  levelCost: 39,  desc: '×2 output if all 4 orthogonal neighbors have < half its pixels' },
-  cross_amp:     { label: 'Cross Amp',     shopCost: 120,  levelCost: 32,  desc: '+⌊pixelCount/10⌋ px/s to each diagonal neighbor' },
-  color_checker: { label: 'Color Checker', shopCost: 100,  levelCost: 26,  desc: 'Assigned a color at placement. 50%+ match → −5% required output (once)' },
-  greedy:        { label: 'Greedy',        shopCost: 200,  levelCost: 52,  desc: 'On complete: (myPixels − all 8 neighbors\' pixels) × 10 gold' },
-
-  // Unlockable specials (from Shop)
-  overflow:      { label: 'Overflow',      shopCost: 300,  levelCost: 65,  desc: 'Stores excess each tick; bursts 5s of production every 10s' },
-  mirror:        { label: 'Mirror',        shopCost: 250,  levelCost: 58,  desc: 'Copies the output rate of its highest-producing orthogonal neighbor' },
-  catalyst:      { label: 'Catalyst',      shopCost: 350,  levelCost: 78,  desc: 'Synergy bonuses in its row ×1.5' },
-  void:          { label: 'Void',          shopCost: 200,  levelCost: 45,  desc: 'Produces 0 px itself; removes adjacency penalties from neighbors' },
-
-  // New block types (Phase 2)
-  amplifier:     { label: 'Amplifier',     shopCost: 180,  levelCost: 45,  desc: '+8% output per occupied neighbor cell (up to ×1.64 with 8 neighbors)' },
-  resonator:     { label: 'Resonator',     shopCost: 220,  levelCost: 55,  desc: '+50% output if any orthogonal neighbor is the same block type' },
-  reactor:       { label: 'Reactor',       shopCost: 400,  levelCost: 91,  desc: 'Starts at 50% output; ramps +5%/s to 200% max. Resets on move' },
-  conductor:     { label: 'Conductor',     shopCost: 300,  levelCost: 72,  desc: 'Borrows the highest set bonus from any adjacent block' },
-  prism:         { label: 'Prism',         shopCost: 250,  levelCost: 58,  desc: '+5% output per unique non-white color in its pixels (max +30%)' },
-
-  // New block types (Phase 3)
-  echo:          { label: 'Echo',          shopCost: 180,  levelCost: 45,  desc: '+4% output for each 10s stationary (max +80% at ~3.5 min)' },
-  splitter:      { label: 'Splitter',      shopCost: 280,  levelCost: 65,  desc: 'Gives each orthogonal neighbor a flat +20% of this block\'s base rate' },
-  focus:         { label: 'Focus',         shopCost: 160,  levelCost: 42,  desc: 'Assigned a color at placement; output doubles when all pixels match that color' },
-  cluster:       { label: 'Cluster',       shopCost: 230,  levelCost: 55,  desc: '+12% output per occupied neighbor (all 8, excluding void)' },
-  forge:         { label: 'Forge',         shopCost: 320,  levelCost: 78,  desc: 'On level complete: +3 gold per pixel held (no production bonus)' },
+  base:          { label: 'Base',          levelCost: 13,  desc: 'Workhorse. Output scales with design size' },
+  doubler:       { label: 'Doubler',       levelCost: 39,  desc: '×2 output if all 4 ortho neighbors have fewer pixels' },
+  cross_amp:     { label: 'Cross Amp',     levelCost: 32,  desc: '+⌊pixelCount÷10⌋ px/s to each diagonal neighbor' },
+  color_checker: { label: 'Color Checker', levelCost: 26,  desc: 'Triggers −5% required output on placement (one-time)' },
+  greedy:        { label: 'Greedy',        levelCost: 52,  desc: 'On complete: (myPixels − neighborPixels) × 10 gold' },
+  amplifier:     { label: 'Amplifier',     levelCost: 45,  desc: '+8% output per occupied neighbor cell (up to ×1.64)' },
+  resonator:     { label: 'Resonator',     levelCost: 55,  desc: '+50% output if any ortho neighbor is same block type' },
+  reactor:       { label: 'Reactor',       levelCost: 91,  desc: 'Starts at 50% output; ramps to 200% over 15 s; resets on move' },
+  echo:          { label: 'Echo',          levelCost: 45,  desc: '+4% output for each 10 s stationary (max +80%)' },
+  prism:         { label: 'Prism',         levelCost: 58,  desc: '+5% output per unique non-white color in design (max +30%)' },
+  conductor:     { label: 'Conductor',     levelCost: 72,  desc: 'Borrows the highest design synergy bonus from adjacent blocks' },
+  splitter:      { label: 'Splitter',      levelCost: 65,  desc: 'Gives each ortho neighbor +20% of this block\'s rate' },
+  focus:         { label: 'Focus',         levelCost: 42,  desc: 'Output scales with dominant color ratio (×1→×2, fixed per design)' },
+  cluster:       { label: 'Cluster',       levelCost: 55,  desc: '+12% output per occupied neighbor (all 8, excl. void)' },
+  forge:         { label: 'Forge',         levelCost: 78,  desc: 'On complete: +3 gold per pixel in this design' },
+  overflow:      { label: 'Overflow',      levelCost: 65,  desc: '3× output burst for 5 s every 10 s' },
+  mirror:        { label: 'Mirror',        levelCost: 58,  desc: 'Copies the output rate of its highest-producing ortho neighbor' },
+  catalyst:      { label: 'Catalyst',      levelCost: 78,  desc: 'Design synergy bonuses in same row are ×1.5' },
+  void:          { label: 'Void',          levelCost: 45,  desc: '0 output; gives +15% to all 8 surrounding blocks' },
 }
 
 // ── Grid Styles ───────────────────────────────────────────────────────────────
@@ -58,47 +31,23 @@ export const GRID_STYLES = {
   gold_rush:    { label: 'Gold Rush',     cost: 500,  desc: '+15% gold after each level' },
   overclock:    { label: 'Overclock',     cost: 800,  desc: '+10% output across all blocks' },
   efficiency:   { label: 'Efficiency',   cost: 600,  desc: '+20% time limit, −10% required output' },
-  bargain:      { label: 'Bargain',       cost: 700,  desc: 'Blocks and pixels 20% cheaper in-level' },
-  quantum:      { label: 'Quantum',       cost: 1000, desc: 'Every 30s all blocks produce 2× for 5s' },
-  neural:       { label: 'Neural',        cost: 700,  desc: 'Color Checker trigger reduces −8% required (not −5%)' },
+  bargain:      { label: 'Bargain',       cost: 700,  desc: 'In-level shop designs 20% cheaper' },
+  quantum:      { label: 'Quantum',       cost: 1000, desc: 'Every 30 s all blocks produce 2× for 5 s' },
+  neural:       { label: 'Neural',        cost: 700,  desc: 'Design synergy thresholds reduced by 1 (easier to activate)' },
   industrial:   { label: 'Industrial',    cost: 600,  desc: '+3% output per 10 placed blocks on the grid' },
-  synergy_plus: { label: 'Synergy+',      cost: 900,  desc: 'Same-set adjacency synergy bonus is +25% (not +15%)' },
-  cascade:      { label: 'Cascade',       cost: 750,  desc: 'Rows 6–11 produce more: +4% per row below row 5 (up to +24% at bottom)' },
+  synergy_plus: { label: 'Synergy+',      cost: 900,  desc: 'Same-series adjacency synergy bonus is +25% (not +15%)' },
+  cascade:      { label: 'Cascade',       cost: 750,  desc: 'Rows 6–11 produce more: +4% per row below row 5 (up to +24%)' },
   overcharge:   { label: 'Overcharge',    cost: 850,  desc: '+25% output for all blocks' },
-  lattice:      { label: 'Lattice',       cost: 650,  desc: 'Blocks with exactly 4 occupied orthogonal neighbors get +35% output' },
+  lattice:      { label: 'Lattice',       cost: 650,  desc: 'Blocks with exactly 4 occupied ortho neighbors get +35%' },
 }
 
-// ── Misc constants ────────────────────────────────────────────────────────────
-
+// ── Misc ──────────────────────────────────────────────────────────────────────
 export const GRID_SIZE         = 12
 export const BLOCK_CANVAS_SIZE = 16
 export const TICK_MS           = 100
 export const MOVE_COOLDOWN_MS  = 5000
 
-// ── Pixel Sets ────────────────────────────────────────────────────────────────
-// Colors listed are the ONLY allowed colors in the set (rainbow/neon count as any).
-// silver is neutral — ignored for set detection.
-// gold is treated as rainbow (any color) for set detection.
-
-export const PIXEL_SETS = {
-  // ── Original 5 sets ───────────────────────────────────────────────────────
-  PRIMARY:     { colors: ['red', 'blue', 'yellow'],          minPixels: 40, outputBonus: 0.20 },
-  MIDNIGHT:    { colors: ['blue', 'violet'],                 minPixels: 35, outputBonus: 0.15 },
-  PHILIPPINES: { colors: ['red', 'blue', 'yellow', 'white'], minPixels: 45, outputBonus: 0.10 },
-  GRASS:       { colors: ['yellow', 'green'],                minPixels: 30, outputBonus: 0.12 },
-  SUNSET:      { colors: ['red', 'yellow', 'orange'],        minPixels: 38, outputBonus: 0.18 },
-
-  // ── Special-pixel sets (require unlockable pixels from Shop) ──────────────
-  SILVER_MIST: { colors: ['silver', 'white'],                minPixels: 40, outputBonus: 0.22 },
-  NEON_RUSH:   { colors: ['neon', 'yellow', 'green'],        minPixels: 35, outputBonus: 0.20 },
-  AURORA:      { colors: ['violet', 'blue', 'green'],        minPixels: 38, outputBonus: 0.25 },
-  SUNRISE:     { colors: ['orange', 'yellow'],               minPixels: 45, outputBonus: 0.26 },
-
-  // ── Standard-color sets (white, red, orange, yellow, green, blue, violet) ─
-  OCEAN:       { colors: ['blue', 'green'],                  minPixels: 32, outputBonus: 0.18 },
-  FIRE:        { colors: ['red', 'orange'],                  minPixels: 28, outputBonus: 0.20 },
-  ROYAL:       { colors: ['violet', 'blue', 'red'],          minPixels: 38, outputBonus: 0.24 },
-  EMBER:       { colors: ['red', 'orange', 'violet'],        minPixels: 42, outputBonus: 0.28 },
-  TROPICS:     { colors: ['orange', 'green', 'blue'],        minPixels: 42, outputBonus: 0.26 },
-  CORAL:       { colors: ['red', 'orange', 'green'],         minPixels: 36, outputBonus: 0.22 },
+// Starting pixel budget for deck pre-buy phase (scales with level, capped at 300)
+export function getStartingPixelBudget(levelNumber) {
+  return Math.min(50 + levelNumber * 5, 300)
 }

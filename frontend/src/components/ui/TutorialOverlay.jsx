@@ -9,62 +9,52 @@ const STEPS = [
   {
     id: 'welcome',
     title: 'Welcome to PixelFactory!',
-    body: 'Each block is an independent process that produces pixels — like parallel threads. Paint blocks, place them on the grid, and watch them produce!',
+    body: 'Each block on the grid is an independent process that produces pixels — like parallel threads. Place designs, build synergies, and hit the pixel target!',
     waitFor: null,
     targetSel: null,
   },
   {
     id: 'open_inventory',
     title: 'Open your inventory',
-    body: 'Tap the ▲ bar at the very bottom of the screen to expand your inventory and see your blocks.',
+    body: 'Tap the ▲ bar at the bottom of the screen to expand your inventory and see your designs.',
     waitFor: 'inventoryOpen',
     targetSel: '[data-tutorial="inventory"]',
     hint: 'Tap the inventory bar at the bottom ↓',
   },
   {
-    id: 'select_block',
-    title: 'Click a block',
-    body: 'Click any block in the inventory to open the pixel editor.',
-    waitFor: 'blockSelected',
+    id: 'view_designs',
+    title: 'Your designs',
+    body: 'These are your design cards. Each has a fixed pixel art, a block type that determines its effect, and a series that enables synergy bonuses.',
+    waitFor: null,
     targetSel: '[data-tutorial="inventory-panel"]',
-    hint: 'Click a block in the inventory',
-  },
-  {
-    id: 'paint_pixels',
-    title: 'Paint at least 5 pixels',
-    body: 'Click or drag on the 16×16 canvas to paint pixels. More pixels = faster production!',
-    waitFor: 'pixelsPainted',
-    targetSel: null,
-    hint: 'Paint pixels on the canvas',
-  },
-  {
-    id: 'close_editor',
-    title: 'Close the editor',
-    body: 'Click "Done" to save your painting and close the editor.',
-    waitFor: 'editorClosed',
-    targetSel: null,
-    hint: 'Click "Done" to continue →',
   },
   {
     id: 'place_block',
-    title: 'Place your block on the grid',
-    body: 'Click any empty cell on the grid — then choose your painted block. You can also open the inventory ▲ and drag it directly.',
+    title: 'Place a design on the grid',
+    body: 'Drag a design from the inventory onto the grid, or click an empty cell and select a design. Go ahead — place your first one!',
     waitFor: 'blockPlaced',
     targetSel: '[data-tutorial="grid"]',
-    hint: 'Click an empty grid cell to place your block',
+    hint: 'Drag or click a grid cell to place a design',
   },
   {
     id: 'watch',
     title: 'Watch it produce!',
-    body: 'Your block is now producing pixels! See the progress bar fill and the px/s counter on the right.',
+    body: 'Your design is now producing pixels! The progress bar and px/s counter update in real time.',
     waitFor: 'producing',
     targetSel: null,
     hint: 'Waiting for production to start…',
   },
   {
+    id: 'check_effects',
+    title: 'Check your synergies',
+    body: 'The Active Effects panel on the right tracks your synergy progress. Collect designs of the same series to unlock big bonuses!',
+    waitFor: null,
+    targetSel: '[data-tutorial="active-effects"]',
+  },
+  {
     id: 'done',
     title: "You're all set!",
-    body: 'Keep placing and painting blocks to hit the pixel target. Discover color sets for big bonuses. Good luck!',
+    body: 'Keep placing designs to hit the pixel target. Build synergies for bonus output. Good luck!',
     waitFor: null,
     targetSel: null,
   },
@@ -80,14 +70,12 @@ function getSpotlight(sel) {
 
 export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
   const { showTutorial } = useSettingsStore()
-  const { inventory, grid, totalPixelsProduced, selectedBlockId } = useGameStore()
+  const { grid, totalPixelsProduced } = useGameStore()
 
   const [stepIdx, setStepIdx] = useState(0)
   const [spotlight, setSpotlight] = useState(null)
 
   const blocksOnGrid = grid.flat().filter(Boolean).length
-  const totalPainted = [...inventory, ...grid.flat().filter(Boolean)]
-    .reduce((s, b) => s + b.pixelCount, 0)
 
   const step = STEPS[stepIdx]
 
@@ -103,10 +91,6 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
   }, [stepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    refreshSpotlight()
-  }, [refreshSpotlight, selectedBlockId])
-
-  useEffect(() => {
     const t = setTimeout(refreshSpotlight, 350)
     return () => clearTimeout(t)
   }, [inventoryOpen, refreshSpotlight])
@@ -118,6 +102,7 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
+  // inventoryOpen auto-advance
   useEffect(() => {
     if (!active || !showTutorial || !step) return
     if (step.waitFor !== 'inventoryOpen' || !inventoryOpen) return
@@ -125,14 +110,12 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
     return () => clearTimeout(t)
   }, [inventoryOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // blockPlaced / producing auto-advance
   useEffect(() => {
     if (!active || !showTutorial || !step) return
-    if (step.waitFor === 'blockSelected' && selectedBlockId) advance()
-    if (step.waitFor === 'pixelsPainted' && totalPainted >= 5) advance()
-    if (step.waitFor === 'editorClosed'  && !selectedBlockId) advance()
-    if (step.waitFor === 'blockPlaced'   && blocksOnGrid >= 1) advance()
-    if (step.waitFor === 'producing'     && totalPixelsProduced > 0) advance()
-  }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (step.waitFor === 'blockPlaced'  && blocksOnGrid >= 1) advance()
+    if (step.waitFor === 'producing'    && totalPixelsProduced > 0) advance()
+  }, [blocksOnGrid, totalPixelsProduced]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!active || !showTutorial) return null
 

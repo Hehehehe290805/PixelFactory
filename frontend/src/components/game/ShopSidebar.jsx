@@ -1,121 +1,143 @@
-import { useState } from 'react'
-import { useGameStore, createBlock } from '../../store/gameStore'
-import { PIXEL_COLORS, BLOCK_TYPES } from '../../lib/constants'
-import { useUnlocks } from '../../lib/unlocks'
+import { useState, useRef } from 'react'
+import { useGameStore } from '../../store/gameStore'
+import { useShopStore } from '../../store/shopStore'
+import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
+import Block from './Block'
 
-export default function ShopSidebar() {
-  const {
-    totalPixelsProduced, pixelsSpentInShop, pixelInventory,
-    buyShopItem,
-  } = useGameStore()
-  const { isPixelUnlocked, isBlockUnlocked } = useUnlocks()
-  const [flash, setFlash] = useState(null) // { key, ok }
+export default function ShopSidebar({ deckDesignIds = [] }) {
+  const { totalPixelsProduced, pixelsSpentInShop, buyDesignFromShop } = useGameStore()
+  const { activeGridStyle } = useShopStore()
+  const [flash, setFlash] = useState(null)   // { id, ok }
+  const [hoveredId, setHoveredId] = useState(null)
 
   const balance = Math.floor(totalPixelsProduced - pixelsSpentInShop)
+  const bargain = activeGridStyle === 'bargain'
 
-  function doFlash(key, ok) {
-    setFlash({ key, ok })
-    setTimeout(() => setFlash(f => f?.key === key ? null : f), 420)
+  function doFlash(id, ok) {
+    setFlash({ id, ok })
+    setTimeout(() => setFlash(f => f?.id === id ? null : f), 420)
   }
 
-  function handleBuyColor(color, qty, cost) {
-    const ok = buyShopItem(cost)
-    doFlash(`color-${color}`, ok)
-    if (!ok) return
-    const inv = { ...useGameStore.getState().pixelInventory }
-    inv[color] = (inv[color] ?? 0) + qty
-    useGameStore.setState({ pixelInventory: inv })
+  function handleBuy(design) {
+    const cost = getDesignLevelCost(design, bargain)
+    const ok = buyDesignFromShop(design.id, cost)
+    doFlash(design.id, ok)
   }
 
-  function handleBuyBlock(type) {
-    const bt = BLOCK_TYPES[type]
-    const ok = buyShopItem(bt.levelCost)
-    doFlash(`block-${type}`, ok)
-    if (!ok) return
-    const newBlock = createBlock(type)
-    useGameStore.setState(s => ({ inventory: [...s.inventory, newBlock] }))
+  // Handle drag-to-grid: on dragStart, also deduct cost if possible
+  function handleDragStart(e, design) {
+    const cost = getDesignLevelCost(design, bargain)
+    const canAfford = balance >= cost
+    if (!canAfford) { e.preventDefault(); return }
+    // Speculatively buy — the grid drop handler will place it
+    const ok = buyDesignFromShop(design.id, cost)
+    if (!ok) { e.preventDefault(); return }
+    e.dataTransfer.setData('application/json', JSON.stringify({ source: 'shop', designId: design.id }))
   }
 
-  const availableBlocks = Object.entries(BLOCK_TYPES)
-    .filter(([key]) => isBlockUnlocked(key))
-    .filter(([key]) => key !== 'forge')
+  const deckDesigns = deckDesignIds
+    .map(id => DESIGNS.find(d => d.id === id))
+    .filter(Boolean)
+
+  const hoveredDesign = hoveredId ? deckDesigns.find(d => d.id === hoveredId) : null
 
   return (
     <div
-      className="flex flex-col flex-shrink-0 border-r-2 border-game-border overflow-y-auto"
-      style={{ width: 188, background: '#0a0a1e' }}
+      className="flex flex-col gap-0 overflow-hidden flex-shrink-0 border-r-2 border-game-border"
+      style={{ width: 164, background: '#080816' }}
     >
-      {/* Header + pixel balance */}
-      <div className="px-3 pt-3 pb-2 border-b-2 border-game-border flex-shrink-0" style={{ background: '#111128' }}>
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-1">Shop</div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-pixel-blue font-black text-lg leading-none">{balance.toLocaleString()}</span>
-          <span className="text-xs font-bold text-gray-600 uppercase">pixels</span>
-        </div>
-        <div className="text-xs text-gray-700 mt-0.5">produced this level</div>
+      {/* Header */}
+      <div className="px-2 pt-3 pb-2 border-b border-game-border flex-shrink-0">
+        <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-0.5">Shop</div>
+        <div className="text-sm font-black text-white">{balance.toLocaleString()}</div>
+        <div className="text-[10px] font-bold text-gray-600 uppercase">pixels</div>
       </div>
 
-      <div className="px-2 pt-2 flex flex-col gap-3">
+      {/* Design list */}
+      <div className="flex-1 overflow-y-auto py-1.5 flex flex-col gap-0.5 px-1.5">
+        {deckDesigns.length === 0 && (
+          <p className="text-xs text-gray-700 italic text-center py-4 px-1">
+            No deck selected
+          </p>
+        )}
+        {deckDesigns.map(design => {
+          const cost = getDesignLevelCost(design, bargain)
+          const canAfford = balance >= cost
+          const isFlash = flash?.id === design.id
+          const flashOk = flash?.ok
 
-        {/* Per-color pixel packs */}
-        <div>
-          <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1.5">Colors — 10 for 20px</div>
-          <div className="flex flex-col gap-1">
-            {Object.entries(PIXEL_COLORS)
-              .filter(([key]) => isPixelUnlocked(key))
-              .map(([key, meta]) => {
-                const fk = `color-${key}`
-                const canAfford = balance >= 20
-                const isSuccess = flash?.key === fk && flash.ok
-                const isFail    = flash?.key === fk && !flash.ok
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleBuyColor(key, 10, 20)}
-                    className="rounded-xl border flex items-center gap-2 px-2.5 py-1.5 transition-all"
-                    style={{
-                      background: isSuccess ? '#00d49a22' : isFail ? '#f03e4e22' : '#0d0d22',
-                      borderColor: isSuccess ? '#00d49a' : isFail ? '#f03e4e' : meta.hex + '55',
-                      opacity: canAfford ? 1 : 0.4,
-                    }}
-                  >
-                    <div className="w-3.5 h-3.5 rounded-sm flex-shrink-0" style={{ backgroundColor: meta.hex }} />
-                    <span className="text-xs font-bold flex-1 text-left capitalize" style={{ color: meta.hex }}>{key}</span>
-                    <span className="text-xs font-black text-gray-500">{pixelInventory[key] ?? 0}</span>
-                  </button>
-                )
-              })}
+          return (
+            <div
+              key={design.id}
+              draggable={canAfford}
+              onDragStart={e => handleDragStart(e, design)}
+              onMouseEnter={() => setHoveredId(design.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={() => handleBuy(design)}
+              className="rounded-xl border-2 flex flex-col gap-1 p-1.5 cursor-pointer transition"
+              style={{
+                background:   isFlash ? (flashOk ? '#00d49a18' : '#f03e4e18') : '#0d0d22',
+                borderColor:  isFlash ? (flashOk ? '#00d49a' : '#f03e4e')
+                              : hoveredId === design.id ? '#1499cc'
+                              : canAfford ? '#36366a' : '#1e1e3a',
+                opacity:      canAfford ? 1 : 0.45,
+              }}
+            >
+              {/* Mini art + name */}
+              <div className="flex items-center gap-1.5">
+                <DesignThumb design={design} size={28} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-black text-white truncate leading-tight">{design.name}</div>
+                  <div className="text-[9px] text-gray-500 capitalize truncate">{design.blockType.replace(/_/g, ' ')}</div>
+                </div>
+              </div>
+              {/* Cost */}
+              <div className="flex items-center justify-between">
+                <div className="text-[9px] text-gray-600 capitalize truncate">{design.series}</div>
+                <div className={`text-[11px] font-black ${canAfford ? 'text-pixel-yellow' : 'text-gray-600'}`}>
+                  {cost}px
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Hover tooltip at bottom */}
+      {hoveredDesign && (
+        <div
+          className="flex-shrink-0 border-t border-game-border px-2 py-2"
+          style={{ background: '#0d0d22' }}
+        >
+          <div className="text-xs font-black text-white mb-0.5">{hoveredDesign.name}</div>
+          <div className="text-[10px] text-pixel-blue font-bold capitalize mb-0.5">
+            {hoveredDesign.blockType.replace(/_/g, ' ')}
+          </div>
+          <div className="text-[10px] text-gray-400 leading-snug">{hoveredDesign.desc}</div>
+          <div className="text-[10px] text-pixel-yellow font-bold mt-1">
+            {getDesignLevelCost(hoveredDesign, bargain)}px · drag or click to buy
           </div>
         </div>
+      )}
+    </div>
+  )
+}
 
-        {/* Blocks */}
-        <div className="pb-3">
-          <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1.5">Blocks</div>
-          <div className="flex flex-col gap-1">
-            {availableBlocks.map(([key, bt]) => {
-              const fk = `block-${key}`
-              const canAfford = balance >= bt.levelCost
-              const isSuccess = flash?.key === fk && flash.ok
-              const isFail    = flash?.key === fk && !flash.ok
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleBuyBlock(key)}
-                  className="rounded-xl border-2 flex items-center gap-2 px-2.5 py-1.5 transition-all text-left"
-                  style={{
-                    background: isSuccess ? '#00d49a22' : isFail ? '#f03e4e22' : '#0d0d22',
-                    borderColor: isSuccess ? '#00d49a' : isFail ? '#f03e4e' : canAfford ? '#36366a' : '#36366a',
-                    opacity: canAfford ? 1 : 0.4,
-                  }}
-                >
-                  <span className="text-xs font-black text-white flex-1 leading-tight">{bt.label}</span>
-                  <span className="text-xs font-black text-pixel-blue flex-shrink-0">{bt.levelCost}px</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
+// Compact design thumbnail for the sidebar
+function DesignThumb({ design, size }) {
+  if (!design?.pixelLayout) return <div style={{ width: size, height: size }} className="bg-gray-800 rounded" />
+  const cellSize = size / 16
+  const COLOR_HEX = {
+    red:'#f03e4e', orange:'#f59342', yellow:'#ffd166', green:'#00d49a',
+    blue:'#1499cc', violet:'#a066f0', white:'#f0f0fa', silver:'#9db4cc',
+    gold:'#ffc000', neon:'#39ff14', rainbow:'#ff6b9d',
+  }
+  return (
+    <div style={{ width: size, height: size, flexShrink: 0 }} className="rounded overflow-hidden">
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(16, ${cellSize}px)` }}>
+        {design.pixelLayout.flat().map((color, i) => (
+          <div key={i} style={{ width: cellSize, height: cellSize, backgroundColor: color ? COLOR_HEX[color] ?? '#888' : 'transparent' }} />
+        ))}
       </div>
     </div>
   )

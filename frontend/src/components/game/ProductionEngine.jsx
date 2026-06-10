@@ -3,18 +3,17 @@ import { useGameStore } from '../../store/gameStore'
 import { useUserStore } from '../../store/userStore'
 import { useShopStore } from '../../store/shopStore'
 import { computeTick } from '../../engine/productionEngine'
-import { buildDominanceMap } from '../../engine/dominanceChecker'
-import { checkSetDiscovery, checkDominance, checkProduction, checkFullGrid } from '../../engine/achievementEngine'
+import { checkProduction, checkFullGrid } from '../../engine/achievementEngine'
 import { TICK_MS } from '../../lib/constants'
 
 export default function ProductionEngine({ requiredOutput }) {
   const {
     grid, levelActive, levelComplete,
-    addPixels, setPxPerSecond, tickCooldowns, completeLevel, updateBlockSets,
+    addPixels, setPxPerSecond, tickCooldowns, completeLevel, updateBlockSynergies,
     gameSpeed, gamePaused,
   } = useGameStore()
 
-  const { achievements, discoveredSets, unlockAchievements, addDiscoveredSets, user } = useUserStore()
+  const { achievements, unlockAchievements, user } = useUserStore()
   const { activeGridStyle } = useShopStore()
 
   const gridRef          = useRef(grid)
@@ -23,7 +22,6 @@ export default function ProductionEngine({ requiredOutput }) {
   const totalRef         = useRef(0)
   const requiredRef      = useRef(requiredOutput)
   const achievementsRef  = useRef(achievements)
-  const discoveredRef    = useRef(discoveredSets)
   const gridStyleRef     = useRef(activeGridStyle)
   const gridTickRef      = useRef(0)
   const gameSpeedRef     = useRef(gameSpeed)
@@ -35,7 +33,6 @@ export default function ProductionEngine({ requiredOutput }) {
   useEffect(() => { levelCompleteRef.current = levelComplete }, [levelComplete])
   useEffect(() => { requiredRef.current = requiredOutput },     [requiredOutput])
   useEffect(() => { achievementsRef.current = achievements },   [achievements])
-  useEffect(() => { discoveredRef.current = discoveredSets },   [discoveredSets])
   useEffect(() => { gridStyleRef.current = activeGridStyle },   [activeGridStyle])
   useEffect(() => { gameSpeedRef.current = gameSpeed },         [gameSpeed])
   useEffect(() => { gamePausedRef.current = gamePaused },       [gamePaused])
@@ -50,12 +47,12 @@ export default function ProductionEngine({ requiredOutput }) {
       tickCooldowns(TICK_MS)
       gridTickRef.current++
 
-      const { totalThisTick, totalPxPerSec, setMap } = computeTick(gridRef.current, {
+      const { totalThisTick, totalPxPerSec, synergyMap } = computeTick(gridRef.current, {
         activeGridStyle: gridStyleRef.current,
         gridTick: gridTickRef.current,
       })
 
-      updateBlockSets(setMap)
+      updateBlockSynergies(synergyMap)
       setPxPerSecond(totalPxPerSec * gameSpeedRef.current)
 
       const scaled = totalThisTick * gameSpeedRef.current
@@ -65,21 +62,8 @@ export default function ProductionEngine({ requiredOutput }) {
         if (totalRef.current >= requiredRef.current) completeLevel()
       }
 
-      // Achievements only fire when the user is logged in
+      // Achievements only fire when user is logged in
       if (!userRef.current) return
-
-      // Set discovery achievements
-      const activeSets = new Set()
-      for (const row of setMap) for (const s of row) { if (s) activeSets.add(s) }
-      if (activeSets.size > 0) {
-        const setKeys = checkSetDiscovery({ newSets: activeSets, discoveredSets: discoveredRef.current, unlockedKeys: achievementsRef.current })
-        if (setKeys.length) unlockAchievements(setKeys)
-        addDiscoveredSets(activeSets)
-      }
-
-      const domMap  = buildDominanceMap(gridRef.current)
-      const domKeys = checkDominance({ dominanceMapSize: domMap.size, unlockedKeys: achievementsRef.current })
-      if (domKeys.length) unlockAchievements(domKeys)
 
       const prodKeys = checkProduction({ totalPixelsProduced: totalRef.current, currentPxPerSecond: totalPxPerSec, unlockedKeys: achievementsRef.current })
       if (prodKeys.length) unlockAchievements(prodKeys)

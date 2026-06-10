@@ -8,8 +8,7 @@ function persist(state) {
   try {
     localStorage.setItem('pf_shop', JSON.stringify({
       activeGridStyle:  state.activeGridStyle,
-      unlockedPixels:   state.unlockedPixels,
-      unlockedBlocks:   state.unlockedBlocks,
+      unlockedBlocks:   state.unlockedBlocks,   // shop block-type unlocks (overflow, mirror, catalyst, void)
       purchasedSpeeds:  state.purchasedSpeeds,
     }))
   } catch {}
@@ -18,23 +17,18 @@ function persist(state) {
 const saved = loadState()
 
 export const useShopStore = create((set, get) => ({
-  activeGridStyle: saved.activeGridStyle  ?? 'base',
-  unlockedPixels:  saved.unlockedPixels   ?? [],
-  unlockedBlocks:  saved.unlockedBlocks   ?? [],
+  activeGridStyle: saved.activeGridStyle ?? 'base',
+
+  // Block types bought in the permanent shop (gates shop-only designs of those types)
+  // e.g. ['overflow', 'mirror', 'catalyst', 'void']
+  unlockedBlocks:  saved.unlockedBlocks  ?? [],
+
   // Persistent speed unlocks — bought with gold in the permanent Shop
-  purchasedSpeeds: saved.purchasedSpeeds  ?? [],
+  purchasedSpeeds: saved.purchasedSpeeds ?? [],
 
   setGridStyle(key) {
     set({ activeGridStyle: key })
     persist({ ...get(), activeGridStyle: key })
-  },
-
-  unlockPixel(key) {
-    const state = get()
-    if (state.unlockedPixels.includes(key)) return
-    const next = [...state.unlockedPixels, key]
-    set({ unlockedPixels: next })
-    persist({ ...state, unlockedPixels: next })
   },
 
   unlockBlock(key) {
@@ -53,13 +47,10 @@ export const useShopStore = create((set, get) => ({
     persist({ ...state, purchasedSpeeds: next })
   },
 
-  isPixelUnlocked(key) {
-    const ALWAYS = ['white', 'red', 'orange', 'yellow', 'green', 'blue', 'violet']
-    return ALWAYS.includes(key) || get().unlockedPixels.includes(key)
-  },
-
-  isBlockUnlocked(key) {
-    const ALWAYS = ['base', 'doubler', 'cross_amp', 'color_checker', 'greedy']
+  isBlockTypeUnlocked(key) {
+    const ALWAYS = ['base', 'doubler', 'cross_amp', 'color_checker', 'greedy',
+                    'amplifier', 'resonator', 'reactor', 'echo', 'prism',
+                    'conductor', 'splitter', 'focus', 'cluster', 'forge']
     return ALWAYS.includes(key) || get().unlockedBlocks.includes(key)
   },
 }))

@@ -3213,4 +3213,5 @@ export function getEndlessQuestion(difficulty) {
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-export const ENDLESS_REWARDS = { easy: 10, normal: 25, hard: 50 }
+// Number of bonus design blocks added to inventory at start of next wave on correct answer
+export const ENDLESS_REWARDS = { easy: 1, normal: 1, hard: 2 }

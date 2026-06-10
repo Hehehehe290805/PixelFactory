@@ -17,8 +17,8 @@ const WAVE_DIRS = [
   { dir: 'up-left',    icon: '↖', label: 'UL' },
 ]
 
-export default function Grid({ selectedBlockId, onBlockSelect }) {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir } = useGameStore()
+export default function Grid() {
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, replaceBlock } = useGameStore()
   const cellSize = useGridCellSize()
 
   const [pulsingSlots, setPulsingSlots] = useState(new Set())
@@ -74,31 +74,24 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
       if (inventory.length === 0) return []
       return inventory.slice(0, 9).map(block => ({
         content: <Block block={block} size={32} />,
-        label: block.type.replace(/_/g, ' '),
+        label: block.name ?? block.type.replace(/_/g, ' '),
         color: '#1499cc',
         onClick: () => {
-          if (wheel.type === 'add') removeBlock(wheel.row, wheel.col)
-          placeBlock(block.id, wheel.row, wheel.col)
-          if (block.pixelCount === 0) onBlockSelect?.(block.id)
+          if (wheel.type === 'add') {
+            replaceBlock(wheel.row, wheel.col, block.id)
+          } else {
+            placeBlock(block.id, wheel.row, wheel.col)
+          }
           dismiss()
         },
       }))
     }
 
-    // Occupied cell action wheel
+    // Occupied cell action wheel — no Paint option (designs have fixed art)
     if (wheel.type === 'occupied') {
       const occupant = grid[wheel.row]?.[wheel.col]
       if (!occupant) return []
       return [
-        {
-          icon: '✏️',
-          label: 'Paint',
-          color: '#ffd166',
-          onClick: () => {
-            onBlockSelect?.(occupant.id)
-            dismiss()
-          },
-        },
         {
           icon: '↔',
           label: 'Move',
@@ -113,7 +106,6 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
           label: 'Replace',
           color: '#00d49a',
           onClick: () => {
-            // Remove current block and pick a replacement from inventory
             setWheel({ type: 'add', row: wheel.row, col: wheel.col, x: wheel.x, y: wheel.y })
           },
         },
@@ -176,8 +168,8 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
               row={r} col={c}
               block={grid[r][c]}
               cellSize={cellSize}
-              selectedBlockId={selectedBlockId}
-              onBlockSelect={onBlockSelect}
+              selectedBlockId={null}
+              onBlockSelect={null}
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
               moveTarget={!!movingBlock && !grid[r][c]}

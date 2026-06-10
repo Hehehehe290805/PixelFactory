@@ -1,42 +1,26 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BLOCK_CANVAS_SIZE, PIXEL_COLORS } from '../../lib/constants'
+import { BLOCK_CANVAS_SIZE } from '../../lib/constants'
 
 const CELL = 3
 
-const SET_COLORS = {
-  PRIMARY: '#e63946', MIDNIGHT: '#9b5de5', PHILIPPINES: '#ffd166',
-  GRASS: '#06d6a0',   SUNSET: '#f4a261',   SILVER_MIST: '#9db4cc',
-  NEON_RUSH: '#39ff14', AURORA: '#a0c4ff',  SUNRISE: '#ffc000',
-  OCEAN: '#1499cc',   FIRE: '#f03e4e',     ROYAL: '#a066f0',
-  EMBER: '#f59342',   TROPICS: '#00d49a',  CORAL: '#f87171',
-}
-
 // Maps waveDir to CSS animation name + transform-origin
 const WAVE_MAP = {
-  up:         { anim: 'pixelWaveV', origin: 'bottom center' },
-  down:       { anim: 'pixelWaveV', origin: 'top center' },
-  left:       { anim: 'pixelWaveH', origin: 'right center' },
-  right:      { anim: 'pixelWaveH', origin: 'left center' },
-  'up-left':  { anim: 'pixelWaveD', origin: 'bottom right' },
-  'up-right': { anim: 'pixelWaveD', origin: 'bottom left' },
-  'down-left':{ anim: 'pixelWaveD', origin: 'top right' },
+  up:          { anim: 'pixelWaveV', origin: 'bottom center' },
+  down:        { anim: 'pixelWaveV', origin: 'top center' },
+  left:        { anim: 'pixelWaveH', origin: 'right center' },
+  right:       { anim: 'pixelWaveH', origin: 'left center' },
+  'up-left':   { anim: 'pixelWaveD', origin: 'bottom right' },
+  'up-right':  { anim: 'pixelWaveD', origin: 'bottom left' },
+  'down-left': { anim: 'pixelWaveD', origin: 'top right' },
   'down-right':{ anim: 'pixelWaveD', origin: 'top left' },
 }
 
-function getDominantColor(pixelLayout, pixelCount) {
-  if (pixelCount === 0) return null
-  const counts = {}
-  for (const row of pixelLayout) {
-    for (const color of row) {
-      if (color && color !== 'white') counts[color] = (counts[color] ?? 0) + 1
-    }
-  }
-  let best = null, bestN = 0
-  for (const [color, n] of Object.entries(counts)) {
-    if (n > bestN) { best = color; bestN = n }
-  }
-  return best
+// Color hex map (design library uses these keys)
+const COLOR_HEX = {
+  red:'#f03e4e', orange:'#f59342', yellow:'#ffd166', green:'#00d49a',
+  blue:'#1499cc', violet:'#a066f0', white:'#f0f0fa', silver:'#9db4cc',
+  gold:'#ffc000', neon:'#39ff14', rainbow:'#ff6b9d',
 }
 
 export default function Block({ block, size = 48, showPulse = false, onClick }) {
@@ -62,28 +46,25 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     for (let r = 0; r < BLOCK_CANVAS_SIZE; r++) {
       for (let c = 0; c < BLOCK_CANVAS_SIZE; c++) {
-        const color = block.pixelLayout[r]?.[c]
-        if (color && PIXEL_COLORS[color]) {
-          ctx.fillStyle = PIXEL_COLORS[color].hex
+        const color = block.pixelLayout?.[r]?.[c]
+        if (color && COLOR_HEX[color]) {
+          ctx.fillStyle = COLOR_HEX[color]
           ctx.fillRect(c * CELL, r * CELL, CELL, CELL)
         }
       }
     }
   }
 
-  const canvasSize   = BLOCK_CANVAS_SIZE * CELL
-  const fillRatio    = Math.min(1, block.pixelCount / (BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE))
-  const domColor     = getDominantColor(block.pixelLayout, block.pixelCount)
-  const fillHex      = domColor ? (PIXEL_COLORS[domColor]?.hex ?? '#118ab2') : '#118ab2'
-  const isActive     = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
-  const waveDir      = block.waveDir ?? 'up'
-  const waveConf     = WAVE_MAP[waveDir] ?? WAVE_MAP.up
-  // Cycle duration: 37.5 / pixelCount seconds (1 pixel per cycle at base rate), clamped
-  const cycleDuration = block.pixelCount > 0
+  const canvasSize     = BLOCK_CANVAS_SIZE * CELL
+  const fillRatio      = Math.min(1, block.pixelCount / (BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE))
+  const fillHex        = block.dominantColor ? (COLOR_HEX[block.dominantColor] ?? '#118ab2') : '#118ab2'
+  const isActive       = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
+  const waveDir        = block.waveDir ?? 'up'
+  const waveConf       = WAVE_MAP[waveDir] ?? WAVE_MAP.up
+  const cycleDuration  = block.pixelCount > 0
     ? Math.max(0.4, Math.min(8, 37.5 / block.pixelCount))
     : 3
-
-  const floatAmount = `+${Math.max(1, Math.round(block.pixelCount / 37.5))}`
+  const floatAmount    = `+${Math.max(1, Math.round(block.pixelCount / 37.5))}`
 
   return (
     <div
@@ -95,7 +76,6 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
         transition: 'box-shadow 0.35s ease-out',
       }}
     >
-      {/* Clipped inner layer — canvas + overlays */}
       <div className="absolute inset-0 rounded overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -104,7 +84,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
           style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
         />
 
-        {/* Pixel-fill indicator */}
+        {/* Fill ratio indicator */}
         {fillRatio > 0 && (
           <div
             className="absolute bottom-0 left-0 right-0 pointer-events-none"
@@ -124,9 +104,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
             style={{
               background: `linear-gradient(
                 ${waveDir === 'right' || waveDir === 'left' ? '90deg' : '0deg'},
-                transparent 0%,
-                rgba(255,255,255,0.55) 50%,
-                transparent 100%
+                transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%
               )`,
               mixBlendMode: 'screen',
               transformOrigin: waveConf.origin,
@@ -136,7 +114,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
         )}
       </div>
 
-      {/* Float — rises above the block on each wave cycle */}
+      {/* Floating +N */}
       <AnimatePresence>
         {floatKey > 0 && (
           <motion.div
@@ -153,33 +131,23 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
         )}
       </AnimatePresence>
 
-      {/* Active set badge (top-right dot) */}
-      {block.activeSet && (
+      {/* Active synergy dot (top-right) */}
+      {block.activeSynergy && (
         <div
-          className="absolute top-0 right-0 w-2 h-2 rounded-bl-sm"
-          style={{ backgroundColor: SET_COLORS[block.activeSet] ?? '#fff' }}
-          title={block.activeSet}
+          className="absolute top-0 right-0 w-2 h-2 rounded-bl-sm bg-pixel-green"
+          title={block.activeSynergy}
         />
       )}
 
-      {/* Color checker target dot (top-left) */}
-      {block.type === 'color_checker' && block.colorCheckerColor && (
+      {/* Color checker triggered indicator */}
+      {block.type === 'color_checker' && (
         <div
           className="absolute top-0 left-0 w-2 h-2 rounded-br-sm"
           style={{
-            backgroundColor: PIXEL_COLORS[block.colorCheckerColor]?.hex ?? '#fff',
-            opacity: block.colorCheckerTriggered ? 1 : 0.5,
+            backgroundColor: fillHex,
+            opacity: block.colorCheckerTriggered ? 1 : 0.4,
           }}
-          title={`Target: ${block.colorCheckerColor}${block.colorCheckerTriggered ? ' ✓' : ''}`}
-        />
-      )}
-
-      {/* Focus color indicator (top-left, for focus blocks) */}
-      {block.type === 'focus' && block.focusColor && (
-        <div
-          className="absolute top-0 left-0 w-2 h-2 rounded-br-sm"
-          style={{ backgroundColor: PIXEL_COLORS[block.focusColor]?.hex ?? '#fff', opacity: 0.8 }}
-          title={`Focus: ${block.focusColor}`}
+          title={block.colorCheckerTriggered ? 'Triggered ✓' : 'Not yet triggered'}
         />
       )}
 
@@ -192,7 +160,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
 
       {/* Type badge */}
       <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-center" style={{ fontSize: 7, lineHeight: '10px' }}>
-        <span className="text-gray-300 uppercase tracking-wider">{block.type.replace('_', '').slice(0, 4)}</span>
+        <span className="text-gray-300 uppercase tracking-wider">{block.type.replace(/_/g, '').slice(0, 4)}</span>
       </div>
     </div>
   )
