@@ -16,7 +16,7 @@ GitHub: **https://github.com/Hehehehe290805/PixelFactory**
 ### ✅ Completed
 
 - `data/designLibrary.js` — 200+ designs with fixed 16×16 pixel art, block type, series, desc, unlock source
-- `engine/designSynergies.js` — 35 synergies (series_count, exact_count, adjacency_pair, row_series); replaces setDetector + synergyEngine
+- `engine/designSynergies.js` — 49 synergies across 7 types (series_count, exact_count, adjacency_pair, row_series, long_range, core_radius, block_type_count); replaces setDetector + synergyEngine
 - `lib/designUnlocks.js` — milestone pairs, `useDesignUnlocks()`, `shouldShowDesignChoice()`
 - `store/gameStore.js` — paint methods removed; `createBlock(design)` takes a design; deck selection; `buyDesignFromShop`
 - `store/shopStore.js` — pixel unlocks removed; gates block-type unlocks for shop designs
@@ -265,7 +265,7 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
 
 ## Design Synergy System (`engine/designSynergies.js`)
 
-Replaces the old pixel-set / radiation system.
+Replaces the old pixel-set / radiation system. **49 synergies across 7 types.**
 
 ### Synergy Types
 
@@ -273,29 +273,113 @@ Replaces the old pixel-set / radiation system.
 |---|---|---|
 | `series_count` | N designs of same series anywhere on grid | GARDEN: 5 flower designs → +20% all output |
 | `exact_count` | N copies of exact same design on grid | ROSE PARADE: 3 Roses → +25% those blocks |
-| `adjacency_pair` | Two specific designs placed adjacent | SUN & MOON: Sun + Moon adjacent → +30% both |
-| `row_series` | N designs of same series in same row | URBAN PLANNING: 4 buildings in one row → +25% row |
+| `adjacency_pair` | Two specific designs placed orthogonally adjacent | SUN & MOON: Sun + Moon adjacent → +30% both |
+| `row_series` | N designs of same series in same horizontal row | CITY BLOCK: 4 buildings in one row → +28% that row |
+| `long_range` | Two qualifying designs at least `minDist` cells apart (Manhattan) | DISTANT STARS: 2 space designs ≥5 apart → +25% both |
+| `core_radius` | One "core" design + N "satellite" designs within `radius` cells | SOLAR SYSTEM: Sun + 3 space within 3 cells → Sun +40%, ring +20% |
+| `block_type_count` | N blocks sharing the same `blockType` anywhere on grid | ECHO CHAMBER: 3 echo blocks → +20% each |
+
+### Synergy Definition Fields
+
+```js
+// Common to all types:
+{
+  name, type, desc,
+  own,               // additive output bonus for qualifying blocks (e.g. 0.20 = +20%)
+  radiation: {       // optional — bonus that spreads to neighbors
+    type: 'ortho' | 'diag' | 'all8',
+    amount,          // additive bonus to radiation targets
+  },
+}
+
+// series_count / row_series:
+{ series, required }
+
+// exact_count:
+{ designId, required }
+
+// adjacency_pair:
+{ seriesA, seriesB, designA, designB }  // designA/B override series check if set
+
+// long_range — same-series pair:
+{ series, minDist }
+// long_range — cross-series or cross-design pair:
+{ seriesA, seriesB, minDist }   // or: { designA, designB, minDist }
+
+// core_radius:
+{
+  coreDesignId,        // specific design id for the anchor (OR use coreSeries)
+  coreSeries,          // any design of this series can be the core
+  satelliteSeries,     // qualifying satellite designs must be of this series
+  requiredSatellites,  // how many satellites must be within radius
+  radius,              // max Manhattan distance from core to satellite
+  ownCore,             // bonus for the core block
+  ownSatellite,        // bonus for each qualifying satellite block
+  own,                 // = ownCore, used for synergyMap priority comparison
+}
+
+// block_type_count:
+{ blockType, required }  // blockType matches block.type (e.g. 'reactor', 'echo')
+```
 
 ### Active Synergy Bonuses
 
-Each synergy specifies:
-- `own`: output multiplier to qualifying blocks (e.g. 1.20)
-- `radiation.type`: `'ortho'`, `'diag'`, or `'all8'` — how bonus spreads to neighbors
-- `radiation.amount`: additive bonus to radiation targets
+Each synergy contributes additively to `bonusMap[r][c]`. A cell may receive:
+- Its own `own` bonus (if it qualifies for that synergy)
+- Radiation from neighbors that qualify for that synergy
+- For `core_radius`: `ownCore` if it is the core, `ownSatellite` if it is a satellite
+
+### Long-Range Synergies (5 synergies)
+
+Rewards spreading designs across the full grid. Manhattan distance between the pair must be ≥ `minDist`.
+
+| ID | Name | Condition | Bonus |
+|---|---|---|---|
+| DISTANT_STARS | Distant Stars | 2 space ≥5 | +25% · +8% all-8 |
+| ANTIPODES | Antipodes | 2 landscapes ≥6 | +22% · +6% ortho |
+| POLAR_WINDS | Polar Winds | weather + landscape ≥5 | +28% both |
+| TRANSCONTINENTAL | Transcontinental | 2 buildings ≥5 | +20% · +7% ortho |
+| WILD_MIGRATION | Wild Migration | 2 animals ≥5 | +22% · +6% ortho |
+
+### Core-Radius Synergies (5 synergies)
+
+One anchor block + N satellites within a Manhattan radius. Core and satellites get separate bonuses.
+
+| ID | Name | Core | Satellites | Radius | Core | Sat |
+|---|---|---|---|---|---|---|
+| SOLAR_SYSTEM | Solar System | sun design | 3 space | 3 | +40% | +20% |
+| ROYAL_COURT | Royal Court | crown design | 3 symbols | 2 | +35% | +20% |
+| ECOSYSTEM | Ecosystem | any tree | 3 animals | 2 | +25% | +18% |
+| MOUNTAIN_KINGDOM | Mountain Kingdom | mountain design | 3 landscapes | 2 | +30% | +18% |
+| BLOOMING_CORE | Blooming Core | any flower | 4 flowers | 3 | +35% | +15% |
+
+### Block-Type Synergies (3 synergies)
+
+Works across all series — only the block effect type matters.
+
+| ID | Name | Block Type | Required | Bonus |
+|---|---|---|---|---|
+| DOUBLE_DOWN | Double Down | doubler | 3 | +25% · +8% ortho |
+| REACTOR_NETWORK | Reactor Network | reactor | 2 | +30% · +10% all-8 |
+| ECHO_CHAMBER | Echo Chamber | echo | 3 | +20% · +7% ortho |
 
 ### Synergy Detection API
 
 ```js
-// Returns: { synergyMap: 2D array of synergyId|null, activeList: [{...synergy, progress, active}] }
-buildSynergyData(grid)
+// Returns:
+//   synergyMap[r][c] — id of highest-priority active synergy for that cell (or null)
+//   bonusMap[r][c]   — total additive bonus for that cell (own + received radiation)
+//   activeList       — [{ id, name, desc, active, progress, required }] for ActiveEffectsPanel
+buildSynergyData(grid, neuralGridStyle = false)
+
+getSynergyMultiplier(r, c, bonusMap)        // → 1 + bonusMap[r][c]
+getBestNeighborSynergyBonus(r, c, grid, bonusMap)  // used by Conductor
 ```
 
-`synergyMap[r][c]` is the ID of the highest-value active synergy affecting that cell.
-`getSynergyMultiplier(r, c, synergyMap)` returns the total multiplier for a cell including radiation.
-`getActiveSynergies(grid)` returns the list used by `ActiveEffectsPanel`.
+Priority for `synergyMap[r][c]`: the synergy whose `ownCore ?? own` is largest wins the cell (so the most impactful active synergy is displayed per block).
 
 ### Conductor Block (updated)
-`getConductorBonus` now borrows the highest synergy bonus from adjacent blocks instead of the old set bonus.
+Borrows the highest `bonusMap` value from any of the 8 adjacent cells.
 
 ---
 
@@ -481,10 +565,14 @@ At levels 5, 10, 15, 20, 25, 30 (and every 5 levels after), a design choice moda
 
 Displayed on the right side of the play area, below `PixelCounter`.
 
-- Lists all design synergies currently **active** (glowing) or **in progress**
-- Format: `GARDEN (3/5 flower designs)` — shows series name, count, and required
-- Active synergies show their bonus (e.g. `+20% output`)
-- Completed synergies highlight in green/gold
+- Lists all synergies currently **active** (green glow) or **in progress** (gray, count > 0)
+- Each row shows: synergy name · `progress/required` counter · progress bar
+- Click any row to expand a **dropdown** that shows:
+  - **Type badge** — colored label (ANY POSITION, ADJACENT, LONG RANGE, RADIUS, BLOCK TYPE, etc.) so the player immediately knows the spatial pattern
+  - **Bonus** — e.g. `+20% output · radiates +8%` or `core +40% · ring +20%` for radius synergies
+  - **How to activate** — plain-language setup instructions tailored to that synergy type
+  - **How many more** designs are still needed (when not yet active)
+- Active synergies highlight in green/gold; completed bonuses shown inline when collapsed
 
 ---
 

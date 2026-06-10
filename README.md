@@ -1,136 +1,199 @@
 # PixelFactory
 
-A browser-based **idle/strategy game** about parallel programming. Each block on the grid is an independent process producing pixels simultaneously — just like parallel threads contributing to a shared output. Design blocks, place them on a 12×12 grid, and optimize your layout using synergies, set bonuses, and block interactions to hit the pixel output targets.
+A browser-based **idle/strategy game** about parallel programming. Each block on the grid is an independent process producing pixels per second — just like parallel threads contributing to a shared output. Choose pre-designed art blocks from your collection, place them on a 12×12 grid, and optimize your layout using design synergies, block effects, and spatial patterns to hit pixel output targets.
 
 ---
 
 ## Play It
 
-Deployed on GitHub Pages:  
-**https://Hehehehe290805.github.io/pixelfactory/**
+Live at: **https://Hehehehe290805.github.io/PixelFactory/**
 
 ---
 
-## Features
+## How It Works
 
-### Core Gameplay
+### Core Loop
 
-- **12×12 grid** — drag, place, move, and remove blocks freely during a run
-- **16×16 pixel editor** — paint individual pixels onto each block to power its output
-- **Game tick engine** (100 ms / 10 ticks per second) — all blocks produce in parallel every tick
-- **Progress bar** that never decreases — pixel total is append-only; spending is tracked separately
-- **Block move cooldown** — moving a block pauses its production for 5 seconds
+1. **Pick your deck** — Before each level, choose 10 designs from your unlocked collection
+2. **Pre-buy** — Spend starting pixels to buy some deck designs into your opening hand
+3. **Play** — Place blocks on the grid; the engine ticks every 100 ms producing pixels in parallel
+4. **Win** — Reach the required pixel total before time runs out (or in Endless: survive as long as possible)
 
-### Block Types (15 total)
+### Designs & Block Types
+
+Every block on the grid is a **design** — a fixed 16×16 pixel artwork that comes bundled with a specific **block type** (its effect). Designs are grouped into 12 **series** (flowers, trees, buildings, celestial, animals, shapes, food, symbols, weather, landscapes, space, abstract). The pixel art is decorative; the series and block type determine gameplay.
+
+**19 block types:**
 
 | Block | Effect |
 |---|---|
-| **Base** | Output = pixels × 0.8 px/s |
-| **Doubler** | ×2 output if all 4 orthogonal neighbors have < half its pixels |
-| **Cross Amplifier** | Adds flat px/s to each diagonal neighbor |
-| **Color Checker** | Assigned a random color — when ≥50% pixels match, cuts required output by 5% |
-| **Greedy** | On complete: earns gold based on pixel surplus vs. neighbors |
-| **Overflow** | Bursts at 3× output for 5 s every 10 s |
-| **Mirror** | Copies the output rate of its best orthogonal neighbor |
-| **Catalyst** | Synergy bonuses in its row are ×1.5 |
-| **Void** | Produces 0 px; gives +15% to all 8 surrounding blocks |
-| **Amplifier** | +8% per occupied neighbor (max +64%) |
-| **Resonator** | +50% if any orthogonal neighbor is the same type |
-| **Reactor** | Ramps from 50% → 200% output over 15 s; resets on move |
-| **Conductor** | Borrows the highest set bonus from adjacent blocks |
-| **Prism** | +5% per unique non-white color in its pixels (max +30%) |
+| **Base** | `floor(pixelCount / 37.5)` px/s |
+| **Doubler** | ×2 if all 4 ortho neighbors have < half its pixelCount |
+| **Cross Amp** | Adds flat px/s to each diagonal neighbor |
+| **Color Checker** | Dominant color ≥50% → −5% required output (once, on placement) |
+| **Greedy** | On complete: gold based on pixel surplus vs. neighbors |
+| **Amplifier** | +8% per occupied neighbor (all 8) |
+| **Resonator** | +50% if any ortho neighbor is same block type |
+| **Reactor** | Ramps 50%→200% over 15 s; resets on move |
 | **Echo** | +4% per 10 s stationary (max +80%) |
-| **Splitter** | Gives orthogonal neighbors a flat +20% of its own rate |
-| **Focus** | Assigned a color at placement; output scales from ×1 → ×2 based on color match |
-| **Cluster** | +12% per occupied neighbor (all 8, excluding void) |
-| **Forge** | On level complete: +3 gold per pixel held |
+| **Prism** | +5% per unique non-white color in design's pixel art (max +30%) |
+| **Conductor** | Borrows highest synergy bonus from adjacent blocks |
+| **Splitter** | Gives ortho neighbors +20% of own rate |
+| **Focus** | Output = `pixelCount/37.5 × (1 + dominantColorRatio)` |
+| **Cluster** | +12% per occupied neighbor (excl. void) |
+| **Forge** | On complete: +3 gold per pixel held |
+| **Overflow** | 3× burst for 5 s every 10 s (shop-only) |
+| **Mirror** | Copies best ortho neighbor rate (shop-only) |
+| **Catalyst** | Synergy bonuses in same row ×1.5 (shop-only) |
+| **Void** | 0 output; +15% to all 8 surrounding blocks (shop-only) |
 
-### Pixel Colors (11 total)
+---
 
-Standard (always available): **White, Red, Orange, Yellow, Green, Blue, Violet**  
-Unlockable from Shop: **Rainbow** (wildcard), **Silver** (2× output weight), **Gold** (+5 gold/pixel on complete), **Neon** (1.5× output weight)
+## Design Synergy System
 
-### Pixel Sets (15 sets)
+Synergies activate when designs are arranged in specific spatial patterns. There are **7 synergy types**:
 
-Blocks whose pixels exclusively match a set's color list (meeting the minimum pixel count) activate a bonus on that block and optionally radiate to neighbors.
+### 1. Series Count — place N of the same series anywhere
+> Example: 5 flower designs anywhere on the grid → **Garden** (+20% each, +8% ortho radiation)
 
-**Original:**
+All 12 series have both a full-tier (4–5 designs) and a mini-tier (2 designs) synergy. Once enough designs of a series are on the grid the bonus applies regardless of where they sit.
 
-| Set | Colors | Min Px | Own Bonus | Radiation |
+### 2. Exact Count — place N copies of the exact same design
+> Example: 3 Rose designs → **Rose Parade** (+25% each)
+
+### 3. Adjacency Pair — place two specific designs side by side
+> Example: Sun touching Moon → **Sun & Moon** (+30% both). Must be orthogonally adjacent (no diagonal).
+
+### 4. Row Series — place N of the same series in the same horizontal row
+> Example: 4 buildings in one row → **City Block** (+28% that row)
+
+### 5. Long Range — place two designs at least N cells apart
+> Example: 2 space designs ≥5 cells apart → **Distant Stars** (+25% both, radiates +8%)
+
+Rewards spreading designs across the full grid. The Manhattan distance between the two qualifying blocks must meet or exceed `minDist`.
+
+| Synergy | Condition | Bonus |
+|---|---|---|
+| Distant Stars | 2 space designs ≥5 apart | +25% · +8% all-8 radiation |
+| Antipodes | 2 landscapes ≥6 apart | +22% · +6% ortho |
+| Polar Winds | weather + landscape ≥5 apart | +28% both |
+| Transcontinental | 2 buildings ≥5 apart | +20% · +7% ortho |
+| Wild Migration | 2 animals ≥5 apart | +22% · +6% ortho |
+
+### 6. Core Radius — place an anchor design, then surround it with satellites
+> Example: Place Sun on the grid, then put 3+ space designs within 3 cells → **Solar System** (Sun +40%, satellites +20%)
+
+One "core" block acts as an anchor. The bonus activates when enough "satellite" designs are placed within a radius (Manhattan distance) of the core. Core and satellites get different bonus values.
+
+| Synergy | Core | Satellites | Radius | Core bonus | Satellite bonus |
+|---|---|---|---|---|---|
+| Solar System | Sun | 3 space designs | 3 | +40% | +20% |
+| Royal Court | Crown | 3 symbol designs | 2 | +35% | +20% |
+| Ecosystem | any tree | 3 animal designs | 2 | +25% | +18% |
+| Mountain Kingdom | Mountain | 3 landscape designs | 2 | +30% | +18% |
+| Blooming Core | any flower | 4 flower designs | 3 | +35% | +15% |
+
+### 7. Block Type Count — place N blocks sharing the same effect type
+> Example: 3 Echo blocks anywhere → **Echo Chamber** (+20% each, +7% ortho radiation). Any series works.
+
+| Synergy | Block Type | Required | Bonus |
+|---|---|---|---|
+| Double Down | doubler | 3 | +25% · +8% ortho |
+| Reactor Network | reactor | 2 | +30% · +10% all-8 |
+| Echo Chamber | echo | 3 | +20% · +7% ortho |
+
+### Reading the Active Effects Panel
+
+During a level, the right-side panel lists every synergy that is active or in progress. Click any entry to expand it and see:
+- A **type badge** (ADJACENT, LONG RANGE, RADIUS, BLOCK TYPE, etc.) — tells you the spatial pattern required
+- The current **bonus** if active
+- **How to activate** — plain-language setup instructions specific to that synergy type
+- **How many more** designs are needed
+
+---
+
+## Deck System
+
+### Before Each Level
+1. **DeckSelector** opens — pick 10 designs from your unlocked collection
+2. **Pre-buy phase** — spend starting pixels (`50 + level × 5`, capped at 300) to load some designs into your opening hand
+3. The remaining deck designs appear in the **ShopSidebar** during the level
+
+### In-Level Shop
+- Shows all 10 chosen deck designs with pixel costs
+- Drag directly from the shop to the grid when you can afford it
+- Hover a design for its name, series, effect description, and cost
+- **Bargain** grid style reduces all in-level costs by 20%
+
+**Approximate design costs by block type:**
+
+| Type | Cost (px) | | Type | Cost (px) |
 |---|---|---|---|---|
-| PRIMARY | Red, Blue, Yellow | 40 | +20% | — |
-| MIDNIGHT | Blue, Violet | 35 | +15% | Ortho +10% |
-| PHILIPPINES | Red, Blue, Yellow, White | 45 | +10% | Ortho +5% |
-| GRASS | Yellow, Green | 30 | +12% | Diag +8% |
-| SUNSET | Red, Yellow, Orange | 38 | +18% | — |
+| base | 13 | | focus | 42 |
+| doubler | 39 | | cluster | 55 |
+| cross_amp | 32 | | forge | 78 |
+| color_checker | 26 | | overflow | 65 |
+| greedy | 52 | | mirror | 58 |
+| amplifier | 45 | | catalyst | 78 |
+| resonator | 55 | | void | 45 |
+| reactor | 91 | | | |
 
-**Standard-color sets (new):**
+---
 
-| Set | Colors | Min Px | Own Bonus | Radiation |
-|---|---|---|---|---|
-| OCEAN | Blue, Green | 32 | +18% | Ortho +8% |
-| FIRE | Red, Orange | 28 | +20% | Diag +10% |
-| ROYAL | Violet, Blue, Red | 38 | +24% | Ortho +12% |
-| EMBER | Red, Orange, Violet | 42 | +28% | Diag +12% |
-| TROPICS | Orange, Green, Blue | 42 | +26% | All-8 +8% |
-| CORAL | Red, Orange, Green | 36 | +22% | Ortho +6% |
+## Design Unlock Progression
 
-**Special-pixel sets:**
+| Source | Reward |
+|---|---|
+| Complete Level 1 (tutorial) | 10 starter designs — one per main series |
+| Every 5th campaign level | Choose 1 of 2 specific designs |
+| Permanent shop | 30 exclusive shop-only designs |
+| Endless: survive 20 min total | Rainbow Prism design |
+| Campaign: 25 correct quiz answers | Crystal Star design |
+| Campaign: 50 correct quiz answers | Nebula design |
+| Specific achievements | Cosmetic visual-only designs |
 
-| Set | Colors | Min Px | Own Bonus | Radiation |
-|---|---|---|---|---|
-| SILVER_MIST | Silver, White | 40 | +22% | Ortho +6% |
-| NEON_RUSH | Neon, Yellow, Green | 35 | +20% | Ortho +10% |
-| AURORA | Green, Blue, Violet | 38 | +25% | All-8 +12% |
-| SUNRISE | Orange, Yellow | 45 | +26% | Diag +10% |
+**Starter designs (given after tutorial):** Daisy · Oak · House · Star · Cat · Heart · Snowflake · Mountain · Circle · Apple
 
-**Synergy bonus:** Two orthogonally adjacent blocks with the same set each gain an additional **+15%**.
+---
 
-### Color Dominance
-
-If a single non-white color makes up >50% of a block's pixels, all 8 surrounding blocks get **+25%** output.
-
-### Grid Styles (12 total)
+## Grid Styles (12 total — permanent shop)
 
 | Style | Cost | Effect |
 |---|---|---|
-| Base Grid | Free | No bonus |
+| Base | Free | — |
 | Gold Rush | 500g | +15% gold per level |
-| Overclock | 800g | +10% all output |
+| Overclock | 800g | +10% output |
 | Efficiency | 600g | +20% time, −10% required |
-| Bargain | 700g | Blocks & pixels 20% cheaper |
+| Bargain | 700g | In-level shop 20% cheaper |
 | Quantum | 1000g | 2× burst every 30 s for 5 s |
-| Neural | 700g | Color Checker cuts −8% (not −5%) |
+| Neural | 700g | Synergy thresholds −1 (e.g. need 4 flowers instead of 5) |
 | Industrial | 600g | +3% per 10 placed blocks |
-| Synergy+ | 900g | Same-set synergy is +25% (not +15%) |
-| Cascade | 750g | Lower rows produce more (up to +24%) |
-| Overcharge | 850g | +25% all output |
+| Synergy+ | 900g | All synergy bonuses +25% stronger |
+| Cascade | 750g | Rows 6–11: +4% per row below row 5 |
+| Overcharge | 850g | +25% output |
 | Lattice | 650g | +35% for blocks with exactly 4 ortho neighbors |
 
-### Game Modes
+---
 
-- **Campaign** — 200 levels across 6 tiers (Tutorial → Grandmaster). Hand-crafted levels 1–10, procedurally generated 11–200. Score ★ based on completion speed.
-- **Endless** — No time limit. Waves scale at ×1.6. Leaderboard synced to Supabase.
+## Game Modes
 
-### Shop & Templates
+- **Campaign** — 200 levels, 6 tiers (Tutorial → Grandmaster). Hand-crafted levels 1–10, procedurally generated 11–200. Design choice modals unlock new designs every 5 levels.
+- **Endless** — No time limit. Waves scale at ×1.6. Leaderboard on Supabase. Survive 20 total minutes to unlock the Rainbow Prism design.
 
-- Buy new block types, special pixels, and grid styles with gold earned from levels
-- Save custom 16×16 block designs as templates; use them instantly in-level
-- Official prebuilt templates for each set included (one per set)
-- Base 5 template slots, expandable via Shop
+---
 
-### Achievements (36 total)
+## Profile
 
-Categories: Campaign Progress, Stars, Set Discovery, Production Milestones, Gold & Blocks, Endless Mode, Shop & Templates.
+The **Profile** page shows your full design collection (200+ designs):
+- **Unlocked**: full color with name, series, and effect
+- **Locked**: grayscale silhouette with unlock hint
+- Filter by series using the tabs at the top
 
-### UI
+---
 
-- **Block fill-up animation** — each placed block shows a colored bar rising bottom-to-top, cycling at a speed proportional to its production rate
-- **Left sidebar in-level shop** — buy pixel packs and color packs without leaving the game
-- **Bottom inventory strip** — all your blocks visible and draggable at all times
-- **Tutorial overlay** — step-by-step guidance for Level 1, auto-advances on player actions
-- **Achievement toasts** — pop-up notifications on unlock
-- **Alt-tab safe** — timer pauses when the browser tab loses focus
+## Achievements
+
+Categories: Campaign Progress, Stars, Design Collection, Production Milestones, Synergy Mastery, Gold & Blocks, Endless Mode, Shop Unlocks. Achievements require a logged-in account.
 
 ---
 
@@ -138,12 +201,13 @@ Categories: Campaign Progress, Stars, Set Discovery, Production Milestones, Gold
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + Vite |
-| Styling | Tailwind CSS + custom CSS |
-| State | Zustand |
-| Animation | Framer Motion |
+| Frontend | React 18 + Vite — `frontend/` |
+| Styling | Tailwind CSS + custom CSS keyframes |
+| State | Zustand (`gameStore`, `userStore`, `shopStore`, `settingsStore`) |
+| Animation | Framer Motion + CSS (`pixelWaveV/H/D`, `blockFillUp`) |
 | Routing | React Router v6 |
-| Backend | Supabase (Auth + PostgreSQL) |
+| Backend | Supabase (Auth + PostgreSQL + Edge Functions) |
+| Deploy | GitHub Actions → GitHub Pages |
 
 ---
 
@@ -152,7 +216,7 @@ Categories: Campaign Progress, Stars, Set Discovery, Production Milestones, Gold
 ```bash
 cd frontend
 npm install
-cp .env.example .env   # then fill in your Supabase values
+cp .env.example .env   # fill in your Supabase URL + anon key
 npm run dev
 ```
 
@@ -160,58 +224,45 @@ App runs at `http://localhost:5173/PixelFactory/`
 
 ---
 
-## Deploy to GitHub Pages (Free)
+## Deploy to GitHub Pages
 
-1. Push your repo to GitHub.
-2. Add two repository secrets under **Settings → Secrets → Actions**:
+1. Push to GitHub. Add two repository secrets under **Settings → Secrets → Actions**:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-3. Run the deploy command:
-   ```bash
-   cd frontend
-   npm run deploy
-   ```
-   This builds to `dist/` and pushes it to the `gh-pages` branch.
-4. In your GitHub repo go to **Settings → Pages** and set the source branch to `gh-pages`.
-5. In your Supabase project go to **Authentication → URL Configuration** and add:
-   - Site URL: `https://GITHUB_USERNAME.github.io/pixelfactory`
-   - Redirect URL: `https://GITHUB_USERNAME.github.io/pixelfactory`
-
-Your game will be live at `https://GITHUB_USERNAME.github.io/pixelfactory` — completely free.
-
-> **Alternative free hosts:** [Netlify](https://netlify.com) (drag-and-drop your `dist/` folder) or [Vercel](https://vercel.com) (connect your GitHub repo, set the same env vars in the dashboard). Both are free for personal projects with no server needed since all game logic runs client-side.
+2. Push to `main` — GitHub Actions auto-deploys to GitHub Pages.
+3. In Supabase: **Authentication → URL Configuration** — add your Pages URL as both Site URL and Redirect URL.
 
 ---
 
 ## Database Setup (Supabase)
 
-Run `supabase/schema.sql` once in the Supabase SQL Editor. This creates all tables with Row Level Security enabled.
+Run `supabase/schema.sql` once in the SQL Editor. For future changes, run only the changed block — not the full file (existing policies error on re-run).
 
-For future schema changes, run only the changed block — not the full file (existing policies will error).
+Required columns (add if missing):
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_designs JSONB DEFAULT '[]';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS endless_minutes FLOAT DEFAULT 0;
+```
+
+---
 
 ## Email Setup (Brevo SMTP)
 
-Auth emails (OTP verification, password reset) are sent via Brevo SMTP configured directly in Supabase:
-
-1. Create a free account at [brevo.com](https://brevo.com) and verify your sender email under **Senders & IP**
-2. Get your SMTP credentials: avatar → **SMTP & API → SMTP** tab
+1. Create a free account at [brevo.com](https://brevo.com) and verify your sender email
+2. Get SMTP credentials: avatar → **SMTP & API → SMTP** tab
 3. In Supabase: **Authentication → Emails → SMTP Settings** → enable custom SMTP:
    - Host: `smtp-relay.brevo.com` · Port: `587`
-   - Username: your Brevo SMTP login · Password: your Brevo SMTP key
-   - Sender email: your verified Brevo sender address
-4. In Supabase: **Authentication → Emails → Templates → Confirm signup** → replace body with `{{ .Token }}` so users receive a 6-digit code instead of a magic link
+   - Sender: your verified Brevo address
+4. Set the Confirm Signup template body to `{{ .Token }}` so users get a 6-digit code
 
 ---
 
 ## Environment Variables
 
-Copy the example files and fill in your values — never commit the real `.env` files.
-
-| File | Purpose |
-|---|---|
-| `frontend/.env` | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — **never commit** |
-| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` — **never commit** |
-| `frontend/.env.example` | Committed template — copy to `.env` and fill in |
-| `backend/.env.example` | Committed template — copy to `.env` and fill in |
+| File | Contains | Committed? |
+|---|---|---|
+| `frontend/.env` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Never |
+| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` | Never |
+| `frontend/.env.example` | Template — copy and fill | Yes |
 
 See [CLAUDE.md](CLAUDE.md) for full architecture and implementation details.
