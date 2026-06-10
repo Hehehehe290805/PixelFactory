@@ -504,8 +504,9 @@ Players can end their run from the pause modal or the between-wave screen:
 
 ### Registration (`userStore.register`)
 - Username is passed via `supabase.auth.signUp({ options: { data: { username } } })`
-- A DB trigger (`handle_new_user` in schema.sql) creates the profile row with `SECURITY DEFINER` — bypasses RLS even when email confirmation is pending (no session yet).
-- If email confirmation is required, `register()` returns `'confirm_email'` instead of `true`, and `RegisterModal` shows an email-check prompt.
+- A DB trigger (`handle_new_user` in schema.sql) fires on `INSERT OR UPDATE` on `auth.users`. The profile row is created **only when `email_confirmed_at` transitions from NULL → set**, so unverified users never get a profile row.
+- `register()` returns `'confirm_email'` and `RegisterModal` shows a 6-digit OTP input. OTP expiry is 600 s (10 min), length 6.
+- Auth emails (OTP codes) are sent via **Brevo SMTP**, configured in Supabase dashboard → Authentication → Emails → SMTP Settings (host `smtp-relay.brevo.com`, port 587).
 
 ### User CRUD actions (all in `userStore.js`)
 | Action | Method |
@@ -537,8 +538,9 @@ All CRUD UI lives at `/account` → `AccountSettings.jsx`.
 
 Key additions beyond basic CRUD policies:
 - `profiles.delete_requested_at TIMESTAMPTZ` — set when user requests deletion
-- `handle_new_user()` trigger on `auth.users` INSERT — auto-creates profile from auth metadata
-- Auto-delete cron job (commented out in schema.sql) — requires `pg_cron` extension; runs daily to hard-delete accounts where `delete_requested_at < NOW() - INTERVAL '30 days'`
+- `handle_new_user()` trigger on `auth.users` INSERT OR UPDATE — creates profile only after `email_confirmed_at` is set
+- Auto-delete cron job (commented out in schema.sql) — requires `pg_cron` (Pro plan only); runs daily to hard-delete accounts where `delete_requested_at < NOW() - INTERVAL '30 days'`
+- **For schema updates**: only re-run the changed block in the SQL Editor — do not re-run the full file (policies will error if they already exist)
 
 ---
 
@@ -577,7 +579,9 @@ Key additions beyond basic CRUD policies:
 | File | Contains | Committed? |
 |---|---|---|
 | `frontend/.env` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Never |
-| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY` | Never |
+| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` | Never |
+| `frontend/.env.example` | Template with placeholder values | Yes |
+| `backend/.env.example` | Template with placeholder values | Yes |
 
 ---
 

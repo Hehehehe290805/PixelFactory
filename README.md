@@ -152,13 +152,11 @@ Categories: Campaign Progress, Stars, Set Discovery, Production Milestones, Gold
 ```bash
 cd frontend
 npm install
-# Create frontend/.env with:
-# VITE_SUPABASE_URL=...
-# VITE_SUPABASE_ANON_KEY=...
+cp .env.example .env   # then fill in your Supabase values
 npm run dev
 ```
 
-App runs at `http://localhost:5173/pixelfactory/`
+App runs at `http://localhost:5173/PixelFactory/`
 
 ---
 
@@ -189,13 +187,31 @@ Your game will be live at `https://GITHUB_USERNAME.github.io/pixelfactory` — c
 
 Run `supabase/schema.sql` once in the Supabase SQL Editor. This creates all tables with Row Level Security enabled.
 
+For future schema changes, run only the changed block — not the full file (existing policies will error).
+
+## Email Setup (Brevo SMTP)
+
+Auth emails (OTP verification, password reset) are sent via Brevo SMTP configured directly in Supabase:
+
+1. Create a free account at [brevo.com](https://brevo.com) and verify your sender email under **Senders & IP**
+2. Get your SMTP credentials: avatar → **SMTP & API → SMTP** tab
+3. In Supabase: **Authentication → Emails → SMTP Settings** → enable custom SMTP:
+   - Host: `smtp-relay.brevo.com` · Port: `587`
+   - Username: your Brevo SMTP login · Password: your Brevo SMTP key
+   - Sender email: your verified Brevo sender address
+4. In Supabase: **Authentication → Emails → Templates → Confirm signup** → replace body with `{{ .Token }}` so users receive a 6-digit code instead of a magic link
+
 ---
 
 ## Environment Variables
 
+Copy the example files and fill in your values — never commit the real `.env` files.
+
 | File | Purpose |
 |---|---|
 | `frontend/.env` | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — **never commit** |
-| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` and `BREVO_API_KEY` — **never commit** |
+| `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` — **never commit** |
+| `frontend/.env.example` | Committed template — copy to `.env` and fill in |
+| `backend/.env.example` | Committed template — copy to `.env` and fill in |
 
 See [CLAUDE.md](CLAUDE.md) for full architecture and implementation details.
