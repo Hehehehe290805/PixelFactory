@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useGridCellSize } from '../../hooks/useGridCellSize'
@@ -12,8 +12,22 @@ export default function InventoryPanel({ onOpenStateChange }) {
   const [open, setOpen] = useState(false)
   const [hoveredId, setHoveredId] = useState(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const panelRef = useRef(null)
 
   const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
+
+  // Collapse when clicking outside the panel
+  useEffect(() => {
+    if (!open) return
+    function onOutsideClick(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setOpen(false)
+        onOpenStateChange?.(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutsideClick)
+    return () => document.removeEventListener('mousedown', onOutsideClick)
+  }, [open, onOpenStateChange])
 
   function toggle() {
     const next = !open
@@ -32,7 +46,7 @@ export default function InventoryPanel({ onOpenStateChange }) {
   const tipY = Math.max(8, mousePos.y - 120)
 
   return (
-    <div className="relative flex-shrink-0 select-none">
+    <div ref={panelRef} className="relative flex-shrink-0 select-none">
 
       {/* ── Collapsed handle ── */}
       <button
@@ -139,6 +153,9 @@ export default function InventoryPanel({ onOpenStateChange }) {
 }
 
 function InventoryDesignCard({ block, blockSize, hovered, onHover, onLeave, onDragStart }) {
+  const design = DESIGNS.find(d => d.id === block.designId)
+  const rate   = block.type === 'void' ? '0' : '1.0'
+
   return (
     <div
       draggable
@@ -162,9 +179,14 @@ function InventoryDesignCard({ block, blockSize, hovered, onHover, onLeave, onDr
         <div className="font-black text-gray-300 leading-tight truncate" style={{ fontSize: 9 }}>
           {block.name}
         </div>
-        <div className="font-bold text-gray-600 leading-tight capitalize" style={{ fontSize: 8 }}>
-          {block.type.replace(/_/g, ' ')}
+        <div className="font-bold text-pixel-blue leading-tight" style={{ fontSize: 8 }}>
+          {rate} px/s
         </div>
+        {design?.desc && (
+          <div className="font-semibold text-gray-600 leading-tight mt-0.5 line-clamp-2" style={{ fontSize: 7 }}>
+            {design.desc}
+          </div>
+        )}
       </div>
     </div>
   )

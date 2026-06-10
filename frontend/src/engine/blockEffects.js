@@ -10,9 +10,10 @@ function nbOrtho(r, c, grid) {
 
 // ── Base output ───────────────────────────────────────────────────────────────
 // pixelCount is fixed per design; no color multipliers needed (removed with painting)
+// Fixed base rate — output is determined by block type + effects, not pixel count
 export function baseRate(block) {
-  if (!block.pixelCount) return 0
-  return block.pixelCount / 75
+  if (block.type === 'void') return 0
+  return 1.0
 }
 
 // ── Doubler ───────────────────────────────────────────────────────────────────

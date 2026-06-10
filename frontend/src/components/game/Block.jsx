@@ -61,10 +61,8 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
   const isActive       = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
   const waveDir        = block.waveDir ?? 'up'
   const waveConf       = WAVE_MAP[waveDir] ?? WAVE_MAP.up
-  const cycleDuration  = block.pixelCount > 0
-    ? Math.max(0.4, Math.min(8, 37.5 / block.pixelCount))
-    : 3
-  const floatAmount    = `+${Math.max(1, Math.round(block.pixelCount / 37.5))}`
+  const cycleDuration  = 3.5
+  const floatAmount    = '+1'
 
   return (
     <div

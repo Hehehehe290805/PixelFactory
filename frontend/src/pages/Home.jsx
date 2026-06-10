@@ -45,7 +45,7 @@ export default function Home() {
       {/* Nav buttons */}
       <div className="flex flex-col gap-3 w-full max-w-sm">
         {/* Campaign */}
-        <div className="relative">
+        <div className="flex flex-col gap-1.5">
           <button
             onClick={handleCampaignClick}
             className={`btn w-full text-lg ${canCampaign ? 'btn-primary' : 'btn-secondary opacity-50 cursor-pointer'}`}
@@ -53,14 +53,14 @@ export default function Home() {
             Campaign
           </button>
           {!canCampaign && (
-            <div className="absolute inset-x-0 -bottom-5 text-center text-xs text-gray-600 font-semibold">
-              Login to play Campaign
+            <div className="text-center text-xs text-gray-500 font-semibold py-1">
+              Log in to play Campaign
             </div>
           )}
         </div>
 
         {/* Endless */}
-        <div className="relative mt-1">
+        <div className="relative">
           <button
             onClick={handleEndlessClick}
             disabled={!canEndless}
