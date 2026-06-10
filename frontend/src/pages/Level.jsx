@@ -88,12 +88,14 @@ export default function Level() {
     setActiveDeck(designIds)
     setDeckSelection(designIds)
 
-    // Give 2 copies of each unique selected design as starting inventory
+    // Give starting copies based on deck size: 3 cards→2 each, 2 cards→3 each, 1 card→6
     const { unlockedBlocks } = useShopStore.getState()
     const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
+    const uniqueDesigns = [...new Set(designIds)]
+    const copiesPerDesign = uniqueDesigns.length === 1 ? 6 : uniqueDesigns.length === 2 ? 3 : 2
     const startingBlocks = []
-    for (const id of [...new Set(designIds)]) {
-      for (let i = 0; i < 2; i++) {
+    for (const id of uniqueDesigns) {
+      for (let i = 0; i < copiesPerDesign; i++) {
         const block = createBlock(id, pickRandomType(typePool), 0)
         if (block) startingBlocks.push(block)
       }

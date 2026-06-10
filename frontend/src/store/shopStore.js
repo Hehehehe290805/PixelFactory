@@ -11,6 +11,7 @@ function persist(state) {
       unlockedBlocks:      state.unlockedBlocks,
       purchasedSpeeds:     state.purchasedSpeeds,
       purchasedGridStyles: state.purchasedGridStyles,
+      designRollCount:     state.designRollCount,
     }))
   } catch {}
 }
@@ -36,6 +37,9 @@ export const useShopStore = create((set, get) => ({
 
   // Grid styles the player has purchased (base is always included)
   purchasedGridStyles: _purchasedGridStyles,
+
+  // How many gold design rolls have been done (cost = min(100*(n+1), 1000))
+  designRollCount: saved.designRollCount ?? 0,
 
   setGridStyle(key) {
     set({ activeGridStyle: key })
@@ -64,6 +68,13 @@ export const useShopStore = create((set, get) => ({
     const next = [...state.purchasedSpeeds, speed]
     set({ purchasedSpeeds: next })
     persist({ ...state, purchasedSpeeds: next })
+  },
+
+  incrementDesignRollCount() {
+    const state = get()
+    const next = state.designRollCount + 1
+    set({ designRollCount: next })
+    persist({ ...state, designRollCount: next })
   },
 
   isBlockTypeUnlocked(key) {

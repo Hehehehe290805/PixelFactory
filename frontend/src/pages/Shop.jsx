@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { GRID_STYLES, BLOCK_TYPES } from '../lib/constants'
-import { getShopDesigns } from '../data/designLibrary'
+import { DESIGNS, getShopDesigns } from '../data/designLibrary'
 import { DesignMiniThumb } from '../components/ui/DeckSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -18,11 +18,17 @@ const SPEED_ITEMS = [
   { speed: 10,  label: '10× Max',    cost: 1000, desc: '10× game speed and timer' },
 ]
 
+function getDesignRollCost(rollCount) {
+  return Math.min(100 * (rollCount + 1), 1000)
+}
+
 export default function Shop() {
   const navigate = useNavigate()
   const { gold, addGold, unlockedDesigns: unlockedDesignIds = [], unlockDesign } = useUserStore()
-  const { activeGridStyle, setGridStyle, ownGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked } = useShopStore()
+  const { activeGridStyle, setGridStyle, ownGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked, designRollCount, incrementDesignRollCount } = useShopStore()
   const [toast, setToast] = useState(null)
+  const [rolledDesign, setRolledDesign] = useState(null)
+  const [rollFlash, setRollFlash] = useState(null)
 
   function buy(cost, label, onSuccess) {
     if (gold < cost) return
@@ -30,6 +36,22 @@ export default function Shop() {
     onSuccess()
     setToast(label)
     setTimeout(() => setToast(null), 2500)
+  }
+
+  const rollCost = getDesignRollCost(designRollCount)
+  const nextRollCost = getDesignRollCost(designRollCount + 1)
+  const unrollableDesigns = DESIGNS.filter(d => !unlockedDesignIds.includes(d.id))
+  const collectionComplete = unrollableDesigns.length === 0
+
+  function handleDesignRoll() {
+    if (gold < rollCost || collectionComplete) return
+    const design = unrollableDesigns[Math.floor(Math.random() * unrollableDesigns.length)]
+    addGold(-rollCost)
+    unlockDesign(design.id)
+    incrementDesignRollCount()
+    setRolledDesign(design)
+    setRollFlash('ok')
+    setTimeout(() => setRollFlash(null), 1500)
   }
 
   const shopDesigns = getShopDesigns()
@@ -47,6 +69,76 @@ export default function Shop() {
             <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">gold</div>
           </div>
         </div>
+
+        {/* Design Roll */}
+        <Section title="Design Roll">
+          <p className="text-xs font-semibold text-gray-600 mb-3">
+            Spend gold to unlock a random design from the full collection.
+            Cost increases by 100g each roll, capped at 1000g.
+          </p>
+          <div
+            className="card flex flex-col gap-3"
+            style={{ padding: '1.25rem', borderColor: rollFlash === 'ok' ? '#00d49a' : undefined }}
+          >
+            {/* Revealed design or placeholder */}
+            <div className="flex items-center gap-3">
+              <div
+                className="flex items-center justify-center flex-shrink-0 rounded-xl overflow-hidden"
+                style={{ width: 56, height: 56, background: '#0a0a1a', border: '2px solid #36366a' }}
+              >
+                {rolledDesign
+                  ? <DesignMiniThumb design={rolledDesign} size={52} />
+                  : <span className="text-gray-500 font-black text-2xl">?</span>
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                {rolledDesign ? (
+                  <>
+                    <div className="text-sm font-black text-pixel-green">{rolledDesign.name}</div>
+                    <div className="text-xs text-gray-400 capitalize">{rolledDesign.series}</div>
+                    <div className="text-[10px] text-gray-600 capitalize">{rolledDesign.blockType?.replace(/_/g, ' ')}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-black text-white">Random Design</div>
+                    <div className="text-xs text-gray-500">Any design you don't own yet</div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Roll stats */}
+            <div className="flex items-center justify-between text-[10px] text-gray-600">
+              <span>{unrollableDesigns.length} designs available</span>
+              <span>Roll #{designRollCount + 1}</span>
+            </div>
+
+            {/* Roll button */}
+            {collectionComplete ? (
+              <div className="text-center text-xs font-black text-pixel-yellow py-2">
+                Collection Complete!
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className={`text-lg font-black ${gold >= rollCost ? 'text-pixel-yellow' : 'text-gray-600'}`}>
+                    {rollCost}g
+                  </div>
+                  {nextRollCost !== rollCost && (
+                    <div className="text-[9px] text-gray-700">next: {nextRollCost}g</div>
+                  )}
+                </div>
+                <button
+                  onClick={handleDesignRoll}
+                  disabled={gold < rollCost}
+                  className={`btn text-sm px-5 py-2 ${gold >= rollCost ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
+                >
+                  Roll
+                </button>
+              </div>
+            )}
+          </div>
+        </Section>
 
         {/* Grid Styles */}
         <Section title="Grid Styles">

@@ -12,406 +12,405 @@ const ALL8  = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 // type: 'series_count'    — N unique designs of same series within a maxSpan×maxSpan zone
 //       'exact_count'     — N copies of same design id anywhere on grid
 //       'adjacency_pair'  — two specific design ids placed orthogonally adjacent
-//       'row_series'      — N designs of same series in the same row
-//       'column_series'   — N designs of same series in the same column
-//       'long_range'      — two designs at least minDist (Manhattan) cells apart
+//       'row_series'      — N designs of same series in the same row (duplicates count)
+//       'column_series'   — N designs of same series in the same column (duplicates count)
+//       'long_range'      — two designs at least minDist (Manhattan) cells apart (same design allowed)
 //       'core_radius'     — coreDesignId/coreSeries as anchor + N satellites within radius cells
 //       'block_type_count'— N blocks sharing the same blockType anywhere on grid
 //       'cross_family'    — specific designs AND/OR series from DIFFERENT families all on grid
 //       'meta_synergy'    — requires other synergy IDs to all be currently active (MUST be last)
 
 export const SYNERGY_DEFS = {
-  // ── Series count synergies — zone-constrained ────────────────────────────────
-  // maxSpan: all N qualifying designs must fit within a maxSpan×maxSpan zone.
+  // ── Series count synergies — zone-constrained, unique designs required ─────────
   GARDEN: {
     name: 'Garden', type: 'series_count', series: 'flowers', required: 7, maxSpan: 7,
-    own: 0.35, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '7 unique flower designs in a 7×7 zone → +35%; spreads +10% ortho',
+    own: 0.70, radiation: { type: 'ortho', amount: 0.20 },
+    desc: '7 unique flower designs in a 7×7 zone → +70%; spreads +20% ortho',
   },
   FOREST: {
     name: 'Forest', type: 'series_count', series: 'trees', required: 7, maxSpan: 7,
-    own: 0.30, radiation: { type: 'ortho', amount: 0.12 },
-    desc: '7 unique tree designs in a 7×7 zone → +30%; spreads +12% ortho',
+    own: 0.65, radiation: { type: 'ortho', amount: 0.22 },
+    desc: '7 unique tree designs in a 7×7 zone → +65%; spreads +22% ortho',
   },
   URBAN: {
     name: 'Urban Planning', type: 'series_count', series: 'buildings', required: 7, maxSpan: 7,
-    own: 0.32, radiation: { type: 'diag', amount: 0.10 },
-    desc: '7 unique building designs in a 7×7 zone → +32%; spreads +10% diagonally',
+    own: 0.65, radiation: { type: 'diag', amount: 0.20 },
+    desc: '7 unique building designs in a 7×7 zone → +65%; spreads +20% diagonally',
   },
   COSMOS: {
     name: 'Cosmos', type: 'series_count', series: 'celestial', required: 7, maxSpan: 7,
-    own: 0.38, radiation: { type: 'all8', amount: 0.10 },
-    desc: '7 unique celestial designs in a 7×7 zone → +38%; radiates +10% all 8 dirs',
+    own: 0.75, radiation: { type: 'all8', amount: 0.20 },
+    desc: '7 unique celestial designs in a 7×7 zone → +75%; radiates +20% all 8 dirs',
   },
   MENAGERIE: {
     name: 'Menagerie', type: 'series_count', series: 'animals', required: 7, maxSpan: 7,
-    own: 0.35, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '7 unique animal designs in a 7×7 zone → +35%; spreads +10% ortho',
+    own: 0.70, radiation: { type: 'ortho', amount: 0.20 },
+    desc: '7 unique animal designs in a 7×7 zone → +70%; spreads +20% ortho',
   },
   GEOMETRY: {
     name: 'Geometry', type: 'series_count', series: 'shapes', required: 6, maxSpan: 6,
-    own: 0.32, radiation: { type: 'diag', amount: 0.12 },
-    desc: '6 unique shape designs in a 6×6 zone → +32%; spreads +12% diagonally',
+    own: 0.65, radiation: { type: 'diag', amount: 0.22 },
+    desc: '6 unique shape designs in a 6×6 zone → +65%; spreads +22% diagonally',
   },
   FEAST: {
     name: 'Feast', type: 'series_count', series: 'food', required: 6, maxSpan: 6,
-    own: 0.30, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '6 unique food designs in a 6×6 zone → +30%; spreads +8% ortho',
+    own: 0.65, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '6 unique food designs in a 6×6 zone → +65%; spreads +18% ortho',
   },
   EMBLEMS: {
     name: 'Emblems', type: 'series_count', series: 'symbols', required: 6, maxSpan: 6,
-    own: 0.34, radiation: { type: 'all8', amount: 0.09 },
-    desc: '6 unique symbol designs in a 6×6 zone → +34%; radiates +9% all 8 dirs',
+    own: 0.68, radiation: { type: 'all8', amount: 0.18 },
+    desc: '6 unique symbol designs in a 6×6 zone → +68%; radiates +18% all 8 dirs',
   },
   STORM_FRONT: {
     name: 'Storm Front', type: 'series_count', series: 'weather', required: 6, maxSpan: 6,
-    own: 0.33, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '6 unique weather designs in a 6×6 zone → +33%; spreads +10% ortho',
+    own: 0.68, radiation: { type: 'ortho', amount: 0.20 },
+    desc: '6 unique weather designs in a 6×6 zone → +68%; spreads +20% ortho',
   },
   EXPEDITION: {
     name: 'Expedition', type: 'series_count', series: 'landscapes', required: 6, maxSpan: 6,
-    own: 0.30, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '6 unique landscape designs in a 6×6 zone → +30%; spreads +10% ortho',
+    own: 0.65, radiation: { type: 'ortho', amount: 0.20 },
+    desc: '6 unique landscape designs in a 6×6 zone → +65%; spreads +20% ortho',
   },
   STARFLEET: {
     name: 'Starfleet', type: 'series_count', series: 'space', required: 6, maxSpan: 6,
-    own: 0.40, radiation: { type: 'all8', amount: 0.12 },
-    desc: '6 unique space designs in a 6×6 zone → +40%; radiates +12% all 8 dirs',
+    own: 0.80, radiation: { type: 'all8', amount: 0.22 },
+    desc: '6 unique space designs in a 6×6 zone → +80%; radiates +22% all 8 dirs',
   },
   ALGORITHM: {
     name: 'Algorithm', type: 'series_count', series: 'abstract', required: 5, maxSpan: 5,
-    own: 0.45, radiation: { type: 'all8', amount: 0.12 },
-    desc: '5 unique abstract designs in a 5×5 zone → +45%; radiates +12% all 8 dirs',
+    own: 0.90, radiation: { type: 'all8', amount: 0.22 },
+    desc: '5 unique abstract designs in a 5×5 zone → +90%; radiates +22% all 8 dirs',
   },
 
   // ── Adjacency pair synergies — specific design IDs only ──────────────────────
   SUN_AND_MOON: {
     name: 'Sun & Moon', type: 'adjacency_pair',
     designA: 'sun', designB: 'moon',
-    own: 0.55, radiation: null,
-    desc: 'Sun adjacent to Moon → both get +55% output',
+    own: 1.00, radiation: null,
+    desc: 'Sun adjacent to Moon → both get +100% output',
   },
   HUNTER_AND_PREY: {
     name: 'Hunter & Prey', type: 'adjacency_pair',
     designA: 'fox', designB: 'rabbit',
-    own: 0.50, radiation: null,
-    desc: 'Fox adjacent to Rabbit → both get +50% output',
+    own: 0.95, radiation: null,
+    desc: 'Fox adjacent to Rabbit → both get +95% output',
   },
   FIRE_AND_ICE: {
     name: 'Fire & Ice', type: 'adjacency_pair',
     designA: 'flame_sym', designB: 'ice_crystal',
-    own: 0.60, radiation: null,
-    desc: 'Flame adjacent to Ice Crystal → both get +60% output',
+    own: 1.10, radiation: null,
+    desc: 'Flame adjacent to Ice Crystal → both get +110% output',
   },
   CROWN_AND_SWORD: {
     name: 'Crown & Sword', type: 'adjacency_pair',
     designA: 'crown', designB: 'sword',
-    own: 0.55, radiation: null,
-    desc: 'Crown adjacent to Sword → both get +55% output',
+    own: 1.00, radiation: null,
+    desc: 'Crown adjacent to Sword → both get +100% output',
   },
   OWL_AND_MOON: {
     name: 'Night Watch', type: 'adjacency_pair',
     designA: 'owl', designB: 'moon',
-    own: 0.50, radiation: { type: 'all8', amount: 0.08 },
-    desc: 'Owl adjacent to Moon → both +50%; radiates +8% all around',
+    own: 0.95, radiation: { type: 'all8', amount: 0.18 },
+    desc: 'Owl adjacent to Moon → both +95%; radiates +18% all around',
   },
   ROSE_AND_HEART: {
     name: 'Rose & Heart', type: 'adjacency_pair',
     designA: 'rose', designB: 'heart',
-    own: 0.58, radiation: null,
-    desc: 'Rose adjacent to Heart → both get +58% output',
+    own: 1.05, radiation: null,
+    desc: 'Rose adjacent to Heart → both get +105% output',
   },
   ANCHOR_AND_WAVE: {
     name: 'Anchor & Wave', type: 'adjacency_pair',
     designA: 'anchor', designB: 'ocean_wave',
-    own: 0.52, radiation: { type: 'ortho', amount: 0.08 },
-    desc: 'Anchor adjacent to Ocean Wave → both +52%; spreads +8% ortho',
+    own: 1.00, radiation: { type: 'ortho', amount: 0.18 },
+    desc: 'Anchor adjacent to Ocean Wave → both +100%; spreads +18% ortho',
   },
   KEY_AND_LOCK: {
     name: 'Key & Lock', type: 'adjacency_pair',
     designA: 'key', designB: 'lock',
-    own: 0.65, radiation: null,
-    desc: 'Key adjacent to Lock → both get +65% output',
+    own: 1.20, radiation: null,
+    desc: 'Key adjacent to Lock → both get +120% output',
   },
   ROCKET_AND_STAR: {
     name: 'Rocket & Star', type: 'adjacency_pair',
     designA: 'rocket', designB: 'star',
-    own: 0.50, radiation: { type: 'all8', amount: 0.09 },
-    desc: 'Rocket adjacent to Star → both +50%; radiates +9% all around',
+    own: 0.95, radiation: { type: 'all8', amount: 0.18 },
+    desc: 'Rocket adjacent to Star → both +95%; radiates +18% all around',
   },
   BEE_AND_FLOWER: {
     name: 'Bee & Flower', type: 'adjacency_pair',
     designA: 'bee', designB: 'daisy',
-    own: 0.52, radiation: { type: 'ortho', amount: 0.07 },
-    desc: 'Bee adjacent to Daisy → both +52%; spreads +7% ortho',
+    own: 1.00, radiation: { type: 'ortho', amount: 0.16 },
+    desc: 'Bee adjacent to Daisy → both +100%; spreads +16% ortho',
   },
 
-  // ── Row synergies (N same-series in one row) ──────────────────────────────
+  // ── Row synergies (N same-series in one row, duplicates count) ──────────────
   FLOWER_ROW: {
     name: 'Flower Row', type: 'row_series', series: 'flowers', required: 5,
-    own: 0.40, radiation: null,
-    desc: '5 flower designs in same row → +40% each in that row',
+    own: 0.80, radiation: null,
+    desc: '5 flower designs in same row → +80% each in that row',
   },
   BUILDING_ROW: {
     name: 'City Block', type: 'row_series', series: 'buildings', required: 5,
-    own: 0.45, radiation: null,
-    desc: '5 building designs in same row → +45% each in that row',
+    own: 0.90, radiation: null,
+    desc: '5 building designs in same row → +90% each in that row',
   },
   ANIMAL_ROW: {
     name: 'Animal Kingdom', type: 'row_series', series: 'animals', required: 5,
-    own: 0.38, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '5 animal designs in same row → +38% each; spreads +10% to cells above/below',
+    own: 0.75, radiation: { type: 'ortho', amount: 0.20 },
+    desc: '5 animal designs in same row → +75% each; spreads +20% to cells above/below',
   },
   SPACE_ROW: {
     name: 'Orbital Array', type: 'row_series', series: 'space', required: 5,
-    own: 0.50, radiation: { type: 'all8', amount: 0.10 },
-    desc: '5 space designs in same row → +50% each; radiates +10% to adjacent cells',
+    own: 1.00, radiation: { type: 'all8', amount: 0.20 },
+    desc: '5 space designs in same row → +100% each; radiates +20% to adjacent cells',
   },
   SHAPE_ROW: {
     name: 'Pattern Matrix', type: 'row_series', series: 'shapes', required: 4,
-    own: 0.35, radiation: null,
-    desc: '4 shape designs in same row → +35% each in that row',
+    own: 0.70, radiation: null,
+    desc: '4 shape designs in same row → +70% each in that row',
   },
   WEATHER_ROW: {
     name: 'Storm Line', type: 'row_series', series: 'weather', required: 4,
-    own: 0.38, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '4 weather designs in same row → +38% each; spreads +8% to cells above/below',
+    own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '4 weather designs in same row → +75% each; spreads +18% to cells above/below',
   },
   TREE_ROW: {
     name: 'Tree Line', type: 'row_series', series: 'trees', required: 4,
-    own: 0.35, radiation: { type: 'ortho', amount: 0.09 },
-    desc: '4 tree designs in same row → +35% each; spreads +9% to cells above/below',
+    own: 0.70, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '4 tree designs in same row → +70% each; spreads +18% to cells above/below',
   },
 
-  // ── Column synergies (N same-series in one column) ────────────────────────
+  // ── Column synergies (N same-series in one column, duplicates count) ──────────
   FLOWER_COLUMN: {
     name: 'Flower Column', type: 'column_series', series: 'flowers', required: 5,
-    own: 0.40, radiation: null,
-    desc: '5 flower designs in same column → +40% each in that column',
+    own: 0.80, radiation: null,
+    desc: '5 flower designs in same column → +80% each in that column',
   },
   BUILDING_COLUMN: {
     name: 'Skyscraper Row', type: 'column_series', series: 'buildings', required: 5,
-    own: 0.45, radiation: null,
-    desc: '5 building designs in same column → +45% each in that column',
+    own: 0.90, radiation: null,
+    desc: '5 building designs in same column → +90% each in that column',
   },
   SPACE_COLUMN: {
     name: 'Launch Pad', type: 'column_series', series: 'space', required: 5,
-    own: 0.50, radiation: { type: 'all8', amount: 0.10 },
-    desc: '5 space designs in same column → +50% each; radiates +10% to adjacent cells',
+    own: 1.00, radiation: { type: 'all8', amount: 0.20 },
+    desc: '5 space designs in same column → +100% each; radiates +20% to adjacent cells',
   },
   ANIMAL_COLUMN: {
     name: 'Migration Path', type: 'column_series', series: 'animals', required: 4,
-    own: 0.38, radiation: { type: 'ortho', amount: 0.09 },
-    desc: '4 animal designs in same column → +38% each; spreads +9% to cells left/right',
+    own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '4 animal designs in same column → +75% each; spreads +18% to cells left/right',
   },
   TREE_COLUMN: {
     name: 'Deep Forest', type: 'column_series', series: 'trees', required: 4,
-    own: 0.35, radiation: { type: 'ortho', amount: 0.09 },
-    desc: '4 tree designs in same column → +35% each; spreads +9% to cells left/right',
+    own: 0.70, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '4 tree designs in same column → +70% each; spreads +18% to cells left/right',
   },
 
-  // ── Long-range synergies (blocks ≥ minDist Manhattan distance apart) ───────
+  // ── Long-range synergies (blocks ≥ minDist Manhattan distance apart) ──────────
   DISTANT_STARS: {
     name: 'Distant Stars', type: 'long_range', series: 'space', minDist: 7,
-    own: 0.45, radiation: { type: 'all8', amount: 0.10 },
-    desc: '2 space designs ≥7 cells apart → both +45%; radiates +10% nearby',
+    own: 0.90, radiation: { type: 'all8', amount: 0.20 },
+    desc: '2 space designs ≥7 cells apart → both +90%; radiates +20% nearby',
   },
   ANTIPODES: {
     name: 'Antipodes', type: 'long_range', series: 'landscapes', minDist: 8,
-    own: 0.42, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '2 landscape designs ≥8 cells apart → both +42%; spreads +8% ortho',
+    own: 0.85, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '2 landscape designs ≥8 cells apart → both +85%; spreads +18% ortho',
   },
   POLAR_WINDS: {
     name: 'Polar Winds', type: 'long_range',
     seriesA: 'weather', seriesB: 'landscapes', minDist: 6,
-    own: 0.50, radiation: null,
-    desc: 'Any weather + any landscape ≥6 cells apart → both +50%',
+    own: 1.00, radiation: null,
+    desc: 'Any weather + any landscape ≥6 cells apart → both +100%',
   },
   TRANSCONTINENTAL: {
     name: 'Transcontinental', type: 'long_range', series: 'buildings', minDist: 7,
-    own: 0.40, radiation: { type: 'ortho', amount: 0.09 },
-    desc: '2 building designs ≥7 cells apart → both +40%; spreads +9% ortho',
+    own: 0.80, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '2 building designs ≥7 cells apart → both +80%; spreads +18% ortho',
   },
   WILD_MIGRATION: {
     name: 'Wild Migration', type: 'long_range', series: 'animals', minDist: 6,
-    own: 0.42, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '2 animal designs ≥6 cells apart → both +42%; spreads +8% ortho',
+    own: 0.85, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '2 animal designs ≥6 cells apart → both +85%; spreads +18% ortho',
   },
   STAR_SCATTER: {
     name: 'Star Scatter', type: 'long_range', series: 'celestial', minDist: 8,
-    own: 0.55, radiation: { type: 'all8', amount: 0.12 },
-    desc: '2 celestial designs ≥8 cells apart → both +55%; radiates +12% all around',
+    own: 1.05, radiation: { type: 'all8', amount: 0.22 },
+    desc: '2 celestial designs ≥8 cells apart → both +105%; radiates +22% all around',
   },
   ABSTRACT_SPREAD: {
     name: 'Abstract Spread', type: 'long_range', series: 'abstract', minDist: 6,
-    own: 0.40, radiation: { type: 'all8', amount: 0.10 },
-    desc: '2 abstract designs ≥6 cells apart → both +40%; radiates +10% nearby',
+    own: 0.80, radiation: { type: 'all8', amount: 0.20 },
+    desc: '2 abstract designs ≥6 cells apart → both +80%; radiates +20% nearby',
   },
 
-  // ── Core-radius synergies (anchor block + N satellites within radius) ──────
+  // ── Core-radius synergies (anchor block + N satellites within radius) ──────────
   SOLAR_SYSTEM: {
     name: 'Solar System', type: 'core_radius',
     coreDesignId: 'sun', satelliteSeries: 'space',
     requiredSatellites: 3, radius: 2,
-    own: 0.50, ownCore: 0.65, ownSatellite: 0.38,
-    desc: 'Sun as core + 3 space designs within 2 cells → Sun +65%, satellites +38%',
+    own: 0.90, ownCore: 1.20, ownSatellite: 0.75,
+    desc: 'Sun as core + 3 space designs within 2 cells → Sun +120%, satellites +75%',
   },
   ROYAL_COURT: {
     name: 'Royal Court', type: 'core_radius',
     coreDesignId: 'crown', satelliteSeries: 'symbols',
     requiredSatellites: 3, radius: 2,
-    own: 0.50, ownCore: 0.60, ownSatellite: 0.35,
-    desc: 'Crown as core + 3 symbol designs within 2 cells → Crown +60%, others +35%',
+    own: 0.90, ownCore: 1.10, ownSatellite: 0.70,
+    desc: 'Crown as core + 3 symbol designs within 2 cells → Crown +110%, others +70%',
   },
   ECOSYSTEM: {
     name: 'Ecosystem', type: 'core_radius',
     coreSeries: 'trees', satelliteSeries: 'animals',
     requiredSatellites: 3, radius: 2,
-    own: 0.40, ownCore: 0.55, ownSatellite: 0.32,
-    desc: 'Any tree as core + 3 animal designs within 2 cells → tree +55%, animals +32%',
+    own: 0.80, ownCore: 1.05, ownSatellite: 0.65,
+    desc: 'Any tree as core + 3 animal designs within 2 cells → tree +105%, animals +65%',
   },
   MOUNTAIN_KINGDOM: {
     name: 'Mountain Kingdom', type: 'core_radius',
     coreDesignId: 'mountain', satelliteSeries: 'landscapes',
     requiredSatellites: 3, radius: 2,
-    own: 0.45, ownCore: 0.60, ownSatellite: 0.35,
-    desc: 'Mountain as core + 3 landscape designs within 2 cells → Mountain +60%, others +35%',
+    own: 0.85, ownCore: 1.10, ownSatellite: 0.70,
+    desc: 'Mountain as core + 3 landscape designs within 2 cells → Mountain +110%, others +70%',
   },
   BLOOMING_CORE: {
     name: 'Blooming Core', type: 'core_radius',
     coreSeries: 'flowers', satelliteSeries: 'flowers',
     requiredSatellites: 4, radius: 2,
-    own: 0.45, ownCore: 0.65, ownSatellite: 0.35,
-    desc: 'Any flower as core + 4 other unique flowers within 2 cells → core +65%, ring +35%',
+    own: 0.85, ownCore: 1.20, ownSatellite: 0.70,
+    desc: 'Any flower as core + 4 other flowers within 2 cells → core +120%, ring +70%',
   },
 
-  // ── Block-type synergies (N blocks sharing the same blockType) ────────────
+  // ── Block-type synergies (N blocks sharing the same blockType) ────────────────
   DOUBLE_DOWN: {
     name: 'Double Down', type: 'block_type_count', blockType: 'doubler', required: 3,
-    own: 0.25, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '3 doubler blocks → +25% each; spreads +8% to ortho neighbors',
+    own: 0.50, radiation: { type: 'ortho', amount: 0.16 },
+    desc: '3 doubler blocks → +50% each; spreads +16% to ortho neighbors',
   },
   REACTOR_NETWORK: {
     name: 'Reactor Network', type: 'block_type_count', blockType: 'reactor', required: 2,
-    own: 0.30, radiation: { type: 'all8', amount: 0.10 },
-    desc: '2 reactor blocks → +30% each; radiates +10% in all 8 directions',
+    own: 0.60, radiation: { type: 'all8', amount: 0.20 },
+    desc: '2 reactor blocks → +60% each; radiates +20% in all 8 directions',
   },
   ECHO_CHAMBER: {
     name: 'Echo Chamber', type: 'block_type_count', blockType: 'echo', required: 3,
-    own: 0.20, radiation: { type: 'ortho', amount: 0.07 },
-    desc: '3 echo blocks → +20% each; spreads +7% to ortho neighbors',
+    own: 0.45, radiation: { type: 'ortho', amount: 0.15 },
+    desc: '3 echo blocks → +45% each; spreads +15% to ortho neighbors',
   },
   SPECIALIST: {
     name: 'Specialist', type: 'block_type_count', required: 5,
-    own: 0.45, radiation: { type: 'all8', amount: 0.10 },
-    desc: '5 blocks of the same effect type → +45% each; radiates +10% in all directions',
+    own: 0.90, radiation: { type: 'all8', amount: 0.20 },
+    desc: '5 blocks of the same effect type → +90% each; radiates +20% in all directions',
   },
 
-  // ── Cross-family synergies ─────────────────────────────────────────────────
+  // ── Cross-family synergies ─────────────────────────────────────────────────────
   ORCHARD: {
     name: 'Orchard', type: 'cross_family',
-    requires: [{ designId: 'apple' }, { series: 'trees', count: 2 }],
-    own: 0.45, radiation: { type: 'ortho', amount: 0.09 },
+    requires: [{ designId: 'apple' }, { series: 'trees', count: 1 }],
+    own: 0.80, radiation: { type: 'ortho', amount: 0.18 },
     reward: { type: 'gold', amount: 40 },
-    desc: 'Apple + 2 tree designs on grid → +45%; spreads +9% ortho. Reward: +40 gold',
+    desc: 'Apple + any tree design on grid → +80%; spreads +18% ortho. Reward: +40 gold',
   },
   CHRISTMAS_TREE: {
     name: 'Christmas Tree', type: 'cross_family',
     requires: [{ designId: 'star' }, { designId: 'snowflake' }, { series: 'trees', count: 1 }],
-    own: 0.55, radiation: { type: 'all8', amount: 0.10 },
+    own: 1.00, radiation: { type: 'all8', amount: 0.20 },
     reward: { type: 'random_block' },
-    desc: 'Star + Snowflake + any tree → +55%; radiates +10%. Reward: bonus block',
+    desc: 'Star + Snowflake + any tree → +100%; radiates +20%. Reward: bonus block',
   },
   SUNBLOSSOM: {
     name: 'Sunblossom', type: 'cross_family',
     requires: [{ designId: 'sun' }, { series: 'flowers', count: 3 }],
-    own: 0.48, radiation: { type: 'ortho', amount: 0.10 },
+    own: 0.90, radiation: { type: 'ortho', amount: 0.20 },
     reward: { type: 'pixels', amount: 250 },
-    desc: 'Sun + 3 flower designs on grid → +48%; spreads +10% ortho. Reward: +250px',
+    desc: 'Sun + 3 unique flower designs on grid → +90%; spreads +20% ortho. Reward: +250px',
   },
   DUNGEON_KEEPER: {
     name: 'Dungeon Keeper', type: 'cross_family',
     requires: [{ designId: 'dragon' }, { series: 'buildings', count: 2 }],
-    own: 0.50, radiation: { type: 'diag', amount: 0.10 },
-    desc: 'Dragon + 2 building designs on grid → +50%; spreads +10% diagonally',
+    own: 0.95, radiation: { type: 'diag', amount: 0.20 },
+    desc: 'Dragon + 2 building designs on grid → +95%; spreads +20% diagonally',
   },
   HOWLING_MOON: {
     name: 'Howling Moon', type: 'cross_family',
     requires: [{ designId: 'moon' }, { designId: 'wolf' }],
     requireAdjacent: true,
-    own: 0.60, radiation: null,
-    desc: 'Moon adjacent to Wolf → both get +60% output',
+    own: 1.10, radiation: null,
+    desc: 'Moon adjacent to Wolf → both get +110% output',
   },
   PHOENIX_RISE: {
     name: 'Phoenix Rise', type: 'cross_family',
     requires: [{ designId: 'phoenix' }, { designId: 'volcano' }],
     requireAdjacent: true,
-    own: 0.65, radiation: { type: 'all8', amount: 0.12 },
+    own: 1.20, radiation: { type: 'all8', amount: 0.22 },
     reward: { type: 'pixels', amount: 500 },
-    desc: 'Phoenix adjacent to Volcano → both +65%; radiates +12%. Reward: +500px',
+    desc: 'Phoenix adjacent to Volcano → both +120%; radiates +22%. Reward: +500px',
   },
   ALIEN_CITY: {
     name: 'Alien City', type: 'cross_family',
     requires: [{ series: 'space', count: 2 }, { series: 'buildings', count: 3 }],
-    own: 0.42, radiation: { type: 'all8', amount: 0.08 },
-    desc: '2 space + 3 building designs on grid → +42%; radiates +8% all around',
+    own: 0.85, radiation: { type: 'all8', amount: 0.18 },
+    desc: '2 space + 3 building designs on grid → +85%; radiates +18% all around',
   },
   CELESTIAL_GARDEN: {
     name: 'Celestial Garden', type: 'cross_family',
     requires: [{ series: 'celestial', count: 2 }, { series: 'flowers', count: 2 }],
-    own: 0.40, radiation: { type: 'all8', amount: 0.08 },
+    own: 0.80, radiation: { type: 'all8', amount: 0.18 },
     reward: { type: 'gold', amount: 25 },
-    desc: '2 celestial + 2 flower designs on grid → +40%; radiates +8%. Reward: +25 gold',
+    desc: '2 celestial + 2 flower designs on grid → +80%; radiates +18%. Reward: +25 gold',
   },
   WINTER_PEAK: {
     name: 'Winter Peak', type: 'cross_family',
     requires: [{ designId: 'mountain' }, { series: 'weather', count: 2 }],
-    own: 0.45, radiation: { type: 'ortho', amount: 0.09 },
-    desc: 'Mountain + 2 weather designs on grid → +45%; spreads +9% ortho',
+    own: 0.90, radiation: { type: 'ortho', amount: 0.18 },
+    desc: 'Mountain + 2 weather designs on grid → +90%; spreads +18% ortho',
   },
   TIDE_POOL: {
     name: 'Tide Pool', type: 'cross_family',
     requires: [{ series: 'animals', count: 2 }, { series: 'landscapes', count: 2 }],
-    own: 0.38, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '2 animal + 2 landscape designs on grid → +38%; spreads +8% ortho',
+    own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
+    desc: '2 animal + 2 landscape designs on grid → +75%; spreads +18% ortho',
   },
   STORM_CASTLE: {
     name: 'Storm Castle', type: 'cross_family',
     requires: [{ series: 'weather', count: 2 }, { series: 'buildings', count: 2 }],
-    own: 0.40, radiation: { type: 'diag', amount: 0.09 },
-    desc: '2 weather + 2 building designs on grid → +40%; spreads +9% diagonally',
+    own: 0.80, radiation: { type: 'diag', amount: 0.18 },
+    desc: '2 weather + 2 building designs on grid → +80%; spreads +18% diagonally',
   },
 
-  // ── Meta-synergies — MUST be defined last ─────────────────────────────────
+  // ── Meta-synergies — MUST be defined last ─────────────────────────────────────
   PRIMORDIAL_GROVE: {
     name: 'Primordial Grove', type: 'meta_synergy',
     requires: ['GARDEN', 'FOREST'],
-    own: 0.35, reward: { type: 'random_block' },
-    desc: 'GARDEN + FOREST both active → +35% to all synergy-active cells. Reward: bonus block',
+    own: 0.65, reward: { type: 'random_block' },
+    desc: 'GARDEN + FOREST both active → +65% to all synergy-active cells. Reward: bonus block',
   },
   DEEP_SPACE: {
     name: 'Deep Space', type: 'meta_synergy',
     requires: ['COSMOS', 'STARFLEET'],
-    own: 0.40,
-    desc: 'COSMOS + STARFLEET both active → +40% to all synergy-active cells',
+    own: 0.75,
+    desc: 'COSMOS + STARFLEET both active → +75% to all synergy-active cells',
   },
   STORM_KINGDOM: {
     name: 'Storm Kingdom', type: 'meta_synergy',
     requires: ['STORM_FRONT', 'URBAN'],
-    own: 0.35,
-    desc: 'STORM_FRONT + URBAN both active → +35% to all synergy-active cells',
+    own: 0.65,
+    desc: 'STORM_FRONT + URBAN both active → +65% to all synergy-active cells',
   },
   BEAST_EMPIRE: {
     name: 'Beast Empire', type: 'meta_synergy',
     requires: ['MENAGERIE', 'BUILDING_ROW'],
-    own: 0.38, reward: { type: 'gold', amount: 60 },
-    desc: 'MENAGERIE + BUILDING_ROW both active → +38% to all synergy-active cells. Reward: +60 gold',
+    own: 0.70, reward: { type: 'gold', amount: 60 },
+    desc: 'MENAGERIE + BUILDING_ROW both active → +70% to all synergy-active cells. Reward: +60 gold',
   },
   COSMIC_NEXUS: {
     name: 'Cosmic Nexus', type: 'meta_synergy',
     requires: ['DEEP_SPACE', 'PRIMORDIAL_GROVE'],
-    own: 0.25, reward: { type: 'pixels', amount: 1000 },
-    desc: 'DEEP_SPACE + PRIMORDIAL_GROVE both active → +25% to ALL occupied cells. Reward: +1000px',
+    own: 0.50, reward: { type: 'pixels', amount: 1000 },
+    desc: 'DEEP_SPACE + PRIMORDIAL_GROVE both active → +50% to ALL occupied cells. Reward: +1000px',
     affectsAll: true,
   },
 }
@@ -532,7 +531,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   for (const [synergyId, def] of Object.entries(SYNERGY_DEFS)) {
     const required = (def.required ?? 0) + threshold
 
-    // ── Series count — zone-constrained sliding window ──────────────────────
+    // ── Series count — zone-constrained sliding window, unique designs required ─
     if (def.type === 'series_count') {
       let bestCount = 0
       const activeCellKeys = new Set()
@@ -621,38 +620,37 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       }
     }
 
-    // ── Row series — radiation stays outside the qualifying row ───────────────
+    // ── Row series — duplicates count, radiation stays outside qualifying row ──
     else if (def.type === 'row_series') {
       let totalActive = 0
-      let maxUniqueInRow = 0
+      let maxCountInRow = 0
       for (let r = 0; r < GRID_SIZE; r++) {
         const rowCells = blocks.filter(b => b.r === r && b.series === def.series)
-        const uniqueInRow = new Set(rowCells.map(b => b.designId)).size
-        maxUniqueInRow = Math.max(maxUniqueInRow, uniqueInRow)
-        if (uniqueInRow >= required) {
-          totalActive += uniqueInRow
+        const countInRow = rowCells.length
+        maxCountInRow = Math.max(maxCountInRow, countInRow)
+        if (countInRow >= required) {
+          totalActive += countInRow
           const rowKeys = new Set(rowCells.map(({ r: cr, c: cc }) => `${cr},${cc}`))
           for (const { c } of rowCells) {
             bonusMap[r][c] += def.own
             tryAssignMap(r, c, synergyId, def)
-            // Exclude same-row cells from radiation so inner cells don't stack intra-row
             applyRadiation(r, c, def, rowKeys)
           }
         }
       }
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxUniqueInRow, required: def.required, reward: def.reward ?? null })
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxCountInRow, required: def.required, reward: def.reward ?? null })
     }
 
-    // ── Column series — radiation stays outside the qualifying column ──────────
+    // ── Column series — duplicates count, radiation stays outside qualifying col ─
     else if (def.type === 'column_series') {
       let totalActive = 0
-      let maxUniqueInCol = 0
+      let maxCountInCol = 0
       for (let c = 0; c < GRID_SIZE; c++) {
         const colCells = blocks.filter(b => b.c === c && b.series === def.series)
-        const uniqueInCol = new Set(colCells.map(b => b.designId)).size
-        maxUniqueInCol = Math.max(maxUniqueInCol, uniqueInCol)
-        if (uniqueInCol >= required) {
-          totalActive += uniqueInCol
+        const countInCol = colCells.length
+        maxCountInCol = Math.max(maxCountInCol, countInCol)
+        if (countInCol >= required) {
+          totalActive += countInCol
           const colKeys = new Set(colCells.map(({ r: cr, c: cc }) => `${cr},${cc}`))
           for (const { r } of colCells) {
             bonusMap[r][c] += def.own
@@ -661,10 +659,10 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           }
         }
       }
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxUniqueInCol, required: def.required, reward: def.reward ?? null })
+      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxCountInCol, required: def.required, reward: def.reward ?? null })
     }
 
-    // ── Long-range (≥ minDist Manhattan distance apart) ───────────────────────
+    // ── Long-range (≥ minDist Manhattan distance apart, same design allowed) ──
     else if (def.type === 'long_range') {
       const qualifyingCells = new Set()
       let anyFound = false
@@ -674,7 +672,6 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         for (let i = 0; i < pool.length; i++) {
           for (let j = i + 1; j < pool.length; j++) {
             const a = pool[i], b = pool[j]
-            if (a.designId === b.designId) continue
             if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) >= def.minDist) {
               qualifyingCells.add(`${a.r},${a.c}`)
               qualifyingCells.add(`${b.r},${b.c}`)
@@ -699,10 +696,8 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         }
       }
 
-      // Progress: 0 = nothing, 1 = one side/design present, 2 = active
-      // Cap at 1 when inactive so we never show a full bar for an inactive synergy
       const qualifyingCount = def.series
-        ? uCount(def.series)
+        ? (seriesCount[def.series] ?? 0)
         : Math.min(blocks.filter(b => def.designA ? b.designId === def.designA : b.series === def.seriesA).length, 1)
           + Math.min(blocks.filter(b => def.designB ? b.designId === def.designB : b.series === def.seriesB).length, 1)
 
@@ -717,14 +712,13 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       }
     }
 
-    // ── Core-radius (anchor + N satellites within radius cells) ──────────────
+    // ── Core-radius (anchor + N satellites within radius, duplicates count) ────
     else if (def.type === 'core_radius') {
       const coreCells      = new Set()
       const satelliteCells = new Set()
       let anyFound     = false
       let bestProgress = 0
 
-      // Neural −1 applies to satellite count requirement (fix: was using def.requiredSatellites directly)
       const satRequired = def.requiredSatellites + threshold
 
       for (const core of blocks) {
@@ -735,15 +729,14 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
 
         const nearSatellites = blocks.filter(sat => {
           if (sat.r === core.r && sat.c === core.c) return false
-          if (sat.designId === core.designId) return false
           const satMatch = def.satelliteSeries ? sat.series === def.satelliteSeries : false
           return satMatch && Math.abs(sat.r - core.r) + Math.abs(sat.c - core.c) <= def.radius
         })
 
-        const uniqueSatIds = new Set(nearSatellites.map(s => s.designId)).size
-        bestProgress = Math.max(bestProgress, uniqueSatIds)
+        const satCount = nearSatellites.length
+        bestProgress = Math.max(bestProgress, satCount)
 
-        if (uniqueSatIds >= satRequired) {
+        if (satCount >= satRequired) {
           anyFound = true
           coreCells.add(`${core.r},${core.c}`)
           for (const sat of nearSatellites) satelliteCells.add(`${sat.r},${sat.c}`)
@@ -760,7 +753,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         applyRadiation(r, c, def)
       }
       for (const key of satelliteCells) {
-        // Skip cells that are also cores — they already received ownCore (fixes BLOOMING_CORE stacking)
+        // Skip cells that are also cores — they already received ownCore
         if (coreCells.has(key)) continue
         const [r, c] = key.split(',').map(Number)
         bonusMap[r][c] += def.ownSatellite
@@ -771,7 +764,6 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
     // ── Block-type count ──────────────────────────────────────────────────────
     else if (def.type === 'block_type_count') {
       if (def.blockType) {
-        // Fixed block type (DOUBLE_DOWN, REACTOR_NETWORK, ECHO_CHAMBER)
         const count  = typeCount[def.blockType] ?? 0
         const active = count >= required
         activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: count, required: def.required, reward: def.reward ?? null })
@@ -832,7 +824,6 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           }
           allMet = adjacentFound
         } else {
-          // Guard: requireAdjacent only supported for exactly 2 designId entries
           allMet = false
         }
       }

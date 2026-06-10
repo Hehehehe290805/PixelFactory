@@ -3,18 +3,20 @@ import { Link } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { DESIGNS, ALL_SERIES } from '../data/designLibrary'
-import { GRID_STYLES, BLOCK_TYPE_VISUAL } from '../lib/constants'
+import { GRID_STYLES, BLOCK_TYPES, BLOCK_TYPE_VISUAL } from '../lib/constants'
 import { useDesignUnlocks } from '../lib/designUnlocks'
 import { DesignMiniThumb, DesignTooltipBody } from '../components/ui/DeckSelector'
 
-const TABS = ['blocks', 'grids', 'templates']
+const TABS = ['templates', 'blocks', 'grids']
+
+const GATED_BLOCK_TYPES = ['overflow', 'mirror', 'catalyst', 'void']
 
 export default function Profile() {
   const { user } = useUserStore()
   const { isDesignUnlocked, unlockedDesigns } = useDesignUnlocks()
-  const { activeGridStyle, purchasedGridStyles = ['base'] } = useShopStore()
+  const { activeGridStyle, purchasedGridStyles = ['base'], isBlockTypeUnlocked } = useShopStore()
 
-  const [tab, setTab]               = useState('blocks')
+  const [tab, setTab]               = useState('templates')
   const [seriesFilter, setSeriesFilter] = useState('all')
   const [hoveredId, setHoveredId]   = useState(null)
   const [mousePos, setMousePos]     = useState({ x: 0, y: 0 })
@@ -51,7 +53,7 @@ export default function Profile() {
           </div>
           <div className="card-sm px-4 py-2 text-right">
             <div className="text-xl font-black text-white">{unlockedCount}</div>
-            <div className="text-xs text-gray-600 uppercase font-bold">designs</div>
+            <div className="text-xs text-gray-600 uppercase font-bold">templates</div>
           </div>
         </div>
 
@@ -71,8 +73,8 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* ── BLOCKS TAB ─────────────────────────────────────────────────────── */}
-        {tab === 'blocks' && (
+        {/* ── TEMPLATES TAB ──────────────────────────────────────────────────── */}
+        {tab === 'templates' && (
           <>
             {/* Series filter */}
             <div className="flex gap-1.5 flex-wrap mb-4">
@@ -223,17 +225,58 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── TEMPLATES TAB ──────────────────────────────────────────────────── */}
-        {tab === 'templates' && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="text-5xl font-black text-gray-800">⬜</div>
-            <div className="text-lg font-black text-gray-600">No templates yet</div>
-            <p className="text-xs text-gray-700 text-center max-w-xs leading-relaxed">
-              Save named grid layouts from a completed level to revisit your best configurations later.
+        {/* ── BLOCKS TAB ─────────────────────────────────────────────────────── */}
+        {tab === 'blocks' && (
+          <div>
+            <p className="text-xs text-gray-600 font-semibold mb-4">
+              Block types define the effect each design has when placed. Basic types are always available.
+              Shop-only types require a one-time unlock in the <Link to="/shop" className="text-pixel-blue hover:underline">Shop</Link>.
             </p>
-            <span className="text-[10px] font-black text-gray-700 border border-game-border rounded px-2 py-1 mt-2">
-              Coming soon
-            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Object.entries(BLOCK_TYPES).map(([key, bt]) => {
+                const vis     = BLOCK_TYPE_VISUAL[key]
+                const isGated = GATED_BLOCK_TYPES.includes(key)
+                const owned   = isBlockTypeUnlocked(key)
+                return (
+                  <div
+                    key={key}
+                    className="rounded-xl p-3 flex items-start gap-3 border-2 transition"
+                    style={{
+                      background:  owned ? '#0a0f1a' : '#080810',
+                      borderColor: owned ? (vis?.color ?? '#00d49a') + '55' : '#1e1e3a',
+                    }}
+                  >
+                    <div
+                      className="flex-shrink-0 flex items-center justify-center rounded font-black text-[10px]"
+                      style={{
+                        width: 36, height: 36,
+                        background: owned ? (vis?.color ?? '#5c7abf') + '22' : '#111128',
+                        color: owned ? (vis?.color ?? '#5c7abf') : '#4a5568',
+                        border: `${vis?.borderWidth ?? 2}px ${vis?.borderStyle ?? 'solid'} ${owned ? (vis?.color ?? '#5c7abf') + '88' : '#2a2a4a'}`,
+                      }}
+                    >
+                      {vis?.label ?? key.slice(0, 3).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black" style={{ color: owned ? '#e2e8f0' : '#4a5568' }}>
+                          {bt.label}
+                        </span>
+                        {isGated && !owned && (
+                          <span className="text-[10px] font-black text-pixel-yellow">Shop unlock</span>
+                        )}
+                        {owned && (
+                          <span className="text-[10px] font-black" style={{ color: vis?.color ?? '#00d49a' }}>✓</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] leading-snug mt-0.5" style={{ color: owned ? '#718096' : '#3a3a5a' }}>
+                        {bt.desc}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
