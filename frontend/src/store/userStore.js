@@ -11,6 +11,7 @@ export const useUserStore = create((set, get) => ({
   discoveredSets: new Set(),
   campaignProgress: {},
   cumulativeGreedyGold: 0,
+  quizStats: { correct: 0, total: 0 },
   loading: false,
   error: null,
   toastQueue: [],
@@ -48,12 +49,22 @@ export const useUserStore = create((set, get) => ({
       progress[row.level_number] = { stars: row.stars, best_time_seconds: row.best_time_seconds }
     }
 
-    set({ profile: profileRes.data, gold: profileRes.data.gold, achievements: unlockedKeys, campaignProgress: progress, loading: false })
+    set({
+      profile: profileRes.data,
+      gold: profileRes.data.gold,
+      achievements: unlockedKeys,
+      campaignProgress: progress,
+      quizStats: { correct: profileRes.data.quiz_correct ?? 0, total: profileRes.data.quiz_total ?? 0 },
+      loading: false,
+    })
   },
 
   // ── Registration ────────────────────────────────────────────────────────────
   // Username is passed via auth metadata so the DB trigger can create the profile
   // even before email confirmation (no active session yet).
+  // Supabase must be configured to send OTP codes (not magic links):
+  //   Auth → Providers → Email → enable "Email OTP"
+  //   Auth → Settings → OTP Expiry = 600 (10 minutes)
   async register(email, password, username) {
     set({ loading: true, error: null })
     const { data, error } = await supabase.auth.signUp({
@@ -61,24 +72,39 @@ export const useUserStore = create((set, get) => ({
       password,
       options: { data: { username } },
     })
-    if (error) { set({ error: error.message, loading: false }); return false }
+    if (error) { set({ loading: false }); return { ok: false, error: error.message } }
 
-    // Email confirmation required — session not yet established
+    // Email confirmation required — an OTP was sent to the email address
     if (!data.session) {
       set({ loading: false })
-      return 'confirm_email'
+      return { ok: 'confirm_email' }
     }
 
     await get().loadProfile(data.user)
-    return true
+    return { ok: true }
+  },
+
+  // Verify the 6-digit OTP that Supabase emailed after signUp
+  async verifyEmail(email, token) {
+    set({ loading: true })
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' })
+    if (error) { set({ loading: false }); return { ok: false, error: error.message } }
+    if (data.user) await get().loadProfile(data.user)
+    return { ok: true }
+  },
+
+  // Resend the verification OTP
+  async resendVerification(email) {
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    return { error: error?.message ?? null }
   },
 
   async login(email, password) {
     set({ loading: true, error: null })
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { set({ error: error.message, loading: false }); return false }
+    if (error) { set({ loading: false }); return { ok: false, error: error.message } }
     await get().loadProfile(data.user)
-    return true
+    return { ok: true }
   },
 
   async logout() {
@@ -225,14 +251,38 @@ export const useUserStore = create((set, get) => ({
     }
   },
 
+  async saveQuizResult(wasCorrect) {
+    const state = get()
+    const newCorrect = state.quizStats.correct + (wasCorrect ? 1 : 0)
+    const newTotal   = state.quizStats.total + 1
+    set({ quizStats: { correct: newCorrect, total: newTotal } })
+    if (state.user) {
+      await supabase.from('profiles').update({ quiz_correct: newCorrect, quiz_total: newTotal }).eq('id', state.user.id)
+    }
+  },
+
+  // Saves the run only if it beats the current personal best. Returns true if new highscore.
   async saveEndlessScore(highestWave, totalPixelsProduced) {
     const state = get()
-    if (!state.user || !state.profile) return
+    if (!state.user || !state.profile) return false
+
+    const { data: best } = await supabase
+      .from('endless_scores')
+      .select('highest_wave')
+      .eq('user_id', state.user.id)
+      .order('highest_wave', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const prevBest = best?.highest_wave ?? 0
+    if (highestWave <= prevBest) return false  // not a highscore
+
     await supabase.from('endless_scores').insert({
       user_id: state.user.id,
       username: state.profile.username,
       highest_wave: highestWave,
       total_pixels_produced: totalPixelsProduced,
     })
+    return true
   },
 }))

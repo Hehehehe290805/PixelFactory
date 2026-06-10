@@ -5,9 +5,15 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   gold INTEGER DEFAULT 0,
+  quiz_correct INTEGER DEFAULT 0,
+  quiz_total INTEGER DEFAULT 0,
   delete_requested_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Run once if adding columns to an existing table:
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_correct INTEGER DEFAULT 0;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_total INTEGER DEFAULT 0;
 
 -- Inventory: pixels and blocks owned outside of levels
 CREATE TABLE IF NOT EXISTS inventory (
@@ -66,6 +72,7 @@ ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE endless_scores ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Anyone can view profiles" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 

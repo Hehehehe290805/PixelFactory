@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useSettingsStore } from '../store/settingsStore'
 import { useUserStore } from '../store/userStore'
 import { ACHIEVEMENTS } from '../engine/achievementEngine'
@@ -15,7 +15,8 @@ const CATEGORY_LABELS = {
 }
 
 export default function Settings() {
-  const { showTutorial, setShowTutorial } = useSettingsStore()
+  const navigate = useNavigate()
+  const { showTutorial, setShowTutorial, showLearning, setShowLearning } = useSettingsStore()
   const { achievements, user } = useUserStore()
   const total = Object.keys(ACHIEVEMENTS).length
 
@@ -30,7 +31,7 @@ export default function Settings() {
     <div className="min-h-screen bg-game-bg px-4 py-8">
       <div className="max-w-lg mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
+          <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
           <h1 className="text-4xl font-black text-white pixel-heading">Settings</h1>
         </div>
 
@@ -41,9 +42,14 @@ export default function Settings() {
             value={showTutorial}
             onChange={setShowTutorial}
           />
+          <ToggleRow
+            label="Learning Cards"
+            desc="Facts and quizzes after campaign levels"
+            value={showLearning}
+            onChange={setShowLearning}
+          />
         </Section>
 
-        {/* Achievements — only shown when logged in */}
         {user && (
           <>
             <div className="mb-2 flex items-center justify-between">
@@ -103,18 +109,18 @@ function Section({ title, children }) {
 
 function ToggleRow({ label, desc, value, onChange }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4 select-none">
       <div>
         <div className="text-sm font-black text-gray-300">{label}</div>
         <div className="text-xs font-semibold text-gray-600 mt-0.5">{desc}</div>
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`relative w-12 h-6 rounded-full border-2 transition-colors flex-shrink-0
+        className={`relative w-12 h-6 rounded-full border-2 transition-colors flex-shrink-0 overflow-hidden
           ${value ? 'bg-pixel-blue border-pixel-blue' : 'bg-game-bg border-game-border'}`}
       >
         <span
-          className={`absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
+          className={`absolute left-0 top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
             ${value ? 'translate-x-[23px]' : 'translate-x-[3px]'}`}
         />
       </button>

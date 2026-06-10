@@ -1,44 +1,56 @@
 import { create } from 'zustand'
 
-// Persists in localStorage so purchases survive page refresh without requiring Supabase.
 function loadState() {
   try { return JSON.parse(localStorage.getItem('pf_shop') ?? '{}') } catch { return {} }
 }
 
-function saveState(state) {
-  try { localStorage.setItem('pf_shop', JSON.stringify(state)) } catch {}
+function persist(state) {
+  try {
+    localStorage.setItem('pf_shop', JSON.stringify({
+      activeGridStyle:  state.activeGridStyle,
+      unlockedPixels:   state.unlockedPixels,
+      unlockedBlocks:   state.unlockedBlocks,
+      purchasedSpeeds:  state.purchasedSpeeds,
+    }))
+  } catch {}
 }
 
-const defaults = {
-  activeGridStyle: 'base',
-  unlockedPixels:  [],   // e.g. ['rainbow', 'silver', 'gold', 'neon']
-  unlockedBlocks:  [],   // e.g. ['overflow', 'mirror', 'amplifier', ...]
-}
+const saved = loadState()
 
 export const useShopStore = create((set, get) => ({
-  ...defaults,
-  ...loadState(),
+  activeGridStyle: saved.activeGridStyle  ?? 'base',
+  unlockedPixels:  saved.unlockedPixels   ?? [],
+  unlockedBlocks:  saved.unlockedBlocks   ?? [],
+  // Persistent speed unlocks — bought with gold in the permanent Shop
+  purchasedSpeeds: saved.purchasedSpeeds  ?? [],
 
   setGridStyle(key) {
-    const next = { ...get(), activeGridStyle: key }
-    saveState({ activeGridStyle: key, unlockedPixels: next.unlockedPixels, unlockedBlocks: next.unlockedBlocks })
     set({ activeGridStyle: key })
+    persist({ ...get(), activeGridStyle: key })
   },
 
   unlockPixel(key) {
     const state = get()
     if (state.unlockedPixels.includes(key)) return
     const next = [...state.unlockedPixels, key]
-    saveState({ activeGridStyle: state.activeGridStyle, unlockedPixels: next, unlockedBlocks: state.unlockedBlocks })
     set({ unlockedPixels: next })
+    persist({ ...state, unlockedPixels: next })
   },
 
   unlockBlock(key) {
     const state = get()
     if (state.unlockedBlocks.includes(key)) return
     const next = [...state.unlockedBlocks, key]
-    saveState({ activeGridStyle: state.activeGridStyle, unlockedPixels: state.unlockedPixels, unlockedBlocks: next })
     set({ unlockedBlocks: next })
+    persist({ ...state, unlockedBlocks: next })
+  },
+
+  purchaseSpeed(speed) {
+    const state = get()
+    if (state.purchasedSpeeds.includes(speed)) return
+    const next = [...state.purchasedSpeeds, speed]
+    set({ purchasedSpeeds: next })
+    persist({ ...state, purchasedSpeeds: next })
   },
 
   isPixelUnlocked(key) {

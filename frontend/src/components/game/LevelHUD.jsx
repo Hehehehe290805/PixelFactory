@@ -1,28 +1,32 @@
 import { useGameStore } from '../../store/gameStore'
+import { useShopStore } from '../../store/shopStore'
 
 function fmt(s) {
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+  return `${Math.floor(Math.abs(s) / 60)}:${(Math.floor(Math.abs(s)) % 60).toString().padStart(2, '0')}`
 }
 
+// 3 stars if ≤60% time used, 2 stars if ≤85%, else 1 star
 function liveStar(elapsed, limit) {
   const r = elapsed / limit
-  return r <= 0.30 ? 3 : r <= 0.70 ? 2 : 1
+  return r <= 0.60 ? 3 : r <= 0.85 ? 2 : 1
 }
 
-const SPEED_OPTIONS = [0.5, 1, 2, 5, 10]
+const ALL_SPEEDS = [0.5, 1, 2, 5, 10]
 
 export default function LevelHUD({ config, effectiveRequired, timeRemaining, elapsedSeconds }) {
-  const { totalPixelsProduced, gameSpeed, purchasedSpeeds, setGameSpeed, setPaused } = useGameStore()
+  const { totalPixelsProduced, gameSpeed, setGameSpeed, setPaused } = useGameStore()
+  const { purchasedSpeeds } = useShopStore()
+
   const progress    = Math.min(1, totalPixelsProduced / effectiveRequired)
   const currentStar = liveStar(elapsedSeconds, config.timeLimitSeconds)
   const urgent      = timeRemaining <= 30
 
-  // Speed buttons visible once at least one speed is purchased
-  const availableSpeeds = SPEED_OPTIONS.filter(s => s === 1 || purchasedSpeeds.has(s))
+  // Speed buttons: always show 1×, plus any purchased speeds
+  const availableSpeeds = ALL_SPEEDS.filter(s => s === 1 || purchasedSpeeds.includes(s))
 
   return (
-    <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0">
-      {/* Pause button */}
+    <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0 select-none">
+      {/* Pause */}
       <button
         onClick={() => setPaused(true)}
         className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0"
@@ -36,7 +40,7 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
         <div className="text-white font-black text-sm leading-tight">{config.name}</div>
       </div>
 
-      {/* Progress */}
+      {/* Progress bar */}
       <div className="flex-1 flex flex-col gap-1 min-w-0">
         <div className="flex justify-between text-xs font-bold text-gray-500">
           <span>{Math.floor(totalPixelsProduced).toLocaleString()} px</span>
@@ -50,7 +54,7 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
         </div>
       </div>
 
-      {/* Live stars */}
+      {/* Live stars — hidden for tutorial */}
       {!config.tutorial && (
         <div className="flex-shrink-0 text-xl leading-none hidden sm:flex">
           {[1, 2, 3].map(i => (
@@ -59,7 +63,7 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
         </div>
       )}
 
-      {/* Speed selector — visible once any speed is purchased */}
+      {/* Speed selector — shown once any speed pack is purchased */}
       {availableSpeeds.length > 1 && (
         <div className="flex items-center gap-1 flex-shrink-0">
           {availableSpeeds.map(s => (

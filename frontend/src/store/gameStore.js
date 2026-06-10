@@ -67,7 +67,6 @@ export const useGameStore = create((set, get) => ({
   colorCheckerReductions: 0,
   gameSpeed: 1,
   gamePaused: false,
-  purchasedSpeeds: new Set(),
 
   placeBlock(blockId, row, col) {
     const state = get()
@@ -244,13 +243,6 @@ export const useGameStore = create((set, get) => ({
     return true
   },
 
-  purchaseSpeed(speed) {
-    const s = get()
-    const next = new Set(s.purchasedSpeeds)
-    next.add(speed)
-    set({ purchasedSpeeds: next })
-  },
-
   setWaveDir(blockId, dir) {
     const { grid, inventory } = applyBlockUpdate(get(), blockId, b => ({ ...b, waveDir: dir }))
     set({ grid, inventory })
@@ -258,6 +250,16 @@ export const useGameStore = create((set, get) => ({
 
   addPixels(amount) {
     set(state => ({ totalPixelsProduced: state.totalPixelsProduced + amount }))
+  },
+
+  addPixelInventory(colorCounts) {
+    set(s => {
+      const newInv = { ...s.pixelInventory }
+      for (const [color, count] of Object.entries(colorCounts)) {
+        newInv[color] = (newInv[color] ?? 0) + count
+      }
+      return { pixelInventory: newInv }
+    })
   },
 
   setPxPerSecond(rate) { set({ currentPxPerSecond: rate }) },
@@ -323,7 +325,6 @@ export const useGameStore = create((set, get) => ({
       colorCheckerReductions: 0,
       gameSpeed: 1,
       gamePaused: false,
-      purchasedSpeeds: new Set(),
     })
   },
 
@@ -344,7 +345,6 @@ export const useGameStore = create((set, get) => ({
       colorCheckerReductions: 0,
       gameSpeed: 1,
       gamePaused: false,
-      purchasedSpeeds: new Set(),
     })
   },
 }))

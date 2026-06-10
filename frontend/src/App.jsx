@@ -10,6 +10,7 @@ import Shop from './pages/Shop'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import AccountSettings from './pages/AccountSettings'
+import Leaderboard from './pages/Leaderboard'
 
 export default function App() {
   const initialize = useUserStore(s => s.initialize)
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/profile"                   element={<Profile />} />
         <Route path="/settings"                  element={<Settings />} />
         <Route path="/account"                   element={<AccountSettings />} />
+        <Route path="/leaderboard"               element={<Leaderboard />} />
         <Route path="*"                          element={<Navigate to="/" replace />} />
       </Routes>
     </>

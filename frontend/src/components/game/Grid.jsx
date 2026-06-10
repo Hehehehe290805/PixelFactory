@@ -109,11 +109,11 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
           },
         },
         {
-          icon: '🔄',
-          label: 'Add',
+          icon: '⇄',
+          label: 'Replace',
           color: '#00d49a',
           onClick: () => {
-            // Show inventory picker to replace this block
+            // Remove current block and pick a replacement from inventory
             setWheel({ type: 'add', row: wheel.row, col: wheel.col, x: wheel.x, y: wheel.y })
           },
         },
@@ -187,11 +187,11 @@ export default function Grid({ selectedBlockId, onBlockSelect }) {
         )}
       </div>
 
-      <p className="text-xs text-gray-600 text-center">
-        {movingBlock
-          ? 'Click an empty cell to place · click the block to cancel'
-          : 'Click a cell for options · drag to place or move'}
-      </p>
+      {movingBlock && (
+        <p className="text-xs text-gray-600 text-center select-none">
+          Click an empty cell to place · click the block to cancel
+        </p>
+      )}
 
       {wheel && items.length > 0 && (
         <RadialWheel x={wheel.x} y={wheel.y} items={items} onDismiss={dismiss} />

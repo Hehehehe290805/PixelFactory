@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { useSettingsStore } from '../../store/settingsStore'
 
-const PAD = 14 // padding around the spotlight target
+const PAD = 14
 
+// Steps: targetSel = CSS selector for the spotlight hole
+// waitFor = condition key that auto-advances the step
 const STEPS = [
   {
     id: 'welcome',
@@ -14,17 +16,25 @@ const STEPS = [
     targetSel: null,
   },
   {
-    id: 'select_block',
+    id: 'open_inventory',
     title: 'Open your inventory',
-    body: 'Tap the bar at the very bottom of the screen to expand your inventory, then click a block to open the pixel editor.',
-    waitFor: 'blockSelected',
+    body: 'Tap the ▲ bar at the very bottom of the screen to expand your inventory and see your blocks.',
+    waitFor: 'inventoryOpen',
     targetSel: '[data-tutorial="inventory"]',
     hint: 'Tap the inventory bar at the bottom ↓',
   },
   {
+    id: 'select_block',
+    title: 'Click a block',
+    body: 'Click any block in the inventory to open the pixel editor.',
+    waitFor: 'blockSelected',
+    targetSel: '[data-tutorial="inventory"]',
+    hint: 'Click a block in the inventory',
+  },
+  {
     id: 'paint_pixels',
     title: 'Paint at least 5 pixels',
-    body: 'Click or drag on the 16×16 canvas to paint pixels. The more pixels you add, the faster your block produces!',
+    body: 'Click or drag on the 16×16 canvas to paint pixels. More pixels = faster production!',
     waitFor: 'pixelsPainted',
     targetSel: '[data-tutorial="editor-canvas"]',
     hint: 'Paint pixels on the canvas',
@@ -32,14 +42,14 @@ const STEPS = [
   {
     id: 'close_editor',
     title: 'Close the editor',
-    body: 'Click "Done" to close the pixel editor. Then you\'ll place your painted block on the grid.',
+    body: 'Click "Done" to close the editor. Then you\'ll drag your block onto the grid.',
     waitFor: null,
     targetSel: '[data-tutorial="editor-done"]',
   },
   {
     id: 'place_block',
     title: 'Place your block on the grid',
-    body: 'Open the inventory bar at the bottom, then drag your block to any cell on the 12×12 grid.',
+    body: 'Open the inventory bar ▲ again, then drag your block to any cell on the 12×12 grid.',
     waitFor: 'blockPlaced',
     targetSel: '[data-tutorial="grid"]',
     hint: 'Drag a block from the inventory onto the grid',
@@ -47,7 +57,7 @@ const STEPS = [
   {
     id: 'watch',
     title: 'Watch it produce!',
-    body: 'Your block is now producing pixels! Watch the progress bar fill and the px/s counter on the right.',
+    body: 'Your block is now producing pixels! See the progress bar fill and the px/s counter on the right.',
     waitFor: 'producing',
     targetSel: null,
     hint: 'Waiting for production to start…',
@@ -66,15 +76,10 @@ function getSpotlight(sel) {
   const el = document.querySelector(sel)
   if (!el) return null
   const r = el.getBoundingClientRect()
-  return {
-    x: r.left - PAD,
-    y: r.top  - PAD,
-    w: r.width  + PAD * 2,
-    h: r.height + PAD * 2,
-  }
+  return { x: r.left - PAD, y: r.top - PAD, w: r.width + PAD * 2, h: r.height + PAD * 2 }
 }
 
-export default function TutorialOverlay({ active }) {
+export default function TutorialOverlay({ active, inventoryOpen }) {
   const { showTutorial } = useSettingsStore()
   const { inventory, grid, totalPixelsProduced, selectedBlockId } = useGameStore()
 
@@ -83,124 +88,87 @@ export default function TutorialOverlay({ active }) {
   const [spotlight, setSpotlight] = useState(null)
 
   const blocksOnGrid = grid.flat().filter(Boolean).length
-  const totalPainted = [
-    ...inventory,
-    ...grid.flat().filter(Boolean),
-  ].reduce((s, b) => s + b.pixelCount, 0)
+  const totalPainted = [...inventory, ...grid.flat().filter(Boolean)]
+    .reduce((s, b) => s + b.pixelCount, 0)
 
   const step = STEPS[stepIdx]
 
-  // Update spotlight position when step changes or when the DOM changes
   const refreshSpotlight = useCallback(() => {
     if (!step?.targetSel) { setSpotlight(null); return }
-    const s = getSpotlight(step.targetSel)
-    setSpotlight(s)
+    setSpotlight(getSpotlight(step.targetSel))
   }, [step?.targetSel])
 
   useEffect(() => {
     refreshSpotlight()
-    // Re-check after a short delay (for elements that appear after animation)
     const t = setTimeout(refreshSpotlight, 200)
     return () => clearTimeout(t)
   }, [refreshSpotlight, stepIdx, selectedBlockId])
 
-  // Update spotlight on window resize
   useEffect(() => {
     window.addEventListener('resize', refreshSpotlight)
     return () => window.removeEventListener('resize', refreshSpotlight)
   }, [refreshSpotlight])
 
-  function advance() {
-    setStepIdx(i => Math.min(i + 1, STEPS.length - 1))
-  }
+  function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
   useEffect(() => {
     if (!active || !showTutorial || dismissed || !step) return
-    if (step.waitFor === 'blockSelected' && selectedBlockId) advance()
+    if (step.waitFor === 'inventoryOpen'  && inventoryOpen) advance()
+    if (step.waitFor === 'blockSelected'  && selectedBlockId) advance()
     if (step.waitFor === 'pixelsPainted'  && totalPainted >= 5) advance()
     if (step.waitFor === 'blockPlaced'    && blocksOnGrid >= 1) advance()
     if (step.waitFor === 'producing'      && totalPixelsProduced > 0) advance()
-  }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
+  }, [inventoryOpen, selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced])
 
   if (!active || !showTutorial || dismissed || stepIdx >= STEPS.length) return null
 
   const isLast    = stepIdx === STEPS.length - 1
   const isWaiting = !!step.waitFor
 
-  // Build the clip-path that creates a rectangular hole where the user needs to click.
-  // The outer rectangle fills the whole viewport (clockwise = normal fill).
-  // The inner rectangle is the hole (counterclockwise = subtract with nonzero fill rule).
   const W = window.innerWidth
   const H = window.innerHeight
-  let clipPath = undefined
+  let clipPath
   if (spotlight) {
     const { x, y, w, h } = spotlight
-    // Outer CW: TL→TR→BR→BL→TL
-    // Inner CCW (hole): TL→BL→BR→TR→TL
-    clipPath = `polygon(
-      0px 0px, ${W}px 0px, ${W}px ${H}px, 0px ${H}px, 0px 0px,
-      ${x}px ${y}px, ${x}px ${y + h}px, ${x + w}px ${y + h}px, ${x + w}px ${y}px, ${x}px ${y}px
-    )`
+    clipPath = `polygon(0px 0px,${W}px 0px,${W}px ${H}px,0px ${H}px,0px 0px,${x}px ${y}px,${x}px ${y+h}px,${x+w}px ${y+h}px,${x+w}px ${y}px,${x}px ${y}px)`
   }
 
   return (
     <>
-      {/* Dark backdrop — clip-path cuts a hole at the target so clicks pass through there */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 40,
-          background: 'rgba(0, 0, 0, 0.72)',
-          clipPath,
-          pointerEvents: 'all',
-        }}
-      />
+      {/* Dark backdrop with spotlight hole */}
+      <div style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.72)', clipPath, pointerEvents:'all' }} />
 
-      {/* Pulsing ring around the spotlight target */}
+      {/* Pulsing ring around target */}
       <AnimatePresence>
         {spotlight && (
           <motion.div
             key={step.id + '-ring'}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            initial={{ opacity:0 }}
+            animate={{ opacity:[0.6,1,0.6] }}
+            exit={{ opacity:0 }}
+            transition={{ duration:1.6, repeat:Infinity, ease:'easeInOut' }}
             style={{
-              position: 'fixed',
-              left: spotlight.x - 4,
-              top:  spotlight.y - 4,
-              width:  spotlight.w + 8,
-              height: spotlight.h + 8,
-              borderRadius: 10,
-              border: '2px solid #1499cc',
-              boxShadow: '0 0 0 1px #1499cc33, 0 0 24px #1499cc50',
-              zIndex: 41,
-              pointerEvents: 'none',
+              position:'fixed', left:spotlight.x-4, top:spotlight.y-4,
+              width:spotlight.w+8, height:spotlight.h+8,
+              borderRadius:10, border:'2px solid #1499cc',
+              boxShadow:'0 0 0 1px #1499cc33,0 0 24px #1499cc50',
+              zIndex:41, pointerEvents:'none',
             }}
           />
         )}
       </AnimatePresence>
 
-      {/* Tutorial card — z-60 so it's always above backdrop + ring + editor */}
+      {/* Tutorial card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={stepIdx}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.22 }}
-          style={{
-            position: 'fixed',
-            top: 80,
-            right: 16,
-            width: 300,
-            maxWidth: 'calc(100vw - 32px)',
-            zIndex: 60,
-          }}
+          initial={{ opacity:0, y:16 }}
+          animate={{ opacity:1, y:0 }}
+          exit={{ opacity:0, y:16 }}
+          transition={{ duration:0.22 }}
+          style={{ position:'fixed', top:80, right:16, width:300, maxWidth:'calc(100vw - 32px)', zIndex:60 }}
         >
-          <div className="card" style={{ borderColor: '#1499cc88', boxShadow: '0 0 0 1px #1499cc22, 0 12px 40px #000000bb' }}>
-            {/* Progress dots + skip */}
+          <div className="card" style={{ borderColor:'#1499cc88', boxShadow:'0 0 0 1px #1499cc22,0 12px 40px #000000bb' }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1">
                 {STEPS.map((_, i) => (
@@ -215,17 +183,13 @@ export default function TutorialOverlay({ active }) {
             <h3 className="text-base font-black text-white mb-1">{step.title}</h3>
             <p className="text-sm font-semibold text-gray-400 leading-relaxed">{step.body}</p>
 
-            {/* Waiting indicator */}
             {isWaiting && step.hint && (
               <div className="mt-3 flex items-center gap-2 text-xs font-black text-pixel-blue">
-                <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}>
-                  ●
-                </motion.span>
+                <motion.span animate={{ opacity:[1,0.3,1] }} transition={{ repeat:Infinity, duration:1.4 }}>●</motion.span>
                 {step.hint}
               </div>
             )}
 
-            {/* Action buttons — only for manual steps */}
             {!isWaiting && (
               <div className="flex gap-2 mt-4">
                 {stepIdx > 0 && (

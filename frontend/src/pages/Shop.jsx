@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { GRID_STYLES, BLOCK_TYPES, PIXEL_COLORS } from '../lib/constants'
@@ -7,13 +7,19 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const SPECIAL_BLOCK_KEYS  = ['overflow', 'mirror', 'catalyst', 'void', 'amplifier', 'resonator', 'reactor', 'conductor', 'prism']
 const SPECIAL_PIXEL_KEYS  = ['rainbow', 'silver', 'gold', 'neon']
-const PIXEL_PACK_SIZES    = [10, 25, 50, 100]
-const PIXEL_PACK_COSTS    = { 10: 30, 25: 70, 50: 130, 100: 240 }
 const TEMPLATE_SLOT_COST  = 200
 
+const SPEED_ITEMS = [
+  { speed: 0.5, label: '0.5× Slow',    cost: 150,  desc: 'Half game speed — more time to think' },
+  { speed: 2,   label: '2× Fast',      cost: 250,  desc: 'Double game speed and timer' },
+  { speed: 5,   label: '5× Turbo',     cost: 500,  desc: '5× game speed and timer' },
+  { speed: 10,  label: '10× Max',      cost: 1000, desc: '10× game speed and timer' },
+]
+
 export default function Shop() {
+  const navigate = useNavigate()
   const { gold, addGold, unlockAchievements, achievements } = useUserStore()
-  const { activeGridStyle, setGridStyle, isBlockUnlocked, isPixelUnlocked, unlockBlock, unlockPixel } = useShopStore()
+  const { activeGridStyle, setGridStyle, isBlockUnlocked, isPixelUnlocked, unlockBlock, unlockPixel, purchasedSpeeds, purchaseSpeed } = useShopStore()
   const [toast, setToast] = useState(null)
 
   function buy(cost, label, onSuccess) {
@@ -29,7 +35,7 @@ export default function Shop() {
       <div className="max-w-xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
+            <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
             <h1 className="text-4xl font-black text-white pixel-heading">Shop</h1>
           </div>
           <div className="card-sm text-right px-4 py-2">
@@ -144,23 +150,27 @@ export default function Shop() {
           })}
         </Section>
 
-        {/* Pixel Packs */}
-        <Section title="Pixel Packs (mixed colors)">
-          {PIXEL_PACK_SIZES.map(qty => {
-            const cost   = PIXEL_PACK_COSTS[qty]
+        {/* Speed Boosts */}
+        <Section title="Speed Boosts (permanent, all levels)">
+          <p className="text-xs font-semibold text-gray-600 mb-3">Unlocks speed buttons in the level HUD. Both production and the timer run at the chosen speed.</p>
+          {SPEED_ITEMS.map(({ speed, label, cost, desc }) => {
+            const owned  = purchasedSpeeds.includes(speed)
             const canAff = gold >= cost
             return (
-              <div key={qty} className="card flex items-center justify-between gap-4" style={{ padding: '1rem 1.25rem' }}>
-                <div>
-                  <span className="text-white font-black text-sm">{qty} pixels</span>
-                  <div className="text-gray-500 text-xs font-semibold mt-0.5">{qty} colored pixels — added to your next level start</div>
+              <div key={speed} className={`card flex items-center justify-between gap-4 ${owned ? 'border-pixel-green/40' : ''}`} style={{ padding: '1rem 1.25rem' }}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-black text-sm">{label}</span>
+                    {owned && <span className="text-pixel-green text-xs font-black">✓ Unlocked</span>}
+                  </div>
+                  <div className="text-gray-500 text-xs font-semibold mt-0.5">{desc}</div>
                 </div>
                 <button
-                  onClick={() => buy(cost, `Pixel Pack ×${qty}`, () => {})}
-                  disabled={!canAff}
-                  className={`btn text-sm px-4 py-2 ${canAff ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
+                  onClick={() => buy(cost, label, () => purchaseSpeed(speed))}
+                  disabled={owned || !canAff}
+                  className={`btn flex-shrink-0 text-sm px-4 py-2 ${owned ? 'btn-secondary opacity-50 cursor-default' : canAff ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
                 >
-                  {cost} g
+                  {owned ? 'Owned' : `${cost} g`}
                 </button>
               </div>
             )

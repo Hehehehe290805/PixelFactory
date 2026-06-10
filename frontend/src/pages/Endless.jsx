@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { checkEndlessWave } from '../engine/achievementEngine'
+import { getEndlessQuestion, ENDLESS_REWARDS } from '../data/learningContent'
 import Grid from '../components/game/Grid'
 import PixelCounter from '../components/game/PixelCounter'
 import BlockEditor from '../components/game/BlockEditor'
@@ -11,7 +12,7 @@ import InventoryPanel from '../components/game/InventoryPanel'
 import ShopSidebar from '../components/game/ShopSidebar'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const FIRST_WAVE = 20   // scaled for new production rate (was 500)
+const FIRST_WAVE = 20
 const MULTIPLIER  = 1.6
 
 function waveRequired(wave) {
@@ -28,22 +29,36 @@ function baseBlocks(wave) {
   return Array.from({ length: count }, () => createBlock('base'))
 }
 
+// Gold awarded for completing a run: 5g per wave + 1g per 1000 px
+function calcGold(wave, grandTotal) {
+  return Math.floor(wave * 5 + grandTotal * 0.001)
+}
+
 export default function Endless() {
   const navigate = useNavigate()
   const {
     grid, inventory, pixelInventory, selectedBlockId, setSelectedBlock,
     startLevel, levelComplete, resetLevel, colorCheckerReductions, totalPixelsProduced, removeBlock,
-    gamePaused, setPaused,
+    gamePaused, setPaused, addPixelInventory,
   } = useGameStore()
-  const { achievements, unlockAchievements, saveEndlessScore, user } = useUserStore()
+  const { achievements, unlockAchievements, saveEndlessScore, saveQuizResult, addGold, user } = useUserStore()
 
   const [wave, setWave]             = useState(1)
-  const [phase, setPhase]           = useState('playing')
+  const [phase, setPhase]           = useState('playing')  // 'playing' | 'between' | 'ended'
   const [elapsed, setElapsed]       = useState(0)
   const [grandTotal, setGrandTotal] = useState(0)
-  const tabHiddenAtRef = useRef(null)
+  const [runResult, setRunResult]   = useState(null) // { wave, grandTotal, goldEarned, isHighscore }
+  const [quizQuestion, setQuizQuestion] = useState(null)  // current between-wave quiz
+  const [quizAnswered, setQuizAnswered] = useState(null)  // { idx, wasCorrect }
+
+  const tabHiddenAtRef       = useRef(null)
+  const wasManuallyPausedRef = useRef(false) // for auto-pause on editor
 
   const effectiveRequired = Math.floor(waveRequired(wave) * Math.pow(0.95, colorCheckerReductions))
+
+  function quizDifficulty(w) {
+    return w <= 5 ? 'easy' : w <= 15 ? 'normal' : 'hard'
+  }
 
   function doStartWave(w) {
     startLevel(baseBlocks(w), basePixels(w))
@@ -55,6 +70,16 @@ export default function Endless() {
     doStartWave(1)
     return () => resetLevel()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-pause when editor opens; restore state on close
+  useEffect(() => {
+    if (selectedBlockId) {
+      wasManuallyPausedRef.current = gamePaused
+      setPaused(true)
+    } else {
+      setPaused(wasManuallyPausedRef.current)
+    }
+  }, [selectedBlockId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stopwatch — pauses when gamePaused
   useEffect(() => {
@@ -78,20 +103,52 @@ export default function Endless() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  // Wave complete
   useEffect(() => {
     if (!levelComplete) return
     const newTotal = grandTotal + Math.floor(totalPixelsProduced)
     setGrandTotal(newTotal)
     setPhase('between')
+    setQuizQuestion(getEndlessQuestion(quizDifficulty(wave)))
+    setQuizAnswered(null)
     const waveKeys = checkEndlessWave({ wave, unlockedKeys: achievements })
     if (waveKeys.length) unlockAchievements(waveKeys)
-    if (user) saveEndlessScore(wave, newTotal)
   }, [levelComplete]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleQuizAnswer(idx) {
+    if (quizAnswered !== null || !quizQuestion) return
+    const wasCorrect = idx === quizQuestion.correct
+    setQuizAnswered({ idx, wasCorrect })
+    saveQuizResult(wasCorrect)
+  }
 
   function handleNextWave() {
     const next = wave + 1
     setWave(next)
+    const bonus = quizAnswered?.wasCorrect && quizQuestion
+      ? { white: ENDLESS_REWARDS[quizQuestion.difficulty] ?? 10 }
+      : {}
+    setQuizQuestion(null)
+    setQuizAnswered(null)
     doStartWave(next)
+    // addPixelInventory runs after startLevel so the bonus lands on top of fresh inventory
+    if (Object.keys(bonus).length) addPixelInventory(bonus)
+  }
+
+  // End the run — award gold, save score if logged in
+  async function handleEndRun() {
+    const currentTotal = grandTotal + Math.floor(totalPixelsProduced)
+    const goldEarned   = calcGold(wave, currentTotal)
+    if (goldEarned > 0) addGold(goldEarned)
+
+    let isHighscore = false
+    if (user) {
+      isHighscore = await saveEndlessScore(wave, currentTotal)
+    }
+
+    setRunResult({ wave, grandTotal: currentTotal, goldEarned, isHighscore })
+    setPhase('ended')
+    setPaused(false)
   }
 
   function handleCloseEditor() {
@@ -99,10 +156,7 @@ export default function Endless() {
     for (let r = 0; r < 12; r++) {
       for (let c = 0; c < 12; c++) {
         const b = state.grid[r][c]
-        if (b && b.id === state.selectedBlockId && b.pixelCount === 0) {
-          removeBlock(r, c)
-          break
-        }
+        if (b && b.id === state.selectedBlockId && b.pixelCount === 0) { removeBlock(r, c); break }
       }
     }
     setSelectedBlock(null)
@@ -111,13 +165,12 @@ export default function Endless() {
   const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
-    <div className="h-screen bg-game-bg flex flex-col overflow-hidden">
+    <div className="h-screen bg-game-bg flex flex-col overflow-hidden select-none">
       {phase === 'playing' && <ProductionEngine requiredOutput={effectiveRequired} />}
 
       {/* HUD */}
       <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0">
         <button onClick={() => setPaused(true)} className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">⏸</button>
-        <Link to="/" className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0">← Exit</Link>
         <div className="flex-shrink-0 hidden sm:block">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Endless</div>
           <div className="text-white font-black text-sm">Wave {wave}</div>
@@ -128,15 +181,12 @@ export default function Endless() {
 
       {/* Main play area */}
       <div className="flex flex-1 gap-0 overflow-hidden min-h-0">
-        {/* Left sidebar — shop */}
         <ShopSidebar />
 
-        {/* Grid — center */}
-        <div className="flex-1 flex items-start justify-center overflow-auto px-2 py-2">
+        <div className="flex-1 flex items-start justify-center overflow-hidden px-2 py-2">
           <Grid selectedBlockId={selectedBlockId} onBlockSelect={setSelectedBlock} />
         </div>
 
-        {/* Stats — right side */}
         <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 196 }}>
           <PixelCounter requiredOutput={effectiveRequired} />
           <div className="card text-xs font-semibold text-gray-400 space-y-2">
@@ -156,13 +206,13 @@ export default function Endless() {
         </div>
       </div>
 
-      {/* Inventory — bottom bar */}
       <InventoryPanel selectedBlockId={selectedBlockId} onBlockSelect={setSelectedBlock} />
 
-      {/* BlockEditor — centered modal overlay */}
+      {/* BlockEditor — z-50 for tutorial/pause compatibility */}
       {selectedBlockId && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-4"
+          className="fixed inset-0 flex items-center justify-center bg-black/60 px-4"
+          style={{ zIndex: 50 }}
           onClick={e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
           <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
@@ -178,7 +228,7 @@ export default function Endless() {
             <div className="flex flex-col gap-3">
               <button onClick={() => setPaused(false)} className="btn btn-primary text-base">▶ Continue</button>
               <Link to="/settings" onClick={() => setPaused(false)} className="btn btn-secondary text-base">Settings</Link>
-              <button onClick={() => navigate('/')} className="btn btn-danger text-base">✕ Exit</button>
+              <button onClick={handleEndRun} className="btn btn-danger text-base">End Run</button>
             </div>
           </div>
         </div>
@@ -189,6 +239,84 @@ export default function Endless() {
         {phase === 'between' && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4"
+          >
+            <motion.div
+              initial={{ scale: 0.85 }} animate={{ scale: 1 }}
+              className="card w-full max-w-sm"
+              style={{ padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}
+            >
+              <div className="text-center mb-4">
+                <div className="text-pixel-green text-5xl font-black pixel-heading leading-none mb-1">{wave}</div>
+                <div className="text-white font-black text-xl mb-1">Wave Complete!</div>
+                <div className="text-gray-500 font-semibold text-sm">
+                  Total: <span className="text-white font-black">{grandTotal.toLocaleString()} px</span>
+                  <span className="mx-2 text-gray-700">·</span>
+                  Next: <span className="text-pixel-blue font-black">{waveRequired(wave + 1).toLocaleString()} px</span>
+                </div>
+              </div>
+
+              {/* Quiz challenge */}
+              {quizQuestion && (
+                <div className="mb-4 rounded-xl border-2 border-game-border bg-game-bg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">Challenge</span>
+                    <span className={`px-2 py-0.5 rounded-lg border text-xs font-black ${
+                      quizQuestion.difficulty === 'easy'   ? 'border-pixel-green/40 text-pixel-green' :
+                      quizQuestion.difficulty === 'normal' ? 'border-pixel-yellow/40 text-pixel-yellow' :
+                                                             'border-pixel-red/40 text-pixel-red'
+                    }`}>
+                      {quizQuestion.difficulty} · +{ENDLESS_REWARDS[quizQuestion.difficulty]} px
+                    </span>
+                  </div>
+                  <p className="text-sm font-black text-white mb-3 leading-snug">{quizQuestion.question}</p>
+                  <div className="space-y-1.5">
+                    {quizQuestion.options.map((opt, i) => {
+                      let cls = 'border-game-border text-gray-400 hover:border-gray-500'
+                      if (quizAnswered) {
+                        if (i === quizQuestion.correct) cls = 'border-pixel-green bg-pixel-green/10 text-pixel-green'
+                        else if (i === quizAnswered.idx) cls = 'border-pixel-red bg-pixel-red/10 text-pixel-red'
+                        else cls = 'border-game-border text-gray-600 opacity-40'
+                      }
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => handleQuizAnswer(i)}
+                          disabled={!!quizAnswered}
+                          className={`w-full text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${cls}`}
+                        >
+                          <span className="font-black mr-1.5 opacity-50">{String.fromCharCode(65 + i)}.</span>
+                          {opt}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {quizAnswered && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      className={`mt-3 rounded-lg border px-3 py-2 text-xs ${quizAnswered.wasCorrect ? 'border-pixel-green/30 bg-pixel-green/5 text-pixel-green' : 'border-pixel-red/30 bg-pixel-red/5 text-pixel-red'}`}
+                    >
+                      <span className="font-black">{quizAnswered.wasCorrect ? `+${ENDLESS_REWARDS[quizQuestion.difficulty]} white pixels!` : 'Incorrect.'}</span>
+                      <span className="text-gray-500 ml-2">{quizQuestion.explanation}</span>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={handleEndRun} className="btn btn-secondary flex-1 text-sm">End Run</button>
+                <button onClick={handleNextWave} className="btn btn-primary flex-1 text-base">Wave {wave + 1} →</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Run ended overlay */}
+      <AnimatePresence>
+        {phase === 'ended' && runResult && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
           >
             <motion.div
@@ -196,21 +324,39 @@ export default function Endless() {
               className="card mx-4 w-full max-w-sm text-center"
               style={{ padding: '2.5rem' }}
             >
-              <div className="text-pixel-green text-6xl font-black pixel-heading leading-none mb-2">{wave}</div>
-              <div className="text-white font-black text-xl mb-1">Wave Complete!</div>
-              <div className="text-gray-500 font-semibold text-sm mb-1">
-                Total: <span className="text-white font-black">{grandTotal.toLocaleString()} px</span>
+              <div className="text-4xl font-black text-white pixel-heading mb-1">Run Over</div>
+              {runResult.isHighscore && (
+                <div className="text-pixel-yellow font-black text-sm mb-3 tracking-wider uppercase">
+                  ★ New Personal Best!
+                </div>
+              )}
+              <div className="space-y-3 mb-6">
+                <StatRow label="Waves Survived" value={runResult.wave} color="text-pixel-blue" />
+                <StatRow label="Total Pixels" value={runResult.grandTotal.toLocaleString()} color="text-white" />
+                {runResult.goldEarned > 0 && (
+                  <StatRow label="Gold Earned" value={`+${runResult.goldEarned}`} color="text-pixel-yellow" />
+                )}
+                {!user && (
+                  <p className="text-xs text-gray-600 mt-2">Log in to save your score to the leaderboard</p>
+                )}
               </div>
-              <div className="text-gray-500 font-semibold text-sm mb-6">
-                Next: <span className="text-pixel-blue font-black">{waveRequired(wave + 1).toLocaleString()} px</span>
+              <div className="flex gap-3">
+                <button onClick={() => navigate('/leaderboard')} className="btn btn-secondary flex-1 text-sm">Leaderboard</button>
+                <button onClick={() => navigate('/')} className="btn btn-primary flex-1 text-base">Home</button>
               </div>
-              <button onClick={handleNextWave} className="btn btn-primary w-full text-base">
-                Wave {wave + 1} →
-              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function StatRow({ label, value, color }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-bold text-gray-500">{label}</span>
+      <span className={`text-lg font-black font-mono ${color}`}>{value}</span>
     </div>
   )
 }

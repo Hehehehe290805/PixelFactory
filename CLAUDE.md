@@ -38,40 +38,41 @@ PixelFactory/
 │   │   ├── components/
 │   │   │   ├── game/
 │   │   │   │   ├── Block.jsx              # Canvas render + 8-dir wave animation
-│   │   │   │   ├── BlockEditor.jsx        # 16×16 painter; eraser (⌫); data-tutorial attrs
+│   │   │   │   ├── BlockEditor.jsx        # 16×16 painter; eraser (⌫); shows colors in inventory even if not unlocked yet
 │   │   │   │   ├── BlockSlot.jsx          # Grid cell; drag-drop + onCellClick
-│   │   │   │   ├── Grid.jsx               # Radial wheel, move mode, wave dir picker
-│   │   │   │   ├── InventoryPanel.jsx     # Expandable bottom bar (▲ toggle); overlays grid
-│   │   │   │   ├── LevelHUD.jsx           # Progress bar, timer, ⏸ pause, speed selector
+│   │   │   │   ├── Grid.jsx               # Radial wheel, move mode, wave dir; "Replace" swaps occupied cell
+│   │   │   │   ├── InventoryPanel.jsx     # Expandable bottom bar; two sections: Blocks | Pixels
+│   │   │   │   ├── LevelHUD.jsx           # Progress bar, timer (×gameSpeed), ⏸ pause, speed selector from shopStore
 │   │   │   │   ├── PixelCounter.jsx       # px/s + floating +N animation, progress, totals
 │   │   │   │   ├── ProductionEngine.jsx   # 100ms tick; respects gameSpeed + gamePaused
 │   │   │   │   ├── RadialWheel.jsx        # Animated radial context menu
-│   │   │   │   └── ShopSidebar.jsx        # In-level shop; uses produced pixels (not gold)
+│   │   │   │   └── ShopSidebar.jsx        # In-level shop: pixel colors (unlocked) + blocks (unlocked); pixels currency
 │   │   │   ├── ui/
 │   │   │   │   ├── AchievementToast.jsx
 │   │   │   │   ├── InLevelShop.jsx        # (legacy popup — replaced by ShopSidebar)
+│   │   │   │   ├── LearningCard.jsx       # Post-level fact card (L1–12) or quiz (L13+); saves quiz stats
 │   │   │   │   ├── StarResult.jsx         # No stars on tutorial; green ✓ checkmark instead
 │   │   │   │   ├── TemplatePicker.jsx     # Shown before editor when block is empty
 │   │   │   │   ├── TemplateSaveModal.jsx
 │   │   │   │   └── TutorialOverlay.jsx    # Spotlight tutorial (clip-path grayout + pulsing ring)
 │   │   │   └── auth/
 │   │   │       ├── LoginModal.jsx
-│   │   │       └── RegisterModal.jsx      # Shows email confirmation message when needed
+│   │   │       └── RegisterModal.jsx      # OTP verification step after signup; local error state
 │   │   ├── pages/
-│   │   │   ├── Home.jsx            # Main menu; "Account" button when logged in
+│   │   │   ├── Home.jsx            # Main menu; access control; Highscores button
 │   │   │   ├── Campaign.jsx        # Level select with tier accordions
-│   │   │   ├── Level.jsx           # Core gameplay; h-screen; pause modal; editor at z-50
-│   │   │   ├── Endless.jsx         # Endless wave mode; h-screen; pause modal
+│   │   │   ├── Level.jsx           # h-screen; pre-level shop; auto-pause on editor; gameSpeed timer; 3★ tutorial
+│   │   │   ├── Endless.jsx         # h-screen; End Run flow (gold + leaderboard); auto-pause on editor
 │   │   │   ├── Profile.jsx         # Templates: official (locked until discovered) + player
-│   │   │   ├── Shop.jsx            # Permanent shop: block unlocks, grid styles (uses gold)
-│   │   │   ├── Settings.jsx        # Tutorial toggle; achievements (hidden for guests)
-│   │   │   └── AccountSettings.jsx # /account: update username/email/password, forgot pw, delete
+│   │   │   ├── Shop.jsx            # Permanent shop: grid styles, special blocks, speed boosts (uses gold)
+│   │   │   ├── Settings.jsx        # Tutorial toggle (navigate(-1) back); achievements hidden for guests
+│   │   │   ├── AccountSettings.jsx # /account: update username/email/password, forgot pw, delete
+│   │   │   └── Leaderboard.jsx     # /leaderboard: Global Top 10 + Personal Best tabs
 │   │   ├── store/
-│   │   │   ├── gameStore.js      # Grid, inventory, cooldowns, waveDir, gameSpeed, gamePaused,
-│   │   │   │                     #   pixelsSpentInShop, purchasedSpeeds
+│   │   │   ├── gameStore.js      # Grid, inventory, cooldowns, waveDir, gameSpeed, gamePaused, pixelsSpentInShop
 │   │   │   ├── userStore.js      # Auth, gold, progress, achievements, CRUD, requestAccountDeletion
-│   │   │   ├── shopStore.js      # Persistent shop unlocks (localStorage)
-│   │   │   └── settingsStore.js  # showTutorial only (audio removed — not implemented)
+│   │   │   ├── shopStore.js      # Persistent unlocks + purchasedSpeeds (localStorage)
+│   │   │   └── settingsStore.js  # showTutorial, showLearning
 │   │   ├── engine/
 │   │   │   ├── productionEngine.js   # Full tick: base + sets + synergy + dominance + effects
 │   │   │   ├── blockEffects.js       # All block effect functions + Lattice helper
@@ -80,6 +81,8 @@ PixelFactory/
 │   │   │   ├── dominanceChecker.js   # Color dominance map builder
 │   │   │   ├── achievementEngine.js  # Achievement condition checks
 │   │   │   └── levelConfig.js        # 10 hand-crafted + 190 generated levels
+│   │   ├── data/
+│   │   │   └── learningContent.js    # Facts (L1–12), quiz questions (L13+), Endless questions + rewards
 │   │   ├── lib/
 │   │   │   ├── supabase.js           # Supabase client (VITE_ env vars only)
 │   │   │   ├── constants.js          # All block types, pixel colors, grid styles, sets
@@ -265,24 +268,40 @@ All detected by `setDetector.js` / `buildSetMap`. Radiation rules in `synergyEng
 
 ---
 
-## In-Level Shop (ShopSidebar)
+## Shop System
 
-**Currency: produced pixels** — the shop balance is `totalPixelsProduced − pixelsSpentInShop`.  
-Spending shop pixels does **not** affect the win condition (`totalPixelsProduced` is append-only).
+### Pre-Level Shop (shown before the timer starts)
+Currency: **gold**. Purchases add bonus pixels/blocks to the level's starting inventory.
 
 | Item | Cost |
 |---|---|
-| 10 mixed pixels | 20 px |
-| 25 mixed pixels | 45 px |
-| 50 mixed pixels | 85 px |
-| 100 mixed pixels | 160 px |
-| 10 of one color | 30 px |
-| Speed 0.5× | 50 px |
-| Speed 2× | 100 px |
-| Speed 5× | 250 px |
-| Speed 10× | 600 px |
+| +10 mixed pixels | 30g |
+| +25 mixed pixels | 70g |
+| +50 mixed pixels | 130g |
+| +100 mixed pixels | 240g |
+| Extra unlocked block | `bt.shopCost` g |
 
-Once a speed is purchased, buttons `0.5× 1× 2× 5× 10×` appear in the HUD (only purchased speeds + always-on `1×`).
+### In-Level Shop (ShopSidebar — left sidebar)
+Currency: **produced pixels** (`totalPixelsProduced − pixelsSpentInShop`). Spending does NOT affect the win condition.
+
+| Item | Cost |
+|---|---|
+| 10 of one color | 30 px |
+| Any unlocked block | `bt.levelCost` px |
+
+Only shows colors and blocks the player has unlocked through campaign or the permanent Shop.
+
+### Permanent Shop (Shop.jsx — main menu)
+Currency: **gold**. Persistent unlocks stored in `shopStore` (localStorage).
+
+| Category | Items |
+|---|---|
+| Grid Styles | 12 styles (see Grid Styles table) |
+| Special Blocks | overflow, mirror, catalyst, void, amplifier, resonator, reactor, conductor, prism |
+| Special Pixels | rainbow, silver, gold, neon |
+| Speed Boosts | 0.5× (150g), 2× (250g), 5× (500g), 10× (1000g) |
+
+Once a speed is purchased, buttons `0.5× 1× 2× 5× 10×` appear in the HUD. Both production AND the timer run at the chosen speed.
 
 ---
 
@@ -323,10 +342,12 @@ Base rate formula: `effectivePixels / 37.5` px/s
 
 ## Pause System
 
-- ⏸ button in `LevelHUD` calls `setPaused(true)` from gameStore.
+- ⏸ button in `LevelHUD` / `Endless` HUD calls `setPaused(true)` from gameStore.
 - `ProductionEngine` skips the tick when `gamePaused === true`.
 - Timer countdown in `Level.jsx` / stopwatch in `Endless.jsx` also pauses.
-- Pause modal (z-70) shows **Continue**, **Settings**, **Exit Level**.
+- **Auto-pause on editor**: Opening `BlockEditor` saves the current pause state and forces `gamePaused=true`. Closing the editor restores the previous state.
+- Pause modal (z-70) shows **Continue**, **Settings**, **Exit Level** (no ✕ prefix).
+- Endless HUD has no Exit button — use the pause modal to exit.
 
 ---
 
@@ -352,10 +373,13 @@ Change direction: click a placed block on the grid → "〰 Wave" option → 8-d
 
 ## Inventory Panel (InventoryPanel.jsx)
 
-- **Collapsed** (default): 44px handle bar at the bottom. Shows block count + pixel color chips.
-- **Expanded**: slides up 264px, overlays the bottom of the grid. Auto-filling block grid, scrollable.
-- Dragging a block from the panel auto-collapses it so the grid drop target is visible.
-- The handle bar has `data-tutorial="inventory"` for the tutorial spotlight.
+- **Collapsed** (default): 44px handle bar. Shows block count + pixel color chips.
+- **Expanded** (300px): two side-by-side sections:
+  - **Blocks** (left): block thumbnails; click to open editor; drag to grid
+  - **Pixels** (right, 140px): colored rows showing each unlocked color + count
+- Dragging or clicking a block auto-collapses the panel.
+- `onOpenStateChange` prop is lifted to `Level.jsx` and forwarded to `TutorialOverlay` for the `inventoryOpen` condition.
+- Handle bar has `data-tutorial="inventory"` for the tutorial spotlight.
 
 ---
 
@@ -373,6 +397,16 @@ Level 1 only. 7 steps, rendered as a fixed card (top-right, z-60).
 - Tutorial card: z-60
 - StarResult: z-50 (never shown simultaneously with tutorial card)
 - Pause modal: z-70
+
+**Steps** (8 total):
+1. `welcome` — manual
+2. `open_inventory` — waits for `inventoryOpen` prop to become true
+3. `select_block` — waits for `selectedBlockId` to be set
+4. `paint_pixels` — waits for `totalPainted >= 5`
+5. `close_editor` — manual
+6. `place_block` — waits for `blocksOnGrid >= 1`
+7. `watch` — waits for `totalPixelsProduced > 0`
+8. `done` — manual
 
 **Step targets** (`data-tutorial` attributes):
 - `inventory` — InventoryPanel handle button
@@ -434,19 +468,35 @@ Shop-only (never campaign-unlocked): Overflow, Mirror, Catalyst, Void; Rainbow, 
 ### Scoring
 | Performance | Stars | Gold |
 |---|---|---|
-| ≤30% time used | 3 ★ | 100g |
-| 31–70% | 2 ★ | 70g |
-| >70% | 1 ★ | 50g |
-| Tutorial | always 1 ★ (shown as ✓) | 50g |
+| ≤60% time used | 3 ★ | 100g |
+| 61–85% | 2 ★ | 70g |
+| >85% | 1 ★ | 50g |
+| Tutorial | always **3 ★** (shown as ✓) | 100g |
 
 ---
 
 ## Endless Mode
 
+### Access
+- **Guests** (not logged in): can play Endless; Campaign grayed-out (prompts login)
+- **Logged in, < Level 10**: Campaign available; Endless grayed-out
+- **Logged in, Level 10+ completed**: both modes available
+
+### Gameplay
 - Starts at 20 px; each wave: `requiredOutput × 1.6`
 - No time limit; stopwatch pauses on tab-hide and on `gamePaused`
-- Leaderboard synced to Supabase for logged-in users
-- Pause modal available
+- Auto-pause fires when `BlockEditor` is open (same as Level.jsx)
+
+### End Run Flow
+Players can end their run from the pause modal or the between-wave screen:
+1. Gold awarded: `Math.floor(wave × 5 + grandTotal × 0.001)`
+2. If logged in: `saveEndlessScore(wave, grandTotal)` — only persists if it beats the previous personal best
+3. "Run Ended" modal shows wave, total pixels, gold earned, and "New Personal Best" badge
+4. Links to `/leaderboard` or `/` (Home)
+
+### Leaderboard (`/leaderboard`)
+- **Global tab**: top 10 unique players by `highest_wave` (client-side dedup from top 50 DB rows)
+- **Personal tab**: logged-in user's best score from `endless_scores` table; login prompt for guests
 
 ---
 
@@ -495,15 +545,20 @@ Key additions beyond basic CRUD policies:
 ## Key Implementation Rules
 
 1. **`totalPixelsProduced` is append-only** — never decremented, used for win condition.
-2. **Shop uses produced pixels** — `pixelsSpentInShop` tracks spending; win condition unaffected.
-3. **Pixel inventory is authoritative** — always use store actions (`paintPixel`, `clearBlock`, `fillBlock`, `applyTemplate`).
-4. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
-5. **Color dominance**: >50% of block's filled pixels (white counts in denominator).
-6. **Set detection**: "only" sets reject any color outside allowed list; white/silver neutral; rainbow/gold/plasma wildcard.
-7. **Campaign unlocks** via `useUnlocks()` hook; shop-only items bypass campaign check.
-8. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, templates, profiles CRUD.
-9. **Achievements require login** — guest players cannot earn achievements.
-10. **Never commit env files**: `frontend/.env` and `backend/.env` are gitignored.
+2. **In-level shop uses produced pixels** — `pixelsSpentInShop` tracks spending; win condition unaffected.
+3. **Pre-level shop uses gold** — gold is spent before the level starts; bonuses merged into starting inventory.
+4. **Pixel inventory is authoritative** — always use store actions (`paintPixel`, `clearBlock`, `fillBlock`, `applyTemplate`).
+5. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
+6. **Color dominance**: >50% of block's filled pixels (white counts in denominator).
+7. **Set detection**: "only" sets reject any color outside allowed list; white/silver neutral; rainbow/gold/plasma wildcard.
+8. **Campaign unlocks** via `useUnlocks()` hook; shop-only items bypass campaign check.
+9. **Speed boosts are permanent** — stored in `shopStore.purchasedSpeeds`; affect both production AND timer.
+10. **Editor auto-pauses** — `setPaused(true)` fires on editor open, restored on close.
+11. **BlockEditor shows colors** in inventory even if not yet campaign-unlocked (e.g. level gives yellow before Level 2 is completed).
+12. **Text selection disabled globally** — `user-select: none` on `body`; re-enabled for `input`/`textarea`.
+13. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, templates, profiles CRUD.
+14. **Achievements require login** — guest players cannot earn achievements.
+15. **Never commit env files**: `frontend/.env` and `backend/.env` are gitignored.
 
 ---
 
@@ -523,6 +578,47 @@ Key additions beyond basic CRUD policies:
 |---|---|---|
 | `frontend/.env` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Never |
 | `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY` | Never |
+
+---
+
+## Learning System
+
+### Overview
+Parallel computing education integrated into gameplay. Toggled via `settingsStore.showLearning`.
+
+### Campaign Learning Cards (`LearningCard.jsx`)
+Shown **after** `StarResult` when the player clicks "Continue" on a completed campaign level.
+
+- **Levels 1–12 (Facts)**: Concept chip + title + body paragraph + real-world callout box.
+- **Levels 13–30 (Easy quiz)**, **31–60 (Normal)**, **61+ (Hard)**: Multiple-choice question; answer reveals correct/wrong feedback + explanation. Quiz result saved via `saveQuizResult`.
+- Skipped if `showLearning === false` (Settings → Learning Cards toggle) or the level has no content (returns null from `getLevelContent`).
+
+### Endless Quiz Challenges (`Endless.jsx`)
+A quiz appears in every **between-wave** overlay. Answering correctly grants bonus starting pixels for the next wave.
+
+| Wave range | Difficulty | Reward |
+|---|---|---|
+| 1–5 | Easy | +10 white pixels |
+| 6–15 | Normal | +25 white pixels |
+| 16+ | Hard | +50 white pixels |
+
+- `getEndlessQuestion(difficulty)` picks a random question from `LEVEL_QUESTIONS` (shared pool with campaign).
+- `handleQuizAnswer(idx)` calls `saveQuizResult` and records the answer.
+- `handleNextWave` applies bonus via `addPixelInventory` **after** `startLevel` resets the inventory.
+
+### Data (`data/learningContent.js`)
+| Export | Content |
+|---|---|
+| `LEVEL_FACTS` | Object keyed by level 1–12; each has `concept`, `title`, `body`, `realWorld` |
+| `LEVEL_QUESTIONS` | Array of 200 questions (70 easy, 70 normal, 60 hard) — shared by campaign and Endless |
+| `ENDLESS_REWARDS` | `{ easy: 10, normal: 25, hard: 50 }` |
+| `getLevelContent(n)` | Returns `{ type: 'fact', … }` or `{ type: 'question', … }` or null |
+| `getEndlessQuestion(d)` | Returns random question from `LEVEL_QUESTIONS` filtered by difficulty |
+
+### Quiz Stats
+- Stored in `userStore.quizStats: { correct, total }`, persisted to `profiles.quiz_correct / quiz_total`.
+- Guest players can answer quizzes but stats are not persisted.
+- Leaderboard `/leaderboard` → **Quiz Score** tab: top 10 by accuracy (min 3 attempts).
 
 ---
 

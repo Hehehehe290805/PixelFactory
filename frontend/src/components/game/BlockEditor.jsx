@@ -89,8 +89,9 @@ export default function BlockEditor({ blockId, onClose }) {
       {/* Palette — only show unlocked pixel colors */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {Object.entries(PIXEL_COLORS).map(([key, meta]) => {
-          if (!isPixelUnlocked(key)) return null
           const available = pixelInventory[key] ?? 0
+          // Show if unlocked by campaign/shop OR if the player already has pixels of this color
+          if (!isPixelUnlocked(key) && available === 0) return null
           return (
             <button
               key={key}
