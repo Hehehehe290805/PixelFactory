@@ -21,7 +21,7 @@ const SPEED_ITEMS = [
 export default function Shop() {
   const navigate = useNavigate()
   const { gold, addGold, unlockedDesigns: unlockedDesignIds = [], unlockDesign } = useUserStore()
-  const { activeGridStyle, setGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked } = useShopStore()
+  const { activeGridStyle, setGridStyle, ownGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked } = useShopStore()
   const [toast, setToast] = useState(null)
 
   function buy(cost, label, onSuccess) {
@@ -72,7 +72,7 @@ export default function Shop() {
                   <button
                     onClick={() => {
                       if (active) return
-                      if (style.cost > 0 && !active) buy(style.cost, style.label, () => setGridStyle(key))
+                      if (style.cost > 0) buy(style.cost, style.label, () => { setGridStyle(key); ownGridStyle(key) })
                       else setGridStyle(key)
                     }}
                     disabled={!canAfford && !active}

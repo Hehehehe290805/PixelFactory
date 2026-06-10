@@ -60,3 +60,35 @@ export const BASIC_BLOCK_TYPES = [
   'amplifier', 'resonator', 'reactor', 'echo', 'prism',
   'conductor', 'splitter', 'focus', 'cluster', 'forge',
 ]
+
+// Derive the pool of block types the player actually owns.
+// Uses the blockType of each unlocked design + any shop-purchased block types.
+export function getOwnedBlockTypes(unlockedDesigns = [], shopUnlocked = []) {
+  const fromDesigns = unlockedDesigns.map(d => d.blockType).filter(Boolean)
+  const all = [...new Set([...fromDesigns, ...shopUnlocked])]
+  return all.length ? all : ['base']
+}
+
+// Visual identity per block type — colored borders, label chip, and border style variations.
+// borderStyle: CSS border-style value; borderWidth: px (double needs ≥4 to be visible)
+export const BLOCK_TYPE_VISUAL = {
+  base:          { color: '#5c7abf', label: 'BSE', borderStyle: 'solid',  borderWidth: 2 },
+  doubler:       { color: '#00d4ff', label: 'DBL', borderStyle: 'double', borderWidth: 4 },
+  cross_amp:     { color: '#1499cc', label: 'XAP', borderStyle: 'dashed', borderWidth: 2 },
+  color_checker: { color: '#a066f0', label: 'CHK', borderStyle: 'dotted', borderWidth: 2 },
+  greedy:        { color: '#ffd166', label: 'GRD', borderStyle: 'solid',  borderWidth: 3 },
+  amplifier:     { color: '#00d49a', label: 'AMP', borderStyle: 'dotted', borderWidth: 2 },
+  resonator:     { color: '#009688', label: 'RES', borderStyle: 'double', borderWidth: 4 },
+  reactor:       { color: '#f03e4e', label: 'RCT', borderStyle: 'dashed', borderWidth: 3 },
+  echo:          { color: '#6060f0', label: 'ECH', borderStyle: 'dashed', borderWidth: 2 },
+  prism:         { color: '#d8d8ff', label: 'PRM', borderStyle: 'double', borderWidth: 3 },
+  conductor:     { color: '#f59342', label: 'CDT', borderStyle: 'groove', borderWidth: 3 },
+  splitter:      { color: '#ffdb00', label: 'SPL', borderStyle: 'dashed', borderWidth: 2 },
+  focus:         { color: '#ec407a', label: 'FOC', borderStyle: 'solid',  borderWidth: 3 },
+  cluster:       { color: '#84d900', label: 'CLU', borderStyle: 'dotted', borderWidth: 3 },
+  forge:         { color: '#ff7043', label: 'FRG', borderStyle: 'ridge',  borderWidth: 3 },
+  overflow:      { color: '#ff6b9d', label: 'OVF', borderStyle: 'dashed', borderWidth: 3 },
+  mirror:        { color: '#b0bec5', label: 'MIR', borderStyle: 'groove', borderWidth: 2 },
+  catalyst:      { color: '#ce93d8', label: 'CAT', borderStyle: 'ridge',  borderWidth: 3 },
+  void:          { color: '#303060', label: 'VID', borderStyle: 'inset',  borderWidth: 3 },
+}

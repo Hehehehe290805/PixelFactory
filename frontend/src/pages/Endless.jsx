@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { startMusic, stopMusic } from '../lib/audio'
 import { useGameStore, createBlock, pickRandomType } from '../store/gameStore'
 import { useShopStore } from '../store/shopStore'
+import { getOwnedBlockTypes } from '../lib/constants'
 import { useUserStore } from '../store/userStore'
 import { useDesignUnlocks } from '../lib/designUnlocks'
 import { checkEndlessWave } from '../engine/achievementEngine'
@@ -102,11 +103,11 @@ export default function Endless() {
   }
 
   function handleDeckConfirmed({ designIds }) {
-    const shopUnlocked = unlockedBlocks ?? []
+    const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
     const startingBlocks = []
     for (const id of [...new Set(designIds)]) {
       for (let i = 0; i < 2; i++) {
-        const block = createBlock(id, pickRandomType(shopUnlocked), 0)
+        const block = createBlock(id, pickRandomType(typePool), 0)
         if (block) startingBlocks.push(block)
       }
     }

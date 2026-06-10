@@ -4,7 +4,7 @@ import { useGridCellSize } from '../../hooks/useGridCellSize'
 import BlockSlot from './BlockSlot'
 import Block from './Block'
 import RadialWheel from './RadialWheel'
-import { GRID_SIZE, TICK_MS } from '../../lib/constants'
+import { GRID_SIZE, TICK_MS, BLOCK_TYPE_VISUAL, BLOCK_TYPES } from '../../lib/constants'
 import { DESIGNS } from '../../data/designLibrary'
 import { SYNERGY_DEFS, getDesignSynergies } from '../../engine/designSynergies'
 import { playBlockPlace } from '../../lib/audio'
@@ -21,15 +21,16 @@ const WAVE_DIRS = [
 ]
 
 export default function Grid() {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, replaceBlock, sellBlock } = useGameStore()
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, sellBlock } = useGameStore()
   const [sellToast, setSellToast] = useState(null) // { refund, x, y }
   const cellSize = useGridCellSize()
 
   const [pulsingSlots, setPulsingSlots] = useState(new Set())
-  const [wheel, setWheel]       = useState(null)
-  const [movingBlock, setMoving] = useState(null)
-  // synergyPanel: { block, design, x, y } — shows synergy list for a block
+  const [wheel, setWheel]         = useState(null)
+  const [movingBlock, setMoving]  = useState(null)
   const [synergyPanel, setSynergyPanel] = useState(null)
+  // Hover overlay: shown after 1.5s of hovering an occupied cell
+  const [hoverOverlay, setHoverOverlay] = useState(null) // { block, design, x, y }
 
   useEffect(() => {
     if (!synergyPanel) return
@@ -72,14 +73,13 @@ export default function Grid() {
     setWheel({ type: hasBlock ? 'occupied' : 'empty', row, col, x, y })
   }
 
-  function dismiss() { setWheel(null) }
+  function dismiss() { setWheel(null); setHoverOverlay(null) }
 
   function buildItems() {
     if (!wheel) return []
 
-    if (wheel.type === 'empty' || wheel.type === 'add') {
+    if (wheel.type === 'empty') {
       if (inventory.length === 0) return []
-      // Show one representative block per unique design — avoids duplicates crowding the wheel
       const seen = new Set()
       const unique = inventory.filter(b => {
         if (seen.has(b.designId)) return false
@@ -91,11 +91,7 @@ export default function Grid() {
         label: block.name ?? block.type.replace(/_/g, ' '),
         color: '#1499cc',
         onClick: () => {
-          if (wheel.type === 'add') {
-            replaceBlock(wheel.row, wheel.col, block.id)
-          } else {
-            placeBlock(block.id, wheel.row, wheel.col)
-          }
+          placeBlock(block.id, wheel.row, wheel.col)
           playBlockPlace()
           dismiss()
         },
@@ -113,14 +109,6 @@ export default function Grid() {
           onClick: () => {
             setMoving({ blockId: occupant.id, fromRow: wheel.row, fromCol: wheel.col })
             dismiss()
-          },
-        },
-        {
-          icon: '⇄',
-          label: 'Replace',
-          color: '#00d49a',
-          onClick: () => {
-            setWheel({ type: 'add', row: wheel.row, col: wheel.col, x: wheel.x, y: wheel.y })
           },
         },
         {
@@ -205,6 +193,11 @@ export default function Grid() {
               onBlockSelect={null}
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
+              onBlockHoverStart={(block, x, y) => {
+                const design = DESIGNS.find(d => d.id === block.designId)
+                setHoverOverlay({ block, design, x, y })
+              }}
+              onBlockHoverEnd={() => setHoverOverlay(null)}
               moveTarget={!!movingBlock && !grid[r][c]}
               moveSource={movingBlock?.fromRow === r && movingBlock?.fromCol === c}
             />
@@ -221,6 +214,48 @@ export default function Grid() {
       {wheel && items.length > 0 && (
         <RadialWheel x={wheel.x} y={wheel.y} items={items} onDismiss={dismiss} />
       )}
+
+      {/* 1.5s hover overlay — block type + effect explanation */}
+      {hoverOverlay && (() => {
+        const { block, design, x, y } = hoverOverlay
+        const typeColor = BLOCK_TYPE_VISUAL[block.type]?.color ?? '#5c7abf'
+        const typeInfo  = BLOCK_TYPES[block.type]
+        const panelW    = 192
+        const margin    = 10
+        const px = x + margin + panelW > window.innerWidth ? x - panelW - margin : x + margin
+        const py = Math.min(y, window.innerHeight - 220)
+        return (
+          <div
+            style={{
+              position: 'fixed', left: px, top: py,
+              width: panelW, zIndex: 57, pointerEvents: 'none',
+              background: '#0d0d22',
+              border: `2px solid ${typeColor}55`,
+            }}
+            className="rounded-xl p-3 flex flex-col gap-1.5"
+          >
+            {/* Design name */}
+            <div className="text-sm font-black text-white leading-tight">{design?.name ?? '—'}</div>
+            {/* Block type badge */}
+            <div
+              className="self-start text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest"
+              style={{ background: typeColor + '22', color: typeColor, border: `1px solid ${typeColor}55` }}
+            >
+              {block.type.replace(/_/g, ' ')}
+            </div>
+            {/* Effect description */}
+            {typeInfo?.desc && (
+              <div className="text-[10px] text-gray-400 leading-snug">{typeInfo.desc}</div>
+            )}
+            {/* Active synergy */}
+            {block.activeSynergy && (
+              <div className="text-[10px] text-pixel-green font-bold border-t border-game-border pt-1">
+                ✦ {SYNERGY_DEFS[block.activeSynergy]?.name ?? block.activeSynergy}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Sell toast — brief refund confirmation */}
       {sellToast && (

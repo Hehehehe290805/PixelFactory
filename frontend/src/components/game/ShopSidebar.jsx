@@ -3,6 +3,7 @@ import { useGameStore, getRandomBlockCost } from '../../store/gameStore'
 import { useShopStore } from '../../store/shopStore'
 import { DESIGNS } from '../../data/designLibrary'
 import { useDesignUnlocks } from '../../lib/designUnlocks'
+import { getOwnedBlockTypes } from '../../lib/constants'
 import { DesignTooltipBody } from '../ui/DeckSelector'
 
 export default function ShopSidebar({ deckDesignIds = [] }) {
@@ -21,9 +22,9 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
   const [mousePos, setMousePos]       = useState({ x: 0, y: 0 })
   const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
-  const balance      = Math.floor(totalPixelsProduced - pixelsSpentInShop)
-  const bargain      = activeGridStyle === 'bargain'
-  const shopUnlocked = unlockedBlocks ?? []
+  const balance  = Math.floor(totalPixelsProduced - pixelsSpentInShop)
+  const bargain  = activeGridStyle === 'bargain'
+  const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
 
   const randomCost = (() => {
     const base = getRandomBlockCost(randomBuyCount)
@@ -33,7 +34,7 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
 
   function handleBuyRandom() {
     const unlockedIds = unlockedDesigns.map(d => d.id)
-    const block = buyRandomDesign(unlockedIds, deckDesignIds, shopUnlocked)
+    const block = buyRandomDesign(unlockedIds, deckDesignIds, typePool)
     if (block) {
       setLastRandom(DESIGNS.find(x => x.id === block.designId) ?? null)
       setRandomFlash('ok')

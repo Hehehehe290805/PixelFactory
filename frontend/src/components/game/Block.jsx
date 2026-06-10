@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BLOCK_CANVAS_SIZE } from '../../lib/constants'
+import { BLOCK_CANVAS_SIZE, BLOCK_TYPE_VISUAL } from '../../lib/constants'
 
 const CELL = 3
 
@@ -156,10 +156,15 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
         </div>
       )}
 
-      {/* Type badge */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-center" style={{ fontSize: 7, lineHeight: '10px' }}>
-        <span className="text-gray-300 uppercase tracking-wider">{block.type.replace(/_/g, '').slice(0, 4)}</span>
-      </div>
+      {/* Type indicator — colored bottom border stripe, no text */}
+      <div
+        className="absolute bottom-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: 3,
+          backgroundColor: BLOCK_TYPE_VISUAL[block.type]?.color ?? '#5c7abf',
+          opacity: 0.85,
+        }}
+      />
     </div>
   )
 }

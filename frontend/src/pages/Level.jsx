@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { startMusic, stopMusic, getLevelTrack, playLevelComplete, playDesignUnlock } from '../lib/audio'
 import { useGameStore, createBlock, pickRandomType } from '../store/gameStore'
+import { getOwnedBlockTypes } from '../lib/constants'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { getLevelConfig } from '../engine/levelConfig'
@@ -88,11 +89,12 @@ export default function Level() {
     setDeckSelection(designIds)
 
     // Give 2 copies of each unique selected design as starting inventory
-    const shopUnlocked = useShopStore.getState().unlockedBlocks ?? []
+    const { unlockedBlocks } = useShopStore.getState()
+    const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
     const startingBlocks = []
     for (const id of [...new Set(designIds)]) {
       for (let i = 0; i < 2; i++) {
-        const block = createBlock(id, pickRandomType(shopUnlocked), 0)
+        const block = createBlock(id, pickRandomType(typePool), 0)
         if (block) startingBlocks.push(block)
       }
     }

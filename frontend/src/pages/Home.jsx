@@ -79,7 +79,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 mt-2">
           <Link to="/shop"     className="btn btn-secondary text-sm">Shop</Link>
           <Link to="/leaderboard" className="btn btn-secondary text-sm">Highscores</Link>
-          <Link to="/profile"  className="btn btn-secondary text-sm">Templates</Link>
+          <Link to="/profile"  className="btn btn-secondary text-sm">Collection</Link>
           <Link to="/settings" className="btn btn-secondary text-sm">Settings</Link>
         </div>
       </div>

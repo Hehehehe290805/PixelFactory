@@ -7,17 +7,25 @@ function loadState() {
 function persist(state) {
   try {
     localStorage.setItem('pf_shop', JSON.stringify({
-      activeGridStyle:  state.activeGridStyle,
-      unlockedBlocks:   state.unlockedBlocks,   // shop block-type unlocks (overflow, mirror, catalyst, void)
-      purchasedSpeeds:  state.purchasedSpeeds,
+      activeGridStyle:     state.activeGridStyle,
+      unlockedBlocks:      state.unlockedBlocks,
+      purchasedSpeeds:     state.purchasedSpeeds,
+      purchasedGridStyles: state.purchasedGridStyles,
     }))
   } catch {}
 }
 
 const saved = loadState()
 
+// Migrate: if there's already an active non-base style, treat it as purchased
+const _savedGridStyles = saved.purchasedGridStyles ?? ['base']
+const _activeStyle     = saved.activeGridStyle ?? 'base'
+const _purchasedGridStyles = _activeStyle && !_savedGridStyles.includes(_activeStyle)
+  ? [..._savedGridStyles, _activeStyle]
+  : _savedGridStyles
+
 export const useShopStore = create((set, get) => ({
-  activeGridStyle: saved.activeGridStyle ?? 'base',
+  activeGridStyle: _activeStyle,
 
   // Block types bought in the permanent shop (gates shop-only designs of those types)
   // e.g. ['overflow', 'mirror', 'catalyst', 'void']
@@ -26,9 +34,20 @@ export const useShopStore = create((set, get) => ({
   // Persistent speed unlocks — bought with gold in the permanent Shop
   purchasedSpeeds: saved.purchasedSpeeds ?? [],
 
+  // Grid styles the player has purchased (base is always included)
+  purchasedGridStyles: _purchasedGridStyles,
+
   setGridStyle(key) {
     set({ activeGridStyle: key })
     persist({ ...get(), activeGridStyle: key })
+  },
+
+  ownGridStyle(key) {
+    const state = get()
+    if (state.purchasedGridStyles.includes(key)) return
+    const next = [...state.purchasedGridStyles, key]
+    set({ purchasedGridStyles: next })
+    persist({ ...state, purchasedGridStyles: next })
   },
 
   unlockBlock(key) {

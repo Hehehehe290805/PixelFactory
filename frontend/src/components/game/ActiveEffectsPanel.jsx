@@ -5,6 +5,7 @@ import { useShopStore } from '../../store/shopStore'
 import { useUserStore } from '../../store/userStore'
 import { useDesignUnlocks } from '../../lib/designUnlocks'
 import { playSynergyActivate, playDesignUnlock } from '../../lib/audio'
+import { getOwnedBlockTypes } from '../../lib/constants'
 
 // ── Type labels & colors ──────────────────────────────────────────────────────
 const TYPE_LABELS = {
@@ -135,7 +136,8 @@ export default function ActiveEffectsPanel() {
             addGold(reward.amount)
           } else if (reward.type === 'random_block') {
             const ids = unlockedDesigns.map(d => d.id)
-            grantRandomBlock(ids, unlockedBlocks ?? [])
+            const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
+            grantRandomBlock(ids, typePool)
             playDesignUnlock()
           }
         }

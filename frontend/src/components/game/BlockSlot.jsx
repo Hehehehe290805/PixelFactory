@@ -1,21 +1,38 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import Block from './Block'
 import { playBlockPlace } from '../../lib/audio'
+
+const HOVER_DELAY_MS = 1500
 
 export default function BlockSlot({
   row, col, block, cellSize = 48,
   selectedBlockId, onBlockSelect, pulsing,
   onCellClick,
+  onBlockHoverStart,   // (block, clientX, clientY) — called after HOVER_DELAY_MS
+  onBlockHoverEnd,     // () — called on mouse leave
   moveTarget = false,
   moveSource = false,
 }) {
   const { placeBlock, removeBlock, moveBlock, sellBlock } = useGameStore()
   const [dragOver, setDragOver] = useState(false)
-  const [sellOver, setSellOver] = useState(false)
+  const hoverTimerRef = useRef(null)
+
+  function handleMouseEnter(e) {
+    if (!block || !onBlockHoverStart) return
+    const { clientX, clientY } = e
+    hoverTimerRef.current = setTimeout(() => {
+      onBlockHoverStart(block, clientX, clientY)
+    }, HOVER_DELAY_MS)
+  }
+
+  function handleMouseLeave() {
+    clearTimeout(hoverTimerRef.current)
+    onBlockHoverEnd?.()
+    setDragOver(false)
+  }
 
   function handleDragOver(e) { e.preventDefault(); setDragOver(true) }
-  function handleDragLeave() { setDragOver(false) }
 
   function handleDrop(e) {
     e.preventDefault()
@@ -67,8 +84,9 @@ export default function BlockSlot({
 
   return (
     <div
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={handleClick}
       className={`relative border transition-colors duration-100 ${moveTarget ? 'cursor-cell' : 'cursor-pointer'}`}

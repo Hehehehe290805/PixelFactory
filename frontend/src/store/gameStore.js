@@ -8,11 +8,9 @@ function emptyGrid() {
 
 let nextBlockId = 1
 
-// Pick a random block type from the available pool.
-// shopUnlocked = array of shop-only block types the player has purchased.
-export function pickRandomType(shopUnlocked = []) {
-  const pool = [...BASIC_BLOCK_TYPES, ...shopUnlocked]
-  return pool[Math.floor(Math.random() * pool.length)]
+// Pick a random block type from the given pool (use getOwnedBlockTypes to build it).
+export function pickRandomType(pool = ['base']) {
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'base'
 }
 
 // Create a block instance from a design id/object.
@@ -160,14 +158,14 @@ export const useGameStore = create((set, get) => ({
 
   // ── In-level shop ────────────────────────────────────────────────────────────
 
-  // Buy a design from the deck shop. Block type is randomly assigned at purchase.
-  buyDesignFromShop(designId, cost, shopUnlocked = []) {
+  // Buy a design from the deck shop. Block type is randomly picked from typePool.
+  // typePool should be computed via getOwnedBlockTypes(unlockedDesigns, shopUnlocked).
+  buyDesignFromShop(designId, cost, typePool = ['base']) {
     const state = get()
     const balance = state.totalPixelsProduced - state.pixelsSpentInShop
     if (balance < cost) return false
     if ((state.designBuyCounts[designId] ?? 0) >= 2) return false
-    const randomType = pickRandomType(shopUnlocked)
-    const block = createBlock(designId, randomType, cost)
+    const block = createBlock(designId, pickRandomType(typePool), cost)
     if (!block) return false
     set({
       pixelsSpentInShop: state.pixelsSpentInShop + cost,
@@ -177,8 +175,8 @@ export const useGameStore = create((set, get) => ({
     return true
   },
 
-  // Buy a random design. Cost doubles each purchase. Block type also randomised.
-  buyRandomDesign(unlockedDesignIds = [], deckIds = [], shopUnlocked = []) {
+  // Buy a random design. Cost doubles each purchase. Block type from typePool.
+  buyRandomDesign(unlockedDesignIds = [], deckIds = [], typePool = ['base']) {
     const state = get()
     const cost = getRandomBlockCost(state.randomBuyCount)
     const balance = state.totalPixelsProduced - state.pixelsSpentInShop
@@ -187,8 +185,7 @@ export const useGameStore = create((set, get) => ({
     const candidates = pool.length > 0 ? pool : unlockedDesignIds
     if (candidates.length === 0) return false
     const designId = candidates[Math.floor(Math.random() * candidates.length)]
-    const randomType = pickRandomType(shopUnlocked)
-    const block = createBlock(designId, randomType, cost)
+    const block = createBlock(designId, pickRandomType(typePool), cost)
     if (!block) return false
     set({
       pixelsSpentInShop: state.pixelsSpentInShop + cost,
@@ -199,11 +196,10 @@ export const useGameStore = create((set, get) => ({
   },
 
   // Grant a free random block (synergy reward — no pixel cost)
-  grantRandomBlock(unlockedDesignIds = [], shopUnlocked = []) {
+  grantRandomBlock(unlockedDesignIds = [], typePool = ['base']) {
     if (!unlockedDesignIds.length) return
     const designId = unlockedDesignIds[Math.floor(Math.random() * unlockedDesignIds.length)]
-    const randomType = pickRandomType(shopUnlocked)
-    const block = createBlock(designId, randomType, 0)
+    const block = createBlock(designId, pickRandomType(typePool), 0)
     if (!block) return
     set(s => ({ inventory: [...s.inventory, block] }))
   },
