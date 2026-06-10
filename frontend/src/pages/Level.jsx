@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { startMusic, stopMusic, getLevelTrack, playLevelComplete, playDesignUnlock } from '../lib/audio'
-import { useGameStore, createBlock } from '../store/gameStore'
+import { useGameStore, createBlock, pickRandomType } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
 import { getLevelConfig } from '../engine/levelConfig'
@@ -86,7 +86,18 @@ export default function Level() {
   function handleDeckConfirmed({ designIds }) {
     setActiveDeck(designIds)
     setDeckSelection(designIds)
-    startLevel([])
+
+    // Give 2 copies of each unique selected design as starting inventory
+    const shopUnlocked = useShopStore.getState().unlockedBlocks ?? []
+    const startingBlocks = []
+    for (const id of [...new Set(designIds)]) {
+      for (let i = 0; i < 2; i++) {
+        const block = createBlock(id, pickRandomType(shopUnlocked), 0)
+        if (block) startingBlocks.push(block)
+      }
+    }
+
+    startLevel(startingBlocks)
     setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)

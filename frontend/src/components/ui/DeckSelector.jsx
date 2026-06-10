@@ -1,19 +1,17 @@
 import { useState, useMemo, useCallback } from 'react'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { useGameStore } from '../../store/gameStore'
-import { MAX_DECK, MAX_DECK_COPIES } from '../../lib/constants'
+import { MAX_DECK } from '../../lib/constants'
 import { getDesignSynergies } from '../../engine/designSynergies'
-import { playPurchase } from '../../lib/audio'
 
 // ── Deck Selector ─────────────────────────────────────────────────────────────
-// Deck = 3 cards. Same design can appear up to MAX_DECK_COPIES (2) times.
-// No pre-buy phase — players go straight into the level from here.
+// Deck = up to MAX_DECK (3) unique designs.
+// No pre-buy phase. Level starts with 2 copies of each selected design in inventory.
 
 export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, onBack, bargain = false }) {
   const { deckSelection } = useGameStore()
 
-  // deckSelection may contain duplicate ids (e.g. ['rose','rose','oak'])
-  const [deck, setDeck]           = useState(() => (deckSelection ?? []).slice(0, MAX_DECK))
+  const [deck, setDeck]           = useState(() => [...new Set((deckSelection ?? []).slice(0, MAX_DECK))])
   const [seriesFilter, setFilter] = useState('all')
   const [hoveredId, setHoveredId] = useState(null)
   const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
@@ -30,22 +28,11 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
     [unlockedDesigns, seriesFilter]
   )
 
-  // Each click: if count < MAX_DECK_COPIES and deck not full → add one.
-  // If count >= 1 and no room → remove the last copy.
-  // Effectively: click adds, then click again removes when at max.
   function toggleDesign(id) {
     setDeck(prev => {
-      const count = prev.filter(x => x === id).length
-      if (count < MAX_DECK_COPIES && prev.length < MAX_DECK) {
-        playPurchase()
-        return [...prev, id]
-      }
-      if (count >= 1) {
-        // remove the last copy
-        const idx = prev.lastIndexOf(id)
-        return [...prev.slice(0, idx), ...prev.slice(idx + 1)]
-      }
-      return prev
+      if (prev.includes(id)) return prev.filter(x => x !== id)
+      if (prev.length >= MAX_DECK) return prev
+      return [...prev, id]
     })
   }
 
@@ -75,7 +62,7 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
             <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-0.5">Level {levelNumber}</div>
             <h2 className="text-2xl font-black text-white pixel-heading">Choose Your Deck</h2>
             <p className="text-xs text-gray-500 mt-1">
-              Pick up to {MAX_DECK} designs — same design up to {MAX_DECK_COPIES}×
+              Pick up to {MAX_DECK} designs — you start with 2 copies of each
             </p>
           </div>
           <div className="text-right flex-shrink-0 ml-4">
@@ -133,10 +120,8 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="grid grid-cols-5 gap-2">
             {filtered.map(design => {
-              const count    = deck.filter(x => x === design.id).length
-              const atMax    = count >= MAX_DECK_COPIES
-              const deckFull = deck.length >= MAX_DECK && count === 0
-              const disabled = deckFull
+              const selected = deck.includes(design.id)
+              const disabled = !selected && deck.length >= MAX_DECK
               return (
                 <button
                   key={design.id}
@@ -144,20 +129,17 @@ export default function DeckSelector({ levelNumber, unlockedDesigns, onConfirm, 
                   onMouseEnter={() => setHoveredId(design.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   className={`relative rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition
-                    ${count > 0    ? 'border-pixel-green bg-pixel-green/10'
-                    : disabled     ? 'border-game-border opacity-30 cursor-not-allowed'
-                                   : 'border-game-border hover:border-pixel-blue cursor-pointer'}`}
-                  style={{ background: count > 0 ? undefined : '#0d0d22' }}
+                    ${selected  ? 'border-pixel-green bg-pixel-green/10'
+                    : disabled  ? 'border-game-border opacity-30 cursor-not-allowed'
+                                : 'border-game-border hover:border-pixel-blue cursor-pointer'}`}
+                  style={{ background: selected ? undefined : '#0d0d22' }}
                 >
                   <DesignMiniThumb design={design} size={44} />
                   <span className="text-[10px] font-black text-center leading-tight text-gray-300 truncate w-full">{design.name}</span>
-                  {count > 0 && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pixel-green flex items-center justify-center">
-                      <span style={{ fontSize: 9, color: '#000', fontWeight: 900 }}>{count}</span>
+                  {selected && (
+                    <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-pixel-green flex items-center justify-center">
+                      <span style={{ fontSize: 8, color: '#000', fontWeight: 900 }}>✓</span>
                     </div>
-                  )}
-                  {atMax && (
-                    <div className="absolute bottom-1 left-1 text-[8px] font-black text-pixel-yellow/70">MAX</div>
                   )}
                 </button>
               )

@@ -10,7 +10,7 @@ let nextBlockId = 1
 
 // Pick a random block type from the available pool.
 // shopUnlocked = array of shop-only block types the player has purchased.
-function pickRandomType(shopUnlocked = []) {
+export function pickRandomType(shopUnlocked = []) {
   const pool = [...BASIC_BLOCK_TYPES, ...shopUnlocked]
   return pool[Math.floor(Math.random() * pool.length)]
 }
