@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useUserStore } from '../store/userStore'
 import { DESIGNS, ALL_SERIES } from '../data/designLibrary'
@@ -16,6 +16,11 @@ export default function Profile() {
   const { isDesignUnlocked, unlockedDesigns } = useDesignUnlocks()
   const [seriesFilter, setSeriesFilter] = useState('all')
   const [hoveredId, setHoveredId]       = useState(null)
+  const [mousePos, setMousePos]         = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = useCallback((e) => {
+    setMousePos({ x: e.clientX, y: e.clientY })
+  }, [])
 
   const filtered = seriesFilter === 'all'
     ? DESIGNS
@@ -78,53 +83,59 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* Grid + detail panel */}
-        <div className="flex gap-4">
-          {/* Design grid */}
-          <div className="flex-1">
-            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10">
-              {filtered.map(design => {
-                const unlocked = isDesignUnlocked(design.id)
-                return (
+        {/* Design grid */}
+        <div
+          className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10"
+          onMouseMove={handleMouseMove}
+        >
+          {filtered.map(design => {
+            const unlocked = isDesignUnlocked(design.id)
+            return (
+              <div
+                key={design.id}
+                onMouseEnter={() => setHoveredId(design.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className={`rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition cursor-default
+                  ${hoveredId === design.id
+                    ? 'border-pixel-blue bg-pixel-blue/5'
+                    : unlocked ? 'border-pixel-green/30 bg-pixel-green/5' : 'border-game-border'}`}
+              >
+                {unlocked ? (
+                  <DesignMiniThumb design={design} size={36} />
+                ) : (
                   <div
-                    key={design.id}
-                    onMouseEnter={() => setHoveredId(design.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    className={`rounded-xl border-2 flex flex-col items-center p-1.5 gap-1 transition cursor-default
-                      ${hoveredId === design.id
-                        ? 'border-pixel-blue bg-pixel-blue/5'
-                        : unlocked ? 'border-pixel-green/30 bg-pixel-green/5' : 'border-game-border'}`}
-                    title={unlocked ? design.name : '???'}
+                    className="rounded overflow-hidden"
+                    style={{ width: 36, height: 36, background: '#111128', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {unlocked ? (
-                      <DesignMiniThumb design={design} size={36} />
-                    ) : (
-                      <div
-                        className="rounded overflow-hidden"
-                        style={{ width: 36, height: 36, background: '#111128', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <span className="text-gray-700 font-black text-lg">?</span>
-                      </div>
-                    )}
-                    <span
-                      className="text-[9px] font-black text-center leading-tight truncate w-full"
-                      style={{ color: unlocked ? '#a0aec0' : '#4a5568' }}
-                    >
-                      {unlocked ? design.name : '???'}
-                    </span>
+                    <span className="text-gray-700 font-black text-lg">?</span>
                   </div>
-                )
-              })}
-            </div>
-          </div>
+                )}
+                <span
+                  className="text-[9px] font-black text-center leading-tight truncate w-full"
+                  style={{ color: unlocked ? '#a0aec0' : '#4a5568' }}
+                >
+                  {unlocked ? design.name : '???'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
 
-          {/* Hover detail */}
-          {hoveredDesign && (
+        {/* Hover tooltip — fixed, follows cursor, never affects layout */}
+        {hoveredDesign && (() => {
+          const tipW = 176
+          const margin = 16
+          const x = mousePos.x + margin + tipW > window.innerWidth
+            ? mousePos.x - tipW - margin
+            : mousePos.x + margin
+          const y = Math.min(mousePos.y - 8, window.innerHeight - 280)
+          const unlocked = isDesignUnlocked(hoveredDesign.id)
+          return (
             <div
-              className="flex-shrink-0 w-48 rounded-xl border-2 border-game-border p-3 flex flex-col gap-2 h-fit sticky top-8"
-              style={{ background: '#0d0d22' }}
+              style={{ position: 'fixed', left: x, top: y, width: tipW, zIndex: 200, pointerEvents: 'none', background: '#0d0d22' }}
+              className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
             >
-              {isDesignUnlocked(hoveredDesign.id) ? (
+              {unlocked ? (
                 <>
                   <DesignMiniThumb design={hoveredDesign} size={80} centered />
                   <div className="text-sm font-black text-white">{hoveredDesign.name}</div>
@@ -142,19 +153,19 @@ export default function Profile() {
                   <div className="text-sm font-black text-gray-600">???</div>
                   <div className="text-xs text-gray-700 capitalize">{hoveredDesign.series}</div>
                   <div className="text-xs text-gray-700 leading-snug">
-                    {hoveredDesign.unlockSource === 'starter'        ? 'Complete the tutorial' :
-                     hoveredDesign.unlockSource === 'campaign_choice' ? 'Earned by completing campaign levels' :
-                     hoveredDesign.unlockSource === 'shop'           ? 'Available in the Shop' :
-                     hoveredDesign.unlockSource === 'endless_20min'  ? 'Survive 20 min in Endless' :
-                     hoveredDesign.unlockSource === 'quiz_25'        ? 'Answer 25 quiz questions correctly' :
-                     hoveredDesign.unlockSource === 'quiz_50'        ? 'Answer 50 quiz questions correctly' :
+                    {hoveredDesign.unlockSource === 'starter'         ? 'Complete the tutorial' :
+                     hoveredDesign.unlockSource === 'campaign_choice'  ? 'Earn by completing campaign levels' :
+                     hoveredDesign.unlockSource === 'shop'            ? 'Available in the Shop' :
+                     hoveredDesign.unlockSource === 'endless_20min'   ? 'Survive 20 min in Endless' :
+                     hoveredDesign.unlockSource === 'quiz_25'         ? 'Answer 25 quiz questions correctly' :
+                     hoveredDesign.unlockSource === 'quiz_50'         ? 'Answer 50 quiz questions correctly' :
                      'Special unlock'}
                   </div>
                 </>
               )}
             </div>
-          )}
-        </div>
+          )
+        })()}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { useGameStore } from '../../store/gameStore'
 
 export default function PixelCounter({ requiredOutput }) {
-  const { totalPixelsProduced, pixelsSpent, currentPxPerSecond } = useGameStore()
+  const { totalPixelsProduced, pixelsSpentInShop: pixelsSpent, currentPxPerSecond } = useGameStore()
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
 
