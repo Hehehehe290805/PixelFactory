@@ -1686,9 +1686,18 @@ const LEVEL_COSTS = {
   overflow: 65, mirror: 58, catalyst: 78, void: 45,
 }
 
+const SERIES_COST_MULT = {
+  space: 1.5, celestial: 1.5,
+  symbols: 1.2, flowers: 1.1, animals: 1.1, buildings: 1.1,
+  shapes: 1.0, weather: 1.0,
+  trees: 0.75, food: 0.75, landscapes: 0.75, abstract: 0.75,
+}
+
 export function getDesignLevelCost(design, bargain = false) {
   const base = design.shopCost > 0 ? Math.ceil(design.shopCost * 0.15) : (LEVEL_COSTS[design.blockType] ?? 40)
-  return bargain ? Math.floor(base * 0.8) : base
+  const mult = SERIES_COST_MULT[design?.series] ?? 1.0
+  const cost = Math.max(5, Math.round(base * mult))
+  return bargain ? Math.floor(cost * 0.8) : cost
 }
 
 export const ALL_SERIES = ['flowers','trees','buildings','celestial','animals','shapes','food','symbols','weather','landscapes','space','abstract','special']

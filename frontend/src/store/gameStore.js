@@ -50,6 +50,7 @@ export const useGameStore = create((set, get) => ({
   grid:                emptyGrid(),
   inventory:           [],        // design block instances in hand
   deckSelection:       [],        // [designId × up to 10] chosen before each level
+  designBuyCounts:     {},        // { designId: totalBought } — capped at 2 per design
   selectedBlockId:     null,
   totalPixelsProduced: 0,
   pixelsSpentInShop:   0,
@@ -108,13 +109,34 @@ export const useGameStore = create((set, get) => ({
     const state = get()
     const balance = state.totalPixelsProduced - state.pixelsSpentInShop
     if (balance < cost) return false
+    if ((state.designBuyCounts[designId] ?? 0) >= 2) return false
+    const block = createBlock(designId)
+    if (!block) return false
+    set({
+      pixelsSpentInShop: state.pixelsSpentInShop + cost,
+      inventory: [...state.inventory, block],
+      designBuyCounts: { ...state.designBuyCounts, [designId]: (state.designBuyCounts[designId] ?? 0) + 1 },
+    })
+    return true
+  },
+
+  // Buy a random design from the player's unlocked collection
+  buyRandomDesign(cost, unlockedDesignIds = [], deckIds = []) {
+    const state = get()
+    const balance = state.totalPixelsProduced - state.pixelsSpentInShop
+    if (balance < cost) return false
+    // Prefer designs NOT in the current deck, fall back to any unlocked
+    const pool = unlockedDesignIds.filter(id => !deckIds.includes(id))
+    const candidates = pool.length > 0 ? pool : unlockedDesignIds
+    if (candidates.length === 0) return false
+    const designId = candidates[Math.floor(Math.random() * candidates.length)]
     const block = createBlock(designId)
     if (!block) return false
     set({
       pixelsSpentInShop: state.pixelsSpentInShop + cost,
       inventory: [...state.inventory, block],
     })
-    return true
+    return block
   },
 
   // Generic shop budget deduction (for other in-level purchases)
@@ -211,11 +233,12 @@ export const useGameStore = create((set, get) => ({
 
   // ── Level lifecycle ─────────────────────────────────────────────────────────
 
-  // levelBlocks: array of block instances (already created via createBlock)
-  startLevel(levelBlocks) {
+  // levelBlocks: array of block instances; preBuyCounts: { designId: count } from pre-buy phase
+  startLevel(levelBlocks, preBuyCounts = {}) {
     set({
       grid:                emptyGrid(),
       inventory:           levelBlocks ?? [],
+      designBuyCounts:     { ...preBuyCounts },
       totalPixelsProduced: 0,
       pixelsSpentInShop:   0,
       currentPxPerSecond:  0,
@@ -227,12 +250,18 @@ export const useGameStore = create((set, get) => ({
     })
   },
 
+  // Restore a saved grid (for endless resume)
+  restoreGrid(savedGrid, savedInventory) {
+    set({ grid: savedGrid, inventory: savedInventory ?? [], levelActive: true })
+  },
+
   completeLevel() { set({ levelActive: false, levelComplete: true }) },
 
   resetLevel() {
     set({
       grid:                emptyGrid(),
       inventory:           [],
+      designBuyCounts:     {},
       totalPixelsProduced: 0,
       pixelsSpentInShop:   0,
       currentPxPerSecond:  0,

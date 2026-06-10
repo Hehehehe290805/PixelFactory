@@ -78,46 +78,67 @@ export const SYNERGY_DEFS = {
     desc: '3 abstract designs → +15% output; radiates +7% in all 8 directions',
   },
 
-  // ── Exact design count synergies ──────────────────────────────────────────
-  ROSE_PARADE: {
-    name: 'Rose Parade', type: 'exact_count', designId: 'rose', required: 3,
-    own: 0.25, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '3 Rose designs → +25% each; spreads +10% to ortho neighbors',
+  // ── Mini-tier series synergies (2 designs → small bonus) ──────────────────
+  // These activate early, rewarding any 2-design mix from the same family.
+  BLOOM: {
+    name: 'Bloom', type: 'series_count', series: 'flowers', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
+    desc: '2 flower designs → +8% each; spreads +4% to ortho neighbors',
   },
-  SUNFLOWER_FIELD: {
-    name: 'Sunflower Field', type: 'exact_count', designId: 'sunflower', required: 3,
-    own: 0.22, radiation: { type: 'all8', amount: 0.08 },
-    desc: '3 Sunflower designs → +22% each; radiates +8% to all 8 neighbors',
+  GROVE: {
+    name: 'Grove', type: 'series_count', series: 'trees', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
+    desc: '2 tree designs → +8% each; spreads +4% to ortho neighbors',
   },
-  OAK_GROVE: {
-    name: 'Oak Grove', type: 'exact_count', designId: 'oak', required: 3,
-    own: 0.20, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '3 Oak designs → +20% each; spreads +10% to ortho neighbors',
+  DISTRICT: {
+    name: 'District', type: 'series_count', series: 'buildings', required: 2,
+    own: 0.08, radiation: { type: 'diag', amount: 0.04 },
+    desc: '2 building designs → +8% each; spreads +4% to diagonal neighbors',
   },
-  MOUNTAIN_RANGE: {
-    name: 'Mountain Range', type: 'exact_count', designId: 'mountain', required: 3,
-    own: 0.22, radiation: { type: 'diag', amount: 0.10 },
-    desc: '3 Mountain designs → +22% each; spreads +10% to diagonal neighbors',
+  CONSTELLATION: {
+    name: 'Constellation', type: 'series_count', series: 'celestial', required: 2,
+    own: 0.10, radiation: { type: 'all8', amount: 0.04 },
+    desc: '2 celestial designs → +10% each; radiates +4% in all directions',
   },
-  STAR_CLUSTER: {
-    name: 'Star Cluster', type: 'exact_count', designId: 'star', required: 4,
-    own: 0.28, radiation: { type: 'all8', amount: 0.10 },
-    desc: '4 Star designs → +28% each; radiates +10% in all 8 directions',
+  DUO: {
+    name: 'Duo', type: 'series_count', series: 'animals', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
+    desc: '2 animal designs → +8% each; spreads +4% to ortho neighbors',
   },
-  HEART_ARRAY: {
-    name: 'Heart Array', type: 'exact_count', designId: 'heart', required: 3,
-    own: 0.20, radiation: { type: 'all8', amount: 0.08 },
-    desc: '3 Heart designs → +20% each; radiates +8% in all 8 directions',
+  FORM: {
+    name: 'Form', type: 'series_count', series: 'shapes', required: 2,
+    own: 0.10, radiation: { type: 'diag', amount: 0.04 },
+    desc: '2 shape designs → +10% each; spreads +4% to diagonal neighbors',
   },
-  SNOWFIELD: {
-    name: 'Snowfield', type: 'exact_count', designId: 'snowflake', required: 3,
-    own: 0.22, radiation: { type: 'ortho', amount: 0.10 },
-    desc: '3 Snowflake designs → +22% each; spreads +10% to ortho neighbors',
+  PAIR: {
+    name: 'Pair', type: 'series_count', series: 'food', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.03 },
+    desc: '2 food designs → +8% each; spreads +3% to ortho neighbors',
   },
-  REEF: {
-    name: 'Reef', type: 'exact_count', designId: 'fish', required: 3,
-    own: 0.24, radiation: { type: 'ortho', amount: 0.08 },
-    desc: '3 Fish designs → +24% each; spreads +8% to ortho neighbors',
+  SIGIL: {
+    name: 'Sigil', type: 'series_count', series: 'symbols', required: 2,
+    own: 0.10, radiation: { type: 'all8', amount: 0.04 },
+    desc: '2 symbol designs → +10% each; radiates +4% in all directions',
+  },
+  GUST: {
+    name: 'Gust', type: 'series_count', series: 'weather', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
+    desc: '2 weather designs → +8% each; spreads +4% to ortho neighbors',
+  },
+  TERRAIN: {
+    name: 'Terrain', type: 'series_count', series: 'landscapes', required: 2,
+    own: 0.08, radiation: { type: 'ortho', amount: 0.04 },
+    desc: '2 landscape designs → +8% each; spreads +4% to ortho neighbors',
+  },
+  ORBIT: {
+    name: 'Orbit', type: 'series_count', series: 'space', required: 2,
+    own: 0.12, radiation: { type: 'all8', amount: 0.05 },
+    desc: '2 space designs → +12% each; radiates +5% in all directions',
+  },
+  SEQUENCE: {
+    name: 'Sequence', type: 'series_count', series: 'abstract', required: 2,
+    own: 0.08, radiation: { type: 'all8', amount: 0.04 },
+    desc: '2 abstract designs → +8% each; radiates +4% in all directions',
   },
 
   // ── Adjacency pair synergies ──────────────────────────────────────────────

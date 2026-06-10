@@ -9,11 +9,17 @@ function nbOrtho(r, c, grid) {
 }
 
 // ── Base output ───────────────────────────────────────────────────────────────
-// pixelCount is fixed per design; no color multipliers needed (removed with painting)
-// Fixed base rate — output is determined by block type + effects, not pixel count
+// Series tier: premium synergies (space/celestial) trade raw output for synergy ceiling.
+// Accessible series (trees/food/landscapes/abstract) output more but have weaker synergies.
+const SERIES_RATE = {
+  space: 0.7, celestial: 0.7,
+  symbols: 1.0, flowers: 1.0, animals: 1.0, buildings: 1.0, shapes: 1.0, weather: 1.0,
+  trees: 1.3, food: 1.3, landscapes: 1.3, abstract: 1.3,
+}
+
 export function baseRate(block) {
   if (block.type === 'void') return 0
-  return 1.0
+  return SERIES_RATE[block.series] ?? 1.0
 }
 
 // ── Doubler ───────────────────────────────────────────────────────────────────

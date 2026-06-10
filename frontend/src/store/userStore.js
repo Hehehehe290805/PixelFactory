@@ -290,4 +290,42 @@ export const useUserStore = create((set, get) => ({
     })
     return true
   },
+
+  // ── Endless run save/resume ─────────────────────────────────────────────────
+
+  async saveEndlessRun({ wave, grandTotal, grid, inventory }) {
+    const { user } = get()
+    if (!user) return
+    await supabase.from('endless_saves').upsert({
+      user_id:    user.id,
+      wave,
+      grand_total: grandTotal,
+      grid:        JSON.stringify(grid),
+      inventory:   JSON.stringify(inventory),
+      saved_at:    new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  },
+
+  async loadEndlessRun() {
+    const { user } = get()
+    if (!user) return null
+    const { data } = await supabase
+      .from('endless_saves')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!data) return null
+    return {
+      wave:        data.wave,
+      grand_total: data.grand_total,
+      grid:        typeof data.grid === 'string' ? JSON.parse(data.grid) : data.grid,
+      inventory:   typeof data.inventory === 'string' ? JSON.parse(data.inventory) : data.inventory,
+    }
+  },
+
+  async deleteEndlessRun() {
+    const { user } = get()
+    if (!user) return
+    await supabase.from('endless_saves').delete().eq('user_id', user.id)
+  },
 }))

@@ -62,6 +62,10 @@ export default function Level() {
   // Design choice modal (offered after certain level completions)
   const [designChoicePair, setDesignChoicePair] = useState(null)
 
+  // Designs unlocked notification
+  const [unlockedThisLevel, setUnlockedThisLevel] = useState([])
+  const [showUnlocked, setShowUnlocked]           = useState(false)
+
   // Inventory open state for tutorial
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [tutorialDone, setTutorialDone]   = useState(false)
@@ -78,10 +82,10 @@ export default function Level() {
         : config.timeLimitSeconds)
     : 120
 
-  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget }) {
+  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget, preBuyCounts }) {
     setActiveDeck(preBoughtDesignIds)
     setDeckSelection(preBoughtDesignIds)
-    startLevel(startingBlocks)
+    startLevel(startingBlocks, preBuyCounts ?? {})
     if (remainingBudget > 0) addPixels(remainingBudget)
     setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
@@ -159,7 +163,11 @@ export default function Level() {
 
     setStars(s); setGoldEarned(Math.floor(total * goldMult)); setResultShown(true)
     saveCampaignProgress(levelNum, s, elapsedSeconds)
-    if (levelNum === 1 && !campaignProgress[1]) unlockDesigns(getStarterDesignIds())
+    if (levelNum === 1 && !campaignProgress[1]) {
+      const starterIds = getStarterDesignIds()
+      unlockDesigns(starterIds)
+      setUnlockedThisLevel(starterIds)
+    }
     if (total > 0) addGold(Math.floor(total * goldMult))
     if (greedyBonus > 0) addCumulativeGreedyGold(greedyBonus)
 
@@ -174,11 +182,20 @@ export default function Level() {
 
   function handleTimeUp() { setResultShown(true); setStars(0); setGoldEarned(0) }
 
+  function handleAfterUnlocked() {
+    setShowUnlocked(false)
+    const content = getLevelContent(levelNum)
+    if (showLearning && content) setLearningShown(true)
+    else navigate('/campaign')
+  }
+
   function handleRetry() {
     setResultShown(false)
     setLearningShown(false)
     setElapsedSeconds(0)
     setDesignChoicePair(null)
+    setUnlockedThisLevel([])
+    setShowUnlocked(false)
     resetLevel()
     if (isTutorial) {
       const tutorialBlocks = ['daisy', 'oak', 'house', 'star']
@@ -192,7 +209,8 @@ export default function Level() {
   }
 
   function handleStarResultContinue() {
-    if (designChoicePair) return  // let design choice modal handle navigation
+    if (designChoicePair) return
+    if (unlockedThisLevel.length > 0) { setShowUnlocked(true); return }
     const content = getLevelContent(levelNum)
     if (showLearning && content) {
       setLearningShown(true)
@@ -272,15 +290,19 @@ export default function Level() {
           pair={designChoicePair}
           onChoose={id => {
             unlockDesign(id)
+            setUnlockedThisLevel([id])
             setDesignChoicePair(null)
-            const content = getLevelContent(levelNum)
-            if (showLearning && content) setLearningShown(true)
-            else navigate('/campaign')
+            setShowUnlocked(true)
           }}
         />
       )}
 
-      {resultShown && !designChoicePair && !learningShown && (
+      {/* Designs unlocked notification */}
+      {resultShown && showUnlocked && (
+        <DesignsUnlockedPanel designIds={unlockedThisLevel} onContinue={handleAfterUnlocked} />
+      )}
+
+      {resultShown && !designChoicePair && !showUnlocked && !learningShown && (
         <StarResult
           stars={stars}
           levelConfig={config}
@@ -291,7 +313,7 @@ export default function Level() {
         />
       )}
 
-      {resultShown && !designChoicePair && learningShown && (
+      {resultShown && !designChoicePair && !showUnlocked && learningShown && (
         <LearningCard
           content={getLevelContent(levelNum)}
           levelNumber={levelNum}
@@ -332,6 +354,34 @@ function DesignChoiceModal({ pair, onChoose }) {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Designs Unlocked Panel ────────────────────────────────────────────────────
+function DesignsUnlockedPanel({ designIds, onContinue }) {
+  const designs = designIds.map(id => DESIGNS.find(d => d.id === id)).filter(Boolean)
+  return (
+    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/85 px-4">
+      <div className="card w-full max-w-md text-center" style={{ padding: '2rem' }}>
+        <div className="text-xs font-black uppercase tracking-widest text-pixel-green mb-1">Collection updated</div>
+        <h2 className="text-2xl font-black text-white pixel-heading mb-1">
+          {designs.length === 1 ? '1 New Design' : `${designs.length} New Designs`}
+        </h2>
+        <p className="text-xs text-gray-500 mb-5">Added to your collection</p>
+        <div className="grid grid-cols-5 gap-2 mb-6">
+          {designs.map(d => (
+            <div key={d.id} className="flex flex-col items-center gap-1">
+              <div className="rounded-xl border-2 border-pixel-green/40 bg-pixel-green/5 p-1.5">
+                <DesignMiniThumb design={d} size={40} />
+              </div>
+              <span className="text-[9px] font-black text-gray-300 text-center leading-tight truncate w-full">{d.name}</span>
+              <span className="text-[8px] text-gray-600 capitalize">{d.series}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={onContinue} className="btn btn-primary w-full text-base">Continue →</button>
       </div>
     </div>
   )

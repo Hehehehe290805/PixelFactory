@@ -11,6 +11,18 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Endless run saves (one active save per user)
+CREATE TABLE IF NOT EXISTS endless_saves (
+  user_id     UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  wave        INTEGER NOT NULL,
+  grand_total BIGINT NOT NULL DEFAULT 0,
+  grid        JSONB NOT NULL DEFAULT '[]',
+  inventory   JSONB NOT NULL DEFAULT '[]',
+  saved_at    TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE endless_saves ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own endless save" ON endless_saves FOR ALL USING (auth.uid() = user_id);
+
 -- Run once if adding columns to an existing table:
 -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_correct INTEGER DEFAULT 0;
 -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS quiz_total INTEGER DEFAULT 0;

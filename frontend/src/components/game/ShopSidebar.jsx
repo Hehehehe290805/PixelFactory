@@ -1,20 +1,31 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useShopStore } from '../../store/shopStore'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
-import Block from './Block'
-import { DesignTooltipBody } from '../ui/DeckSelector'
+import { useDesignUnlocks } from '../../lib/designUnlocks'
+import { DesignTooltipBody, DesignMiniThumb } from '../ui/DeckSelector'
+
+const RANDOM_BASE_COST = 18
 
 export default function ShopSidebar({ deckDesignIds = [] }) {
-  const { totalPixelsProduced, pixelsSpentInShop, buyDesignFromShop } = useGameStore()
+  const {
+    totalPixelsProduced, pixelsSpentInShop,
+    buyDesignFromShop, buyRandomDesign, designBuyCounts,
+  } = useGameStore()
   const { activeGridStyle } = useShopStore()
-  const [flash, setFlash]       = useState(null)
+  const { unlockedDesigns } = useDesignUnlocks()
+
+  const [flash, setFlash]         = useState(null)   // { id, ok }
+  const [randomFlash, setRandomFlash] = useState(null) // 'ok'|'fail'|null
+  const [lastRandom, setLastRandom]   = useState(null) // last random design received
   const [hoveredId, setHoveredId] = useState(null)
   const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
   const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   const balance = Math.floor(totalPixelsProduced - pixelsSpentInShop)
   const bargain = activeGridStyle === 'bargain'
+
+  const randomCost = bargain ? Math.floor(RANDOM_BASE_COST * 0.8) : RANDOM_BASE_COST
 
   function doFlash(id, ok) {
     setFlash({ id, ok })
@@ -27,22 +38,36 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
     doFlash(design.id, ok)
   }
 
-  // Handle drag-to-grid: on dragStart, also deduct cost if possible
   function handleDragStart(e, design) {
     const cost = getDesignLevelCost(design, bargain)
-    const canAfford = balance >= cost
-    if (!canAfford) { e.preventDefault(); return }
-    // Speculatively buy — the grid drop handler will place it
+    if (balance < cost) { e.preventDefault(); return }
+    if ((designBuyCounts[design.id] ?? 0) >= 2) { e.preventDefault(); return }
     const ok = buyDesignFromShop(design.id, cost)
     if (!ok) { e.preventDefault(); return }
     e.dataTransfer.setData('application/json', JSON.stringify({ source: 'shop', designId: design.id }))
   }
 
+  function handleBuyRandom() {
+    const unlockedIds = unlockedDesigns.map(d => d.id)
+    const block = buyRandomDesign(randomCost, unlockedIds, deckDesignIds)
+    if (block) {
+      const d = DESIGNS.find(x => x.id === block.designId)
+      setLastRandom(d ?? null)
+      setRandomFlash('ok')
+      setTimeout(() => setRandomFlash(null), 1200)
+    } else {
+      setRandomFlash('fail')
+      setTimeout(() => setRandomFlash(null), 420)
+    }
+  }
+
+  // Show deck designs that haven't hit the 2-copy limit
   const deckDesigns = deckDesignIds
     .map(id => DESIGNS.find(d => d.id === id))
     .filter(Boolean)
+    .filter(d => (designBuyCounts[d.id] ?? 0) < 2)
 
-  const hoveredDesign = hoveredId ? deckDesigns.find(d => d.id === hoveredId) : null
+  const hoveredDesign = hoveredId ? DESIGNS.find(d => d.id === hoveredId) : null
 
   const tipW = 172
   const tipX = mousePos.x + 12 + tipW > window.innerWidth
@@ -65,16 +90,18 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
 
       {/* Design list */}
       <div className="flex-1 overflow-y-auto py-1.5 flex flex-col gap-0.5 px-1.5">
-        {deckDesigns.length === 0 && (
-          <p className="text-xs text-gray-700 italic text-center py-4 px-1">
-            No deck selected
+        {deckDesigns.length === 0 && deckDesignIds.length > 0 && (
+          <p className="text-[10px] text-gray-700 italic text-center py-2 px-1">
+            All deck designs purchased
           </p>
         )}
+
         {deckDesigns.map(design => {
           const cost = getDesignLevelCost(design, bargain)
           const canAfford = balance >= cost
           const isFlash = flash?.id === design.id
           const flashOk = flash?.ok
+          const bought = designBuyCounts[design.id] ?? 0
 
           return (
             <div
@@ -86,14 +113,13 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
               onClick={() => handleBuy(design)}
               className="rounded-xl border-2 flex flex-col gap-1 p-1.5 cursor-pointer transition"
               style={{
-                background:   isFlash ? (flashOk ? '#00d49a18' : '#f03e4e18') : '#0d0d22',
-                borderColor:  isFlash ? (flashOk ? '#00d49a' : '#f03e4e')
-                              : hoveredId === design.id ? '#1499cc'
-                              : canAfford ? '#36366a' : '#1e1e3a',
-                opacity:      canAfford ? 1 : 0.45,
+                background:  isFlash ? (flashOk ? '#00d49a18' : '#f03e4e18') : '#0d0d22',
+                borderColor: isFlash ? (flashOk ? '#00d49a' : '#f03e4e')
+                             : hoveredId === design.id ? '#1499cc'
+                             : canAfford ? '#36366a' : '#1e1e3a',
+                opacity:     canAfford ? 1 : 0.45,
               }}
             >
-              {/* Mini art + name */}
               <div className="flex items-center gap-1.5">
                 <DesignThumb design={design} size={28} />
                 <div className="flex-1 min-w-0">
@@ -101,20 +127,60 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
                   <div className="text-[9px] text-gray-500 capitalize truncate">{design.blockType.replace(/_/g, ' ')}</div>
                 </div>
               </div>
-              {/* Cost */}
               <div className="flex items-center justify-between">
                 <div className="text-[9px] text-gray-600 capitalize truncate">{design.series}</div>
-                <div className={`text-[11px] font-black ${canAfford ? 'text-pixel-yellow' : 'text-gray-600'}`}>
-                  {cost}px
+                <div className="flex items-center gap-1">
+                  <div className="text-[8px] text-gray-700">{bought}/2</div>
+                  <div className={`text-[11px] font-black ${canAfford ? 'text-pixel-yellow' : 'text-gray-600'}`}>
+                    {cost}px
+                  </div>
                 </div>
               </div>
             </div>
           )
         })}
+
+        {/* Random slot — always visible */}
+        <div
+          onMouseEnter={() => setHoveredId('__random__')}
+          onMouseLeave={() => setHoveredId(null)}
+          onClick={handleBuyRandom}
+          className="rounded-xl border-2 flex flex-col gap-1 p-1.5 cursor-pointer transition mt-1"
+          style={{
+            background:  randomFlash === 'ok' ? '#1499cc18'
+                       : randomFlash === 'fail' ? '#f03e4e18' : '#0d0d22',
+            borderColor: randomFlash === 'ok' ? '#1499cc'
+                       : randomFlash === 'fail' ? '#f03e4e'
+                       : hoveredId === '__random__' ? '#1499cc88'
+                       : balance >= randomCost ? '#36366a' : '#1e1e3a',
+            opacity:     balance >= randomCost ? 1 : 0.45,
+          }}
+        >
+          <div className="flex items-center gap-1.5">
+            <div
+              className="flex items-center justify-center flex-shrink-0 rounded overflow-hidden"
+              style={{ width: 28, height: 28, background: '#0a0a1a', border: '1px solid #36366a' }}
+            >
+              {randomFlash === 'ok' && lastRandom
+                ? <DesignThumb design={lastRandom} size={28} />
+                : <span className="text-gray-500 font-black text-base">?</span>
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-black text-pixel-blue/80 truncate leading-tight">Random</div>
+              <div className="text-[9px] text-gray-600 truncate">from collection</div>
+            </div>
+          </div>
+          <div className="flex items-center justify-end">
+            <div className={`text-[11px] font-black ${balance >= randomCost ? 'text-pixel-blue' : 'text-gray-600'}`}>
+              {randomCost}px
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Hover tooltip — fixed overlay follows cursor */}
-      {hoveredDesign && (
+      {hoveredDesign && hoveredId !== '__random__' && (
         <div
           style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
           className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
@@ -123,11 +189,21 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
           <div className="text-[10px] text-gray-600 font-semibold border-t border-game-border pt-1">drag or click to buy</div>
         </div>
       )}
+
+      {hoveredId === '__random__' && (
+        <div
+          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0d0d22' }}
+          className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
+        >
+          <div className="text-sm font-black text-pixel-blue">Random Design</div>
+          <div className="text-xs text-gray-400 leading-snug">Get a surprise design from your unlocked collection. Prefers designs outside your current deck.</div>
+          <div className="text-xs text-pixel-blue font-bold">{randomCost}px</div>
+        </div>
+      )}
     </div>
   )
 }
 
-// Compact design thumbnail for the sidebar
 function DesignThumb({ design, size }) {
   if (!design?.pixelLayout) return <div style={{ width: size, height: size }} className="bg-gray-800 rounded" />
   const cellSize = size / 16

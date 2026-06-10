@@ -4,14 +4,12 @@ import { useGameStore, createBlock } from '../store/gameStore'
 import { useUserStore } from '../store/userStore'
 import { checkEndlessWave } from '../engine/achievementEngine'
 import { getEndlessQuestion, ENDLESS_REWARDS } from '../data/learningContent'
-import { useDesignUnlocks } from '../lib/designUnlocks'
 import Grid from '../components/game/Grid'
 import PixelCounter from '../components/game/PixelCounter'
 import ProductionEngine from '../components/game/ProductionEngine'
 import ActiveEffectsPanel from '../components/game/ActiveEffectsPanel'
 import InventoryPanel from '../components/game/InventoryPanel'
 import ShopSidebar from '../components/game/ShopSidebar'
-import DeckSelector from '../components/ui/DeckSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const FIRST_WAVE  = 20
@@ -29,25 +27,24 @@ export default function Endless() {
   const navigate = useNavigate()
   const {
     grid, startLevel, levelComplete, resetLevel, totalPixelsProduced,
-    gamePaused, setPaused, deckSelection, setDeckSelection, addPixels,
+    gamePaused, setPaused, restoreGrid,
   } = useGameStore()
 
   const {
     achievements, unlockAchievements, saveEndlessScore, saveQuizResult,
     addGold, user, endlessMinutes = 0, addEndlessMinutes, unlockDesign,
-    unlockedDesigns: unlockedDesignIds = [],
+    saveEndlessRun, loadEndlessRun, deleteEndlessRun,
   } = useUserStore()
 
-  const { unlockedDesigns } = useDesignUnlocks()
-
   const [wave, setWave]             = useState(1)
-  const [phase, setPhase]           = useState('deck')   // 'deck'|'playing'|'between'|'ended'
+  const [phase, setPhase]           = useState('loading') // 'loading'|'resume'|'playing'|'between'|'ended'
   const [elapsed, setElapsed]       = useState(0)
   const [grandTotal, setGrandTotal] = useState(0)
   const [runResult, setRunResult]   = useState(null)
   const [quizQuestion, setQuizQuestion] = useState(null)
   const [quizAnswered, setQuizAnswered] = useState(null)
-  const [activeDeck, setActiveDeck] = useState([])
+  const [savedRun, setSavedRun]     = useState(null)
+  const [saving, setSaving]         = useState(false)
 
   const tabHiddenAtRef = useRef(null)
 
@@ -63,16 +60,59 @@ export default function Endless() {
     setElapsed(0)
   }
 
-  function handleDeckConfirmed({ startingBlocks, preBoughtDesignIds, remainingBudget }) {
-    setActiveDeck(preBoughtDesignIds)
-    setDeckSelection(preBoughtDesignIds)
-    doStartWave(1, startingBlocks)
-    if (remainingBudget > 0) addPixels(remainingBudget)
-  }
-
+  // On mount: check for a saved run (logged-in users only)
   useEffect(() => {
+    async function checkSave() {
+      if (!user) { startFreshRun(); return }
+      const save = await loadEndlessRun()
+      if (save) {
+        setSavedRun(save)
+        setPhase('resume')
+      } else {
+        startFreshRun()
+      }
+    }
+    checkSave()
     return () => resetLevel()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startFreshRun() {
+    startLevel([])
+    setPhase('playing')
+    setWave(1)
+    setGrandTotal(0)
+    setElapsed(0)
+  }
+
+  function handleResume() {
+    const save = savedRun
+    setWave(save.wave)
+    setGrandTotal(save.grand_total)
+    // Restore grid & inventory from saved state
+    restoreGrid(save.grid, save.inventory)
+    setPhase('playing')
+    setElapsed(0)
+    setSavedRun(null)
+    deleteEndlessRun()
+  }
+
+  function handleNewRun() {
+    deleteEndlessRun()
+    setSavedRun(null)
+    startFreshRun()
+  }
+
+  async function handleSaveAndExit() {
+    setSaving(true)
+    await saveEndlessRun({
+      wave,
+      grandTotal: grandTotal + Math.floor(totalPixelsProduced),
+      grid,
+      inventory: useGameStore.getState().inventory,
+    })
+    setSaving(false)
+    navigate('/')
+  }
 
   // Warn before refresh during active run
   useEffect(() => {
@@ -94,10 +134,7 @@ export default function Endless() {
     if (phase !== 'playing' || gamePaused) return
     const id = setInterval(() => {
       addEndlessMinutes?.(1 / 60)
-      // Check 20-minute unlock
-      if (endlessMinutes >= 20 && !unlockedDesignIds.includes('rainbow_prism')) {
-        unlockDesign?.('rainbow_prism')
-      }
+      if (endlessMinutes >= 20) unlockDesign?.('rainbow_prism')
     }, 1000)
     return () => clearInterval(id)
   }, [phase, gamePaused]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -144,10 +181,11 @@ export default function Endless() {
     setQuizQuestion(null)
     setQuizAnswered(null)
     const startingBlocks = []
+    // Bonus: random design from unlocked collection
     for (let i = 0; i < bonusDesigns; i++) {
-      const designId = activeDeck[i % activeDeck.length]
-      if (designId) {
-        const b = createBlock(designId)
+      const ids = useUserStore.getState().unlockedDesigns ?? []
+      if (ids.length > 0) {
+        const b = createBlock(ids[Math.floor(Math.random() * ids.length)])
         if (b) startingBlocks.push(b)
       }
     }
@@ -161,6 +199,7 @@ export default function Endless() {
 
     let isHighscore = false
     if (user) isHighscore = await saveEndlessScore(wave, currentTotal)
+    if (user) deleteEndlessRun()
 
     setRunResult({ wave, grandTotal: currentTotal, goldEarned, isHighscore })
     setPhase('ended')
@@ -168,6 +207,34 @@ export default function Endless() {
   }
 
   const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+
+  // ── Loading / resume screen ──────────────────────────────────────────────────
+  if (phase === 'loading') return null
+
+  if (phase === 'resume' && savedRun) {
+    return (
+      <div className="min-h-screen bg-game-bg flex items-center justify-center px-4">
+        <div className="card w-full max-w-sm text-center" style={{ padding: '2rem' }}>
+          <div className="text-xs font-black uppercase tracking-widest text-pixel-blue mb-1">Saved Run Found</div>
+          <h2 className="text-2xl font-black text-white pixel-heading mb-4">Continue?</h2>
+          <div className="flex gap-4 justify-center mb-6">
+            <div>
+              <div className="text-2xl font-black text-pixel-green">{savedRun.wave}</div>
+              <div className="text-xs text-gray-600 uppercase font-bold">wave</div>
+            </div>
+            <div>
+              <div className="text-2xl font-black text-white">{savedRun.grand_total?.toLocaleString()}</div>
+              <div className="text-xs text-gray-600 uppercase font-bold">total px</div>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleNewRun} className="btn btn-secondary flex-1 text-sm">New Run</button>
+            <button onClick={handleResume} className="btn btn-primary flex-1 text-base">Resume →</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-screen bg-game-bg flex flex-col overflow-hidden select-none">
@@ -184,9 +251,9 @@ export default function Endless() {
         <div className="text-white font-black font-mono text-xl flex-shrink-0">{fmt(elapsed)}</div>
       </div>
 
-      {/* Main play area */}
+      {/* Main play area — ShopSidebar has no deck, shows only Random slot */}
       <div className="flex flex-1 gap-0 overflow-hidden min-h-0">
-        <ShopSidebar deckDesignIds={activeDeck} />
+        <ShopSidebar deckDesignIds={[]} />
         <div className="flex-1 flex items-start justify-center overflow-hidden px-2 py-2">
           <Grid />
         </div>
@@ -208,16 +275,6 @@ export default function Endless() {
 
       <InventoryPanel />
 
-      {/* Deck selector */}
-      {phase === 'deck' && (
-        <DeckSelector
-          levelNumber={1}
-          unlockedDesigns={unlockedDesigns}
-          onConfirm={handleDeckConfirmed}
-          onBack={() => navigate('/')}
-        />
-      )}
-
       {/* Pause modal */}
       {gamePaused && phase === 'playing' && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
@@ -227,6 +284,11 @@ export default function Endless() {
             <div className="flex flex-col gap-3">
               <button onClick={() => setPaused(false)} className="btn btn-primary text-base">▶ Continue</button>
               <Link to="/settings" onClick={() => setPaused(false)} className="btn btn-secondary text-base">Settings</Link>
+              {user && (
+                <button onClick={handleSaveAndExit} disabled={saving} className="btn btn-secondary text-base">
+                  {saving ? 'Saving…' : '💾 Save & Exit'}
+                </button>
+              )}
               <button onClick={handleEndRun} className="btn btn-danger text-base">End Run</button>
             </div>
           </div>
