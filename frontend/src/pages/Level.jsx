@@ -82,6 +82,7 @@ export default function Level() {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   // True only while the guided tutorial steps are running
   const [tutorialGuidanceActive, setTutorialGuidanceActive] = useState(true)
+  const [tutorialDone, setTutorialDone] = useState(false)
 
   // Track whether the game was manually paused before editor opened
   const wasManuallyPausedRef = useRef(false)
@@ -335,9 +336,9 @@ export default function Level() {
       {/* Tutorial */}
       {config.tutorial && (
         <TutorialOverlay
-          active={!resultShown && !preLevelOpen}
+          active={!resultShown && !preLevelOpen && !tutorialDone}
           inventoryOpen={inventoryOpen}
-          onDone={() => setTutorialGuidanceActive(false)}
+          onDone={() => { setTutorialGuidanceActive(false); setTutorialDone(true) }}
         />
       )}
 

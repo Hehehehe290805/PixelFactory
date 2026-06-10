@@ -83,7 +83,6 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
   const { inventory, grid, totalPixelsProduced, selectedBlockId } = useGameStore()
 
   const [stepIdx, setStepIdx] = useState(0)
-  const [dismissed, setDismissed] = useState(false)
   const [spotlight, setSpotlight] = useState(null)
 
   const blocksOnGrid = grid.flat().filter(Boolean).length
@@ -97,10 +96,8 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
     setSpotlight(getSpotlight(step.targetSel))
   }, [step?.targetSel])
 
-  // Clear spotlight immediately when step changes, then re-measure
   useEffect(() => {
     setSpotlight(null)
-    refreshSpotlight()
     const t = setTimeout(refreshSpotlight, 200)
     return () => clearTimeout(t)
   }, [stepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,7 +106,6 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
     refreshSpotlight()
   }, [refreshSpotlight, selectedBlockId])
 
-  // Re-measure after inventory open/close animation completes
   useEffect(() => {
     const t = setTimeout(refreshSpotlight, 350)
     return () => clearTimeout(t)
@@ -122,18 +118,15 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
 
-  function dismiss() { setDismissed(true); onDone?.() }
-
-  // Advance after inventory open animation finishes (~380ms spring)
   useEffect(() => {
-    if (!active || !showTutorial || dismissed || !step) return
+    if (!active || !showTutorial || !step) return
     if (step.waitFor !== 'inventoryOpen' || !inventoryOpen) return
     const t = setTimeout(advance, 380)
     return () => clearTimeout(t)
   }, [inventoryOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!active || !showTutorial || dismissed || !step) return
+    if (!active || !showTutorial || !step) return
     if (step.waitFor === 'blockSelected' && selectedBlockId) advance()
     if (step.waitFor === 'pixelsPainted' && totalPainted >= 5) advance()
     if (step.waitFor === 'editorClosed'  && !selectedBlockId) advance()
@@ -141,10 +134,10 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
     if (step.waitFor === 'producing'     && totalPixelsProduced > 0) advance()
   }, [selectedBlockId, totalPainted, blocksOnGrid, totalPixelsProduced]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!active || !showTutorial || dismissed || stepIdx >= STEPS.length) return null
+  if (!active || !showTutorial) return null
 
   const isLast    = stepIdx === STEPS.length - 1
-  const isWaiting = !!step.waitFor
+  const isWaiting = !!step?.waitFor
 
   const W = window.innerWidth
   const H = window.innerHeight
@@ -157,7 +150,7 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
   return (
     <>
       {/* Dark backdrop with spotlight hole */}
-      <div style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.72)', clipPath, pointerEvents:'all' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,0.72)', clipPath, pointerEvents:'auto' }} />
 
       {/* Pulsing ring around target */}
       <AnimatePresence>
@@ -180,53 +173,54 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
       </AnimatePresence>
 
       {/* Tutorial card */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={stepIdx}
-          initial={{ opacity:0, y:16 }}
-          animate={{ opacity:1, y:0 }}
-          exit={{ opacity:0, y:16 }}
-          transition={{ duration:0.22 }}
-          style={{ position:'fixed', top:80, right:16, width:300, maxWidth:'calc(100vw - 32px)', zIndex:60 }}
-        >
-          <div className="card" style={{ borderColor:'#1499cc88', boxShadow:'0 0 0 1px #1499cc22,0 12px 40px #000000bb' }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex gap-1">
-                {STEPS.map((_, i) => (
-                  <div key={i} className={`rounded-full transition-all ${i < stepIdx ? 'w-3 h-2 bg-pixel-blue' : i === stepIdx ? 'w-4 h-2 bg-pixel-blue' : 'w-2 h-2 bg-game-border'}`} />
-                ))}
-              </div>
-              <button onClick={() => dismiss()} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
-                Skip
-              </button>
-            </div>
-
-            <h3 className="text-base font-black text-white mb-1">{step.title}</h3>
-            <p className="text-sm font-semibold text-gray-400 leading-relaxed">{step.body}</p>
-
-            {isWaiting && step.hint && (
-              <div className="mt-3 flex items-center gap-2 text-xs font-black text-pixel-blue">
-                <motion.span animate={{ opacity:[1,0.3,1] }} transition={{ repeat:Infinity, duration:1.4 }}>●</motion.span>
-                {step.hint}
-              </div>
-            )}
-
-            {!isWaiting && (
-              <div className="flex gap-2 mt-4">
-                {stepIdx > 0 && (
-                  <button onClick={() => setStepIdx(i => i - 1)} className="btn btn-secondary text-xs px-3 py-2">← Back</button>
-                )}
-                <button
-                  onClick={() => isLast ? dismiss() : advance()}
-                  className="btn btn-primary flex-1 text-sm"
-                >
-                  {isLast ? "Let's go!" : 'Next →'}
+      <div style={{ position:'fixed', top:80, right:16, width:300, maxWidth:'calc(100vw - 32px)', zIndex:60 }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={stepIdx}
+            initial={{ opacity:0, y:16 }}
+            animate={{ opacity:1, y:0 }}
+            exit={{ opacity:0, y:16 }}
+            transition={{ duration:0.22 }}
+          >
+            <div className="card" style={{ borderColor:'#1499cc88', boxShadow:'0 0 0 1px #1499cc22,0 12px 40px #000000bb' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex gap-1">
+                  {STEPS.map((_, i) => (
+                    <div key={i} className={`rounded-full transition-all ${i < stepIdx ? 'w-3 h-2 bg-pixel-blue' : i === stepIdx ? 'w-4 h-2 bg-pixel-blue' : 'w-2 h-2 bg-game-border'}`} />
+                  ))}
+                </div>
+                <button onClick={onDone} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
+                  Skip
                 </button>
               </div>
-            )}
-          </div>
-        </motion.div>
-      </AnimatePresence>
+
+              <h3 className="text-base font-black text-white mb-1">{step.title}</h3>
+              <p className="text-sm font-semibold text-gray-400 leading-relaxed">{step.body}</p>
+
+              {isWaiting && step.hint && (
+                <div className="mt-3 flex items-center gap-2 text-xs font-black text-pixel-blue">
+                  <motion.span animate={{ opacity:[1,0.3,1] }} transition={{ repeat:Infinity, duration:1.4 }}>●</motion.span>
+                  {step.hint}
+                </div>
+              )}
+
+              {!isWaiting && (
+                <div className="flex gap-2 mt-4">
+                  {stepIdx > 0 && (
+                    <button onClick={() => setStepIdx(i => i - 1)} className="btn btn-secondary text-xs px-3 py-2">← Back</button>
+                  )}
+                  <button
+                    onClick={isLast ? onDone : advance}
+                    className="btn btn-primary flex-1 text-sm"
+                  >
+                    {isLast ? "Let's go!" : 'Next →'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </>
   )
 }
