@@ -5,7 +5,7 @@ import { useUnlocks } from '../../lib/unlocks'
 
 const CELL_PX = 20
 
-export default function BlockEditor({ blockId, onClose }) {
+export default function BlockEditor({ blockId, onClose, isTutorial = false }) {
   const { grid, inventory, pixelInventory, paintPixel, clearBlock, fillBlock } = useGameStore()
   const { isPixelUnlocked } = useUnlocks()
 
@@ -30,7 +30,9 @@ export default function BlockEditor({ blockId, onClose }) {
     <div className="card" style={{ padding: '0.875rem' }}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-black uppercase tracking-widest text-gray-400">Pixel Editor</span>
-        <button onClick={onClose} className="text-gray-600 hover:text-gray-300 text-xs font-semibold transition">✕ esc</button>
+        {!isTutorial && (
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-300 text-xs font-semibold transition">✕ esc</button>
+        )}
       </div>
 
       {/* Color Checker banner */}
@@ -138,8 +140,13 @@ export default function BlockEditor({ blockId, onClose }) {
         </button>
       </div>
 
-      <button data-tutorial="editor-done" onClick={onClose} className="btn btn-primary w-full text-sm">
-        Done
+      <button
+        data-tutorial="editor-done"
+        onClick={onClose}
+        disabled={isTutorial && block.pixelCount < 5}
+        className="btn btn-primary w-full text-sm disabled:opacity-40"
+      >
+        {isTutorial && block.pixelCount < 5 ? `Paint ${5 - block.pixelCount} more pixel${5 - block.pixelCount !== 1 ? 's' : ''}` : 'Done'}
       </button>
     </div>
   )

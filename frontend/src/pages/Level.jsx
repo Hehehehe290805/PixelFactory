@@ -302,7 +302,7 @@ export default function Level() {
           style={{ zIndex: 50 }}
           onClick={config.tutorial ? undefined : e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
-          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} />
+          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} isTutorial={!!config.tutorial} />
         </div>
       )}
 

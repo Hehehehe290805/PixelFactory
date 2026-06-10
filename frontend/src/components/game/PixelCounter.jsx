@@ -7,13 +7,19 @@ export default function PixelCounter({ requiredOutput }) {
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
 
-  // Floating "+N px" animation — fires once per second while producing and not paused
+  // Sync float interval to production rate so it matches block wave animation timing.
+  // Tiered to avoid restarting the interval every 100ms tick.
+  const floatInterval = currentPxPerSecond > 4 ? 300
+    : currentPxPerSecond > 2 ? 500
+    : currentPxPerSecond > 0.5 ? 1000
+    : 1500
+
   const [floatKey, setFloatKey] = useState(0)
   useEffect(() => {
-    if (gamePaused) return
-    const t = setInterval(() => setFloatKey(k => k + 1), 1000)
+    if (gamePaused || currentPxPerSecond <= 0.05) return
+    const t = setInterval(() => setFloatKey(k => k + 1), floatInterval)
     return () => clearInterval(t)
-  }, [gamePaused])
+  }, [gamePaused, floatInterval])
 
   return (
     <div className="card">
