@@ -28,7 +28,7 @@ const STEPS = [
     title: 'Click a block',
     body: 'Click any block in the inventory to open the pixel editor.',
     waitFor: 'blockSelected',
-    targetSel: '[data-tutorial="inventory"]',
+    targetSel: '[data-tutorial="inventory-blocks"]',
     hint: 'Click a block in the inventory',
   },
   {

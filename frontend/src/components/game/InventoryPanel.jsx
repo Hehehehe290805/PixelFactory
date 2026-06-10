@@ -82,7 +82,7 @@ export default function InventoryPanel({ selectedBlockId, onBlockSelect, onOpenS
             style={{ background: '#0a0a1e' }}
           >
             {/* Left: Blocks */}
-            <div className="flex-1 flex flex-col border-r border-game-border overflow-hidden">
+            <div data-tutorial="inventory-blocks" className="flex-1 flex flex-col border-r border-game-border overflow-hidden">
               <div className="px-2 pt-2 pb-1 flex-shrink-0">
                 <span className="text-xs font-black uppercase tracking-widest text-gray-600">Blocks</span>
               </div>
