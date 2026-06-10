@@ -80,6 +80,8 @@ export default function Level() {
 
   // Inventory open state (lifted for tutorial)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  // True only while the guided tutorial steps are running
+  const [tutorialGuidanceActive, setTutorialGuidanceActive] = useState(true)
 
   // Track whether the game was manually paused before editor opened
   const wasManuallyPausedRef = useRef(false)
@@ -324,15 +326,19 @@ export default function Level() {
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/60 px-4"
           style={{ zIndex: 50 }}
-          onClick={config.tutorial ? undefined : e => { if (e.target === e.currentTarget) handleCloseEditor() }}
+          onClick={(config.tutorial && tutorialGuidanceActive) ? undefined : e => { if (e.target === e.currentTarget) handleCloseEditor() }}
         >
-          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} onCancel={handleCancelEditor} isTutorial={!!config.tutorial} />
+          <BlockEditor blockId={selectedBlockId} onClose={handleCloseEditor} onCancel={handleCancelEditor} isTutorial={config.tutorial && tutorialGuidanceActive} />
         </div>
       )}
 
       {/* Tutorial */}
       {config.tutorial && (
-        <TutorialOverlay active={!resultShown && !preLevelOpen} inventoryOpen={inventoryOpen} />
+        <TutorialOverlay
+          active={!resultShown && !preLevelOpen}
+          inventoryOpen={inventoryOpen}
+          onDone={() => setTutorialGuidanceActive(false)}
+        />
       )}
 
       {templatePrompt && !resultShown && (

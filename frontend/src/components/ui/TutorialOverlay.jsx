@@ -78,7 +78,7 @@ function getSpotlight(sel) {
   return { x: r.left - PAD, y: r.top - PAD, w: r.width + PAD * 2, h: r.height + PAD * 2 }
 }
 
-export default function TutorialOverlay({ active, inventoryOpen }) {
+export default function TutorialOverlay({ active, inventoryOpen, onDone }) {
   const { showTutorial } = useSettingsStore()
   const { inventory, grid, totalPixelsProduced, selectedBlockId } = useGameStore()
 
@@ -121,6 +121,8 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
   }, [refreshSpotlight])
 
   function advance() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
+
+  function dismiss() { dismiss(); onDone?.() }
 
   // Advance after inventory open animation finishes (~380ms spring)
   useEffect(() => {
@@ -194,7 +196,7 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
                   <div key={i} className={`rounded-full transition-all ${i < stepIdx ? 'w-3 h-2 bg-pixel-blue' : i === stepIdx ? 'w-4 h-2 bg-pixel-blue' : 'w-2 h-2 bg-game-border'}`} />
                 ))}
               </div>
-              <button onClick={() => setDismissed(true)} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
+              <button onClick={() => dismiss()} className="text-xs font-bold text-gray-600 hover:text-gray-300 transition">
                 Skip
               </button>
             </div>
@@ -215,7 +217,7 @@ export default function TutorialOverlay({ active, inventoryOpen }) {
                   <button onClick={() => setStepIdx(i => i - 1)} className="btn btn-secondary text-xs px-3 py-2">← Back</button>
                 )}
                 <button
-                  onClick={() => isLast ? setDismissed(true) : advance()}
+                  onClick={() => isLast ? dismiss() : advance()}
                   className="btn btn-primary flex-1 text-sm"
                 >
                   {isLast ? "Let's go!" : 'Next →'}
