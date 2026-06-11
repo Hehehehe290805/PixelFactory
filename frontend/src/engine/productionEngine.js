@@ -66,7 +66,7 @@ export function computeTick(grid, { activeGridStyle = 'base', gridTick = 0 } = {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const block = grid[r][c]
-      if (!block || block.pauseTimer > 0 || !block.pixelCount) continue
+      if (!block || block.pauseTimer > 0) continue
       if (block.type === 'void' || block.type === 'forge') continue
 
       let rate = baseRate(block)
@@ -92,7 +92,7 @@ export function computeTick(grid, { activeGridStyle = 'base', gridTick = 0 } = {
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const block = grid[r][c]
-      if (!block || block.pauseTimer > 0 || !block.pixelCount) continue
+      if (!block || block.pauseTimer > 0) continue
       if (block.type === 'void' || block.type === 'forge') continue
 
       let rate = rateMap[r][c]

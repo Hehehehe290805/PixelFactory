@@ -190,16 +190,16 @@ export default function ActiveEffectsPanel() {
     })
 
   if (relevant.length === 0) return (
-    <div data-tutorial="active-effects" className="rounded-xl border-2 border-game-border px-3 py-2" style={{ background: '#0a0a1a' }}>
-      <div className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1">Synergies</div>
-      <div className="text-xs text-gray-700 font-semibold">Place designs to activate synergies</div>
+    <div data-tutorial="active-effects" className="rounded-xl border px-3 py-2" style={{ background: '#0a0a20', borderColor: '#1e1e48' }}>
+      <div className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: '#3c3c72' }}>Synergies</div>
+      <div className="text-xs font-semibold" style={{ color: '#2e2e60' }}>Place designs to activate synergies</div>
     </div>
   )
 
   return (
-    <div data-tutorial="active-effects" className="rounded-xl border-2 border-game-border overflow-hidden" style={{ background: '#0a0a1a' }}>
-      <div className="px-3 py-2 border-b border-game-border">
-        <div className="text-xs font-black uppercase tracking-widest text-gray-500">Active Effects</div>
+    <div data-tutorial="active-effects" className="rounded-xl border overflow-hidden" style={{ background: '#0a0a20', borderColor: '#1e1e48' }}>
+      <div className="px-3 py-2 border-b" style={{ borderColor: '#1e1e48' }}>
+        <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#3c3c72' }}>Active Effects</div>
       </div>
       <div className="flex flex-col gap-0.5 p-1.5 max-h-72 overflow-y-auto">
         {relevant.map(s => {
@@ -215,10 +215,12 @@ export default function ActiveEffectsPanel() {
             <div key={s.id}>
               <button
                 onClick={() => setOpenId(isOpen ? null : s.id)}
-                className={`w-full rounded-lg px-2 py-1.5 text-left transition
-                  ${s.active ? 'bg-pixel-green/10 border border-pixel-green/30' : 'bg-white/3 border border-game-border'}
-                  ${isOpen ? 'rounded-b-none border-b-0' : ''}`}
-                style={s.active && s.level > 1 ? { borderColor: lvColor + '55', background: lvColor + '10' } : undefined}
+                className={`w-full rounded-lg px-2 py-1.5 text-left transition ${isOpen ? 'rounded-b-none border-b-0' : ''}`}
+                style={{
+                  background: s.active ? (s.level > 1 ? lvColor + '14' : '#34d39914') : '#0c0c2810',
+                  border: `1px solid ${s.active ? (s.level > 1 ? lvColor + '44' : '#34d39944') : '#1e1e48'}`,
+                  borderLeft: s.active ? `4px solid ${typeColor}` : `4px solid #1e1e48`,
+                }}
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className={`text-xs font-black truncate ${s.active ? 'text-pixel-green' : 'text-gray-400'}`}
@@ -243,13 +245,14 @@ export default function ActiveEffectsPanel() {
                   </div>
                 </div>
 
-                {/* Progress bar — for active synergies shows level progress */}
-                <div className="mt-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
+                {/* Progress bar */}
+                <div className="mt-1 h-0.5 rounded-full overflow-hidden" style={{ background: '#1e1e48' }}>
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
                       width: `${pct * 100}%`,
-                      backgroundColor: s.active ? lvColor : '#4a5568',
+                      backgroundColor: s.active ? typeColor : '#2e2e60',
+                      boxShadow: s.active ? `0 0 4px ${typeColor}` : 'none',
                     }}
                   />
                 </div>

@@ -807,3 +807,41 @@ Design series synergies map directly to PDC concepts:
 | Echo locality bonus | Cache warming — a stationary process benefits from hot data |
 | Splitter work distribution | Work broadcasting — a thread pushes partial load to its neighbors |
 | Void coordinator | Dedicated coordinator thread — zero output, but amplifies surrounding workers |
+
+---
+
+## Changelog (recent refactors)
+
+### Phase 1 — UX Quick Fixes ✅
+- **Tutorial card auto-positioning:** `TutorialOverlay.jsx` now detects whether the spotlight target is on the right half of the screen. If so, the card renders on the left (`left:16`) instead of always `right:16` — fixes overlap with Output Panel and Active Effects panel spotlights.
+- **Shop sidebar deck cards:** `ShopSidebar.jsx` now renders a purchasable card for each design in `deckDesignIds` (deduplicated). Cards show design thumbnail, block type, and pixel cost. Clicking calls `buyDesignFromShop` from `gameStore` (already capped at 2 per design per level). Random Block remains as a secondary option below the deck cards.
+
+### Phase 2 — Production System Cleanup ✅
+- **Removed pixelCount guards** from `productionEngine.js` (lines 69, 95) — blocks no longer skip if `pixelCount` is 0/falsy; guard now checks block type explicitly.
+- **Doubler** reworked: ×2 when **no orthogonal neighbor shares the same series** (series-isolated condition).
+- **CrossAmp** bonus: flat `0.5 px/s` per active diagonal cross_amp neighbor (was `pixelCount / 10`).
+- **Greedy** gold: `(myRate − avgNeighborRate) × 20` using rateMap (was pixelCount comparison).
+- **Forge** gold: `rate × 6` at level end using rateMap (was `pixelCount × 3`).
+- **Catalyst/Splitter** guards: removed `pixelCount > 0` checks.
+- **Focus** effect: flat +50% multiplier (removed dominantColor ratio).
+- **Block.jsx** — `isActive` no longer needs `pixelCount > 0`; `cycleDuration` replaced with fixed `WAVE_CYCLE_S = 2.0s`; `fillRatio` uses series-based constant; `floatAmount = rate × 2.0s`.
+- **Reactor pulsing**: overlay div on reactor blocks with `breathe` animation that speeds up as `reactorAge` grows. Color interpolates orange → red. Added `@keyframes breathe` and `urgentPulse` to `index.css`.
+- **Type stripe**: increased from 3px to 4px, glows with `typeColor` when block is active.
+### Phase 3 — Game Design Changes ✅
+- **Family choice milestones** (replaces single-design choice): At levels 10, 15, 20, 25, 30+ the player picks 1 of 2 series and receives all 10 core designs from that family. `getFamilyChoiceForLevel()` and `getFamilyPackDesigns()` added to `designLibrary.js`. `shouldShowFamilyChoice()` replaces `shouldShowDesignChoice()` in `designUnlocks.js`. `FamilyChoiceModal` replaces `DesignChoiceModal` in `Level.jsx`.
+- **Starter designs → all flowers**: 10 flower designs (daisy, rose, tulip, lily, hibiscus, lotus, poppy, marigold, lavender, peony) are now `unlockSource: 'starter'`. Former starters (oak, house, star, cat, circle, apple, heart, snowflake, mountain) changed to `campaign_family` — earned via family choice milestones.
+- **Preset decks — DeckSelector removed**: All campaign levels now use `presetDeck: [...]` defined in `levelConfig.js`. Levels 6-10 have hand-crafted synergy-focused decks. Levels 11-200 use `generatePresetDeck(levelNum)` cycling through 10 thematic patterns. `DeckSelector` component no longer rendered.
+- **Preset deck in shop**: `ShopSidebar` receives `deckDesignIds` from `activeDeck` (set by `startLevelWithDeck`) and shows buyable cards for those designs.
+### Phase 4 — Void Interface Visual Retheme ✅
+- **Complete palette retheme**: Replaced blue-navy (`#0a0a18`) with cosmic void (`#06061a`). New Tailwind tokens: `void-bg`, `void-card`, `void-border`, `void-rim` etc. Action colors: `neon-indigo` (#6366f1), `neon-cyan` (#22d3ee), `neon-green` (#34d399), `neon-yellow` (#fbbf24). Legacy `game-*` / `pixel-*` aliases kept for compatibility.
+- **index.css**: New CSS custom properties `--glow-indigo/cyan/green/yellow/red/violet/orange`. Cards use `linear-gradient(145deg,...)` with top-edge highlight. Progress bars are 8px tall with `linear-gradient(90deg, #6366f1, #22d3ee)`. Buttons redesigned with void palette. Added `.scanlines` pseudo-element, `@keyframes drift`, `breathe`, `urgentPulse`.
+- **LevelHUD**: 4-tier timer urgency (white → yellow → orange → red with pulse). Stars glow via `--glow-yellow`. Progress bar uses gradient fill. Void card header styling.
+- **PixelCounter**: px/s number glows with `--glow-indigo` (green when complete). Bigger +N floats with green text-shadow. Panel glows green on completion.
+- **ActiveEffectsPanel**: Active synergy rows have a 4px colored left border stripe in the synergy's `typeColor`. Progress bars use typeColor fill. Header uses `void-ghost` style.
+- **Home.jsx**: Cosmic dust particles (5 drifting dots). Neon rule below title. "FACTORY" glows indigo. Gradient separator in auth strip. Campaign button glows.
+- **TutorialOverlay**: Glassmorphic card (`blur(20px)`, semi-transparent void bg, accent-colored border).
+- **BlockSlot.jsx**: Void colors for empty cells (`radial-gradient` bg). Indigo drag-over state with inner glow. Move target animation in indigo.
+- **Block.jsx**: Type stripe 4px + glows when active. Reactor pulsing overlay (breathe animation, orange→red).
+- **Grid container (Level.jsx)**: `.scanlines` overlay for CRT texture effect.
+- **Replay penalty**: Replayed levels give 10% gold (first completion still gives 100%). Checked via `campaignProgress[levelNum]?.stars`.
+- **Impeccable**: Zero anti-patterns detected after retheme.

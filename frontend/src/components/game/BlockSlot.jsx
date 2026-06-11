@@ -68,20 +68,22 @@ export default function BlockSlot({
 
   const isSelected = block && block.id === selectedBlockId
 
-  let borderColor = '#36366a'
-  let bgColor = block ? '#0d0d1e' : '#0a0a18'
+  // Void Interface slot colors
+  let borderColor = '#1e1e48'
+  let bgColor = block
+    ? '#0d0d24'
+    : 'radial-gradient(circle at center, #0f0f28 0%, #08081c 100%)'
+  let boxShadow = undefined
 
   if (moveSource) {
-    borderColor = '#ffd166'
-    bgColor = 'rgba(255,209,102,0.08)'
+    borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.07)'
   } else if (moveTarget) {
-    borderColor = '#1499cc'
-    bgColor = 'rgba(20,153,204,0.15)'
+    borderColor = '#6366f1'; bgColor = 'rgba(99,102,241,0.14)'
   } else if (dragOver) {
-    borderColor = '#1499cc'
-    bgColor = 'rgba(20,153,204,0.10)'
+    borderColor = '#6366f1'; bgColor = 'rgba(99,102,241,0.10)'
+    boxShadow = 'inset 0 0 14px rgba(99,102,241,0.12)'
   } else if (isSelected) {
-    borderColor = '#1499cc99'
+    borderColor = '#6366f188'
   }
 
   return (
@@ -92,7 +94,7 @@ export default function BlockSlot({
       onDrop={handleDrop}
       onClick={handleClick}
       className={`relative border transition-colors duration-100 ${moveTarget ? 'cursor-cell' : 'cursor-pointer'}`}
-      style={{ width: cellSize, height: cellSize, borderColor, backgroundColor: bgColor }}
+      style={{ width: cellSize, height: cellSize, borderColor, background: bgColor, boxShadow }}
     >
       {block && (
         <div draggable onDragStart={handleDragStart} style={{ width: '100%', height: '100%' }}>
@@ -103,7 +105,7 @@ export default function BlockSlot({
       {moveTarget && (
         <div
           className="absolute inset-0 rounded-sm pointer-events-none"
-          style={{ border: '2px dashed #1499cc88', animation: 'blockFillUp 1.2s ease-in-out infinite' }}
+          style={{ border: '2px dashed #6366f188', animation: 'blockFillUp 1.2s ease-in-out infinite' }}
         />
       )}
 

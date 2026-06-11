@@ -5,7 +5,6 @@ function fmt(s) {
   return `${Math.floor(Math.abs(s) / 60)}:${(Math.floor(Math.abs(s)) % 60).toString().padStart(2, '0')}`
 }
 
-// 3 stars if ≤60% time used, 2 stars if ≤85%, else 1 star
 function liveStar(elapsed, limit) {
   const r = elapsed / limit
   return r <= 0.60 ? 3 : r <= 0.85 ? 2 : 1
@@ -19,61 +18,84 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
 
   const progress    = Math.min(1, totalPixelsProduced / effectiveRequired)
   const currentStar = liveStar(elapsedSeconds, config.timeLimitSeconds)
-  const urgent      = timeRemaining <= 30
 
-  // Speed buttons: always show 1×, plus any purchased speeds
+  // 4-tier urgency for timer color
+  const timerColor = (() => {
+    if (config.tutorial) return null
+    if (timeRemaining > 60) return '#ddd8f8'
+    if (timeRemaining > 30) return '#fbbf24'
+    if (timeRemaining > 10) return '#fb923c'
+    return '#f87171'
+  })()
+  const timerAnim = timeRemaining <= 10 ? 'urgentPulse 0.55s ease-in-out infinite' : timeRemaining <= 30 ? 'urgentPulse 1.1s ease-in-out infinite' : undefined
+
   const availableSpeeds = ALL_SPEEDS.filter(s => s === 1 || purchasedSpeeds.includes(s))
 
   return (
-    <div data-tutorial="level-hud" className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0 select-none">
+    <div
+      data-tutorial="level-hud"
+      className="border-b px-3 py-2 flex items-center gap-3 flex-shrink-0 select-none"
+      style={{ background: '#0a0a22', borderBottomColor: '#1e1e48' }}
+    >
       {/* Pause */}
       <button
         onClick={() => setPaused(true)}
-        className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0"
+        className="btn btn-secondary text-xs px-2.5 py-1.5 flex-shrink-0"
         title="Pause"
       >
         ⏸
       </button>
 
-      <div className="flex-shrink-0 hidden sm:block">
-        <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">LVL {config.number}</div>
-        <div className="text-white font-black text-sm leading-tight">{config.name}</div>
+      {/* Level info */}
+      <div className="flex-shrink-0 hidden sm:block border-r pr-3" style={{ borderColor: '#1e1e48' }}>
+        <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#3c3c72' }}>
+          LVL {config.number}
+        </div>
+        <div className="font-black text-sm leading-tight" style={{ color: '#ddd8f8' }}>{config.name}</div>
       </div>
 
       {/* Progress bar */}
       <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <div className="flex justify-between text-xs font-bold text-gray-500">
+        <div className="flex justify-between text-[10px] font-bold" style={{ color: '#7b78a8' }}>
           <span>{Math.floor(totalPixelsProduced).toLocaleString()} px</span>
           <span>{effectiveRequired.toLocaleString()} px</span>
         </div>
         <div className="progress-track">
           <div
-            className="progress-fill"
-            style={{ transform: `scaleX(${progress})`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
+            className={`progress-fill ${progress >= 1 ? 'progress-fill-complete' : ''}`}
+            style={{ transform: `scaleX(${progress})` }}
           />
         </div>
       </div>
 
-      {/* Live stars — hidden for tutorial */}
+      {/* Live stars */}
       {!config.tutorial && (
-        <div className="flex-shrink-0 text-xl leading-none hidden sm:flex">
+        <div className="flex-shrink-0 leading-none hidden sm:flex gap-0.5">
           {[1, 2, 3].map(i => (
-            <span key={i} className={i <= currentStar ? 'text-pixel-yellow' : 'text-game-border'}>★</span>
+            <span
+              key={i}
+              style={{
+                color: i <= currentStar ? '#fbbf24' : '#2e2e60',
+                textShadow: i <= currentStar ? 'var(--glow-yellow)' : 'none',
+                fontSize: 18,
+              }}
+            >★</span>
           ))}
         </div>
       )}
 
-      {/* Speed selector — shown once any speed pack is purchased */}
+      {/* Speed selector */}
       {availableSpeeds.length > 1 && (
         <div className="flex items-center gap-1 flex-shrink-0">
           {availableSpeeds.map(s => (
             <button
               key={s}
               onClick={() => setGameSpeed(s)}
-              className={`text-xs font-black px-1.5 py-1 rounded-lg border transition leading-none
-                ${gameSpeed === s
-                  ? 'border-pixel-yellow text-pixel-yellow bg-pixel-yellow/10'
-                  : 'border-game-border text-gray-500 hover:border-gray-500'}`}
+              className="text-xs font-black px-1.5 py-1 rounded-lg border transition leading-none"
+              style={gameSpeed === s
+                ? { borderColor: '#fbbf24', color: '#fbbf24', background: 'rgba(251,191,36,0.1)' }
+                : { borderColor: '#1e1e48', color: '#7b78a8' }
+              }
             >
               {s}×
             </button>
@@ -83,9 +105,14 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
 
       {/* Timer */}
       {config.tutorial ? (
-        <div className="flex-shrink-0 text-xs font-black text-game-border2 uppercase tracking-widest">No Limit</div>
+        <div className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest" style={{ color: '#2e2e60' }}>
+          No Limit
+        </div>
       ) : (
-        <div className={`flex-shrink-0 font-black text-2xl font-mono leading-none ${urgent ? 'text-pixel-red animate-pulse' : 'text-white'}`}>
+        <div
+          className="flex-shrink-0 font-black text-2xl font-mono leading-none"
+          style={{ color: timerColor, animation: timerAnim }}
+        >
           {fmt(timeRemaining)}
         </div>
       )}

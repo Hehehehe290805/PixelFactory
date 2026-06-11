@@ -9,12 +9,35 @@ const HAND_CRAFTED = [
   { number: 3,  name: 'Open Shop',       requiredOutput: 420,   timeLimitSeconds: 260, tutorial: true, tutorialLevel: 3 },
   { number: 4,  name: 'Synergy Lab',     requiredOutput: 750,   timeLimitSeconds: 320, tutorial: true, tutorialLevel: 4 },
   { number: 5,  name: 'Block Workshop',  requiredOutput: 1_100, timeLimitSeconds: 380, tutorial: true, tutorialLevel: 5 },
-  { number: 6,  name: 'Gold Rush',       requiredOutput: 700,   timeLimitSeconds: 240 },
-  { number: 7,  name: 'Set Puzzle',      requiredOutput: 1_200, timeLimitSeconds: 260, hint: 'Try placing designs of the same series in a row for a synergy bonus!' },
-  { number: 8,  name: 'Synergy',         requiredOutput: 2_000, timeLimitSeconds: 280 },
-  { number: 9,  name: 'Dominance',       requiredOutput: 3_500, timeLimitSeconds: 300 },
-  { number: 10, name: 'Full Factory',    requiredOutput: 5_500, timeLimitSeconds: 330 },
+  // First non-tutorial levels — preset decks introduce non-flower series
+  { number: 6,  name: 'Garden Boost',    requiredOutput: 700,   timeLimitSeconds: 240, presetDeck: ['daisy','rose','tulip','lily','hibiscus'] },
+  { number: 7,  name: 'City Block',      requiredOutput: 1_200, timeLimitSeconds: 260, presetDeck: ['house','castle','barn','pyramid','windmill'], hint: 'Place 5 buildings in one row for the CITY BLOCK synergy!' },
+  { number: 8,  name: 'Sun & Moon',      requiredOutput: 2_000, timeLimitSeconds: 280, presetDeck: ['star','sun','moon','comet','lightning'] },
+  { number: 9,  name: 'Wild Pack',       requiredOutput: 3_500, timeLimitSeconds: 300, presetDeck: ['cat','butterfly','bee','fox','turtle'] },
+  { number: 10, name: 'Full Factory',    requiredOutput: 5_500, timeLimitSeconds: 330, presetDeck: ['daisy','rose','house','castle','star','sun'] },
 ]
+
+// ── Preset deck generation for levels 11-200 ──────────────────────────────────
+// Cycles through thematic patterns, mixing series at higher tiers.
+const DECK_PATTERNS = [
+  ['daisy','rose','tulip','lily','hibiscus'],            // flowers core
+  ['daisy','lotus','poppy','marigold','lavender'],       // flowers utility
+  ['oak','pine','palm','cherry_tree','willow'],          // trees
+  ['house','castle','tower','windmill','barn'],          // buildings
+  ['star','sun','moon','comet','full_moon'],             // celestial
+  ['cat','butterfly','bee','fox','turtle'],              // animals
+  ['circle','diamond','hexagon','star_shape','spiral_shape'],  // shapes
+  ['snowflake','raindrop','tornado','lightning_w','storm_cloud'], // weather
+  ['daisy','rose','oak','pine','house'],                 // cross: flowers+trees+buildings
+  ['star','sun','moon','cat','butterfly'],               // cross: celestial+animals
+]
+
+function generatePresetDeck(levelNum) {
+  // Higher tier levels use slightly more complex cross-series mixes
+  const tier = Math.floor((levelNum - 11) / 20)
+  const patternIdx = (levelNum - 11) % DECK_PATTERNS.length
+  return DECK_PATTERNS[patternIdx] ?? DECK_PATTERNS[0]
+}
 
 // ── Tier name pools (levels 11-200) ────────────────────────────────────────
 
@@ -55,10 +78,10 @@ function makeLevels() {
     // Time: 330s at level 10 → 600s at level 145+
     const timeLimitSeconds = Math.min(Math.floor(330 + (n - 10) * 1.45), 600)
 
-    const nameIdx = n - 11  // 0-based index into TIER_NAMES
+    const nameIdx = n - 11
     const name = TIER_NAMES[nameIdx] ?? `Level ${n}`
 
-    levels.push({ number: n, name, requiredOutput, timeLimitSeconds })
+    levels.push({ number: n, name, requiredOutput, timeLimitSeconds, presetDeck: generatePresetDeck(n) })
   }
 
   return levels

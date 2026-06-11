@@ -1,22 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 
-export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
+export default function PixelCounter({ requiredOutput, totalLabel = 'Total', preLevelBonus = 0 }) {
   const { totalPixelsProduced, pixelsSpentInShop: pixelsSpent, currentPxPerSecond } = useGameStore()
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
+  const complete  = progress >= 1
 
-  // Floating +N animation — throttled to one float per ~800ms so they don't pile up
   const prevRef       = useRef(totalPixelsProduced)
   const lastFloatTime = useRef(0)
   const [floats, setFloats] = useState([])
 
   useEffect(() => {
-    if (totalPixelsProduced === 0) {
-      prevRef.current = 0
-      lastFloatTime.current = 0
-      return
-    }
+    if (totalPixelsProduced === 0) { prevRef.current = 0; lastFloatTime.current = 0; return }
     const diff = totalPixelsProduced - prevRef.current
     if (diff < 1) return
     const now = Date.now()
@@ -29,23 +25,36 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
   }, [totalPixelsProduced])
 
   return (
-    <div data-tutorial="pixel-counter" className="card relative">
-      <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Output</h3>
+    <div
+      data-tutorial="pixel-counter"
+      className="card relative"
+      style={complete ? { boxShadow: 'var(--glow-green)', borderColor: '#34d39966' } : undefined}
+    >
+      <div className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: '#3c3c72' }}>Output</div>
 
-      {/* px/s with floating +N overlays */}
+      {/* px/s hero number */}
       <div className="mb-4 text-center relative" style={{ minHeight: 72 }}>
-        <div className="text-5xl font-black text-pixel-blue leading-none">
+        <div
+          className="text-5xl font-black leading-none"
+          style={{
+            color: complete ? '#34d399' : '#6366f1',
+            textShadow: currentPxPerSecond > 0 ? (complete ? 'var(--glow-green)' : 'var(--glow-indigo)') : 'none',
+          }}
+        >
           {currentPxPerSecond.toFixed(1)}
         </div>
-        <div className="text-xs font-bold text-gray-600 uppercase tracking-widest mt-1">px / sec</div>
+        <div className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: '#3c3c72' }}>px / sec</div>
 
-        {/* Floating number animations */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ top: -8 }}>
+        {/* Floating +N */}
+        <div className="absolute inset-0 pointer-events-none" style={{ top: -8, overflow: 'visible' }}>
           {floats.map(f => (
             <span
               key={f.id}
-              className="absolute left-1/2 font-black text-sm text-pixel-green"
+              className="absolute left-1/2 font-black"
               style={{
+                fontSize: 15,
+                color: '#34d399',
+                textShadow: '0 0 8px rgba(52,211,153,0.6)',
                 transform: 'translateX(-50%)',
                 bottom: '100%',
                 animation: 'floatUp 1.1s ease-out forwards',
@@ -60,25 +69,29 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
 
       <div className="progress-track mb-4">
         <div
-          className="progress-fill"
-          style={{ transform: `scaleX(${progress})`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
+          className={`progress-fill ${complete ? 'progress-fill-complete' : ''}`}
+          style={{ transform: `scaleX(${progress})` }}
         />
       </div>
 
-      <div className="space-y-2">
-        <Row label={totalLabel} value={Math.floor(totalPixelsProduced).toLocaleString()} />
-        <Row label="Remaining" value={Math.ceil(remaining).toLocaleString()} accent={remaining === 0 ? 'text-pixel-green' : 'text-white'} />
-        <Row label="Spent"     value={pixelsSpent.toLocaleString()} accent="text-gray-500" />
+      <div className="space-y-1.5">
+        <Row label={totalLabel} value={Math.floor(totalPixelsProduced).toLocaleString()} color={complete ? '#34d399' : '#ddd8f8'} />
+        <Row label="Target"    value={requiredOutput.toLocaleString()} color="#7b78a8" />
+        <Row label="Remaining" value={Math.ceil(remaining).toLocaleString()} color={remaining === 0 ? '#34d399' : '#ddd8f8'} />
+        <Row label="Spent"     value={pixelsSpent.toLocaleString()} color="#3c3c72" />
+        {preLevelBonus > 0 && (
+          <Row label="Bonus"   value={`+${preLevelBonus.toLocaleString()}`} color="#fbbf24" />
+        )}
       </div>
     </div>
   )
 }
 
-function Row({ label, value, accent = 'text-white' }) {
+function Row({ label, value, color = '#ddd8f8' }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{label}</span>
-      <span className={`text-sm font-black font-mono ${accent}`}>{value}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#3c3c72' }}>{label}</span>
+      <span className="text-sm font-black font-mono" style={{ color }}>{value}</span>
     </div>
   )
 }

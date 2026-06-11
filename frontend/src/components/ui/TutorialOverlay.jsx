@@ -390,8 +390,13 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone, tutoria
         )}
       </AnimatePresence>
 
-      {/* Tutorial card */}
-      <div style={{ position:'fixed', top:80, right:16, width:300, maxWidth:'calc(100vw - 32px)', zIndex:60 }}>
+      {/* Tutorial card — auto-positions left when spotlight is on the right half */}
+      <div style={{
+        position:'fixed', top:80, width:300, maxWidth:'calc(100vw - 32px)', zIndex:60,
+        ...(spotlight && (spotlight.x + spotlight.w / 2) > window.innerWidth * 0.5
+          ? { left: 16 }
+          : { right: 16 }),
+      }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={stepIdx}
@@ -400,7 +405,15 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone, tutoria
             exit={{ opacity:0, y:16 }}
             transition={{ duration:0.22 }}
           >
-            <div className="card" style={{ borderColor:`${accentColor}88`, boxShadow:`0 0 0 1px ${accentColor}22,0 12px 40px #000000bb` }}>
+            <div style={{
+              borderRadius: '1rem', padding: '1.25rem',
+              background: 'rgba(6, 6, 26, 0.90)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: `1px solid ${accentColor}30`,
+              borderTop: `1px solid ${accentColor}55`,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px ${accentColor}15`,
+            }}>
               {/* Header: level badge + step dots + skip */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

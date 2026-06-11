@@ -8,7 +8,7 @@ import { useShopStore } from '../store/shopStore'
 import { getLevelConfig } from '../engine/levelConfig'
 import { totalGreedyBonus, totalForgeBonus } from '../engine/blockEffects'
 import { checkLevelComplete, checkGreedy } from '../engine/achievementEngine'
-import { useDesignUnlocks, shouldShowDesignChoice, getStarterDesignIds } from '../lib/designUnlocks'
+import { useDesignUnlocks, shouldShowFamilyChoice, getStarterDesignIds } from '../lib/designUnlocks'
 import { useSettingsStore } from '../store/settingsStore'
 import { getLevelContent } from '../data/learningContent'
 import Grid from '../components/game/Grid'
@@ -54,7 +54,7 @@ export default function Level() {
   const {
     grid, deckSelection, startLevel, levelComplete, resetLevel,
     gamePaused, setPaused, gameSpeed, setDeckSelection,
-    totalPixelsProduced, addPixels,
+    totalPixelsProduced, addPixels, blockRateMap,
   } = useGameStore()
 
   const {
@@ -75,9 +75,9 @@ export default function Level() {
   const [goldEarned, setGoldEarned]         = useState(0)
   const tabHiddenAtRef = useRef(null)
 
-  // Deck / pre-buy flow — tutorial skips the deck selector entirely
+  // No deck selector — levels use preset decks defined in levelConfig
   const isTutorial = config?.tutorial === true
-  const [deckPhase, setDeckPhase] = useState(!isTutorial)
+  const [deckPhase] = useState(false)   // always false — DeckSelector removed
   const [activeDeck, setActiveDeck] = useState([])   // designIds for current level
 
   // Design choice modal (offered after certain level completions)
@@ -108,11 +108,10 @@ export default function Level() {
         : config.timeLimitSeconds)
     : 120
 
-  function handleDeckConfirmed({ designIds }) {
+  function startLevelWithDeck(designIds) {
     setActiveDeck(designIds)
     setDeckSelection(designIds)
 
-    // Give starting copies based on deck size: 3 cards→2 each, 2 cards→3 each, 1 card→6
     const { unlockedBlocks } = useShopStore.getState()
     const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
     const uniqueDesigns = [...new Set(designIds)]
@@ -126,11 +125,9 @@ export default function Level() {
     }
 
     startLevel(startingBlocks)
-    setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)
 
-    // Show pre-level learning card if available
     if (showLearning && preLevelContent) {
       setPreLevelPhase(true)
     }
@@ -157,14 +154,14 @@ export default function Level() {
     if (config.tutorial) {
       const tutorialBlocks = getTutorialStartingBlocks(levelNum)
       startLevel(tutorialBlocks)
-      // Give levels 3-5 a deck so the shop sidebar has designs to sell
       const tutDeck = getTutorialDeck(levelNum)
-      if (tutDeck.length > 0) {
-        setActiveDeck(tutDeck)
-        setDeckSelection(tutDeck)
-      }
+      if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
       setElapsedSeconds(0)
+    } else {
+      // Use preset deck from level config
+      const deck = config.presetDeck ?? []
+      startLevelWithDeck(deck)
     }
     return () => resetLevel()
   }, [levelNum]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -220,11 +217,16 @@ export default function Level() {
     playLevelComplete()
     const ratio = elapsedSeconds / effectiveTimeLimit
     const s = config.tutorial ? 3 : (ratio <= 0.60 ? 3 : ratio <= 0.85 ? 2 : 1)
-    const greedyBonus = totalGreedyBonus(grid)
-    const forgeBonus  = totalForgeBonus(grid)
+    const greedyBonus = totalGreedyBonus(grid, blockRateMap)
+    const forgeBonus  = totalForgeBonus(grid, blockRateMap)
     const baseGold    = GOLD_BY_STARS[s] ?? 0
     const total       = baseGold + greedyBonus + forgeBonus
-    const goldMult    = activeGridStyle === 'gold_rush' ? 1.15 : 1
+
+    // Replayed levels give 10% gold — check if the level was already completed before
+    const alreadyCompleted = (campaignProgress[levelNum]?.stars ?? 0) > 0
+    const replayMult = alreadyCompleted ? 0.10 : 1
+    const gridMult   = activeGridStyle === 'gold_rush' ? 1.15 : 1
+    const goldMult   = replayMult * gridMult
 
     setStars(s); setGoldEarned(Math.floor(total * goldMult)); setResultShown(true)
     saveCampaignProgress(levelNum, s, elapsedSeconds)
@@ -241,7 +243,7 @@ export default function Level() {
     unlockAchievements([...levelKeys, ...greedyKeys])
 
     // Check if a design choice should be offered after this level
-    const choicePair = shouldShowDesignChoice(levelNum, unlockedDesignIds ?? [])
+    const choicePair = shouldShowFamilyChoice(levelNum, unlockedDesignIds ?? [])
     if (choicePair) setDesignChoicePair(choicePair)
   }, [levelComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -267,7 +269,7 @@ export default function Level() {
       if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
     } else {
-      setDeckPhase(true)
+      startLevelWithDeck(config.presetDeck ?? [])
     }
   }
 
@@ -295,7 +297,7 @@ export default function Level() {
       <div className="flex flex-1 gap-0 min-h-0" style={{ overflow: 'hidden' }}>
         <ShopSidebar deckDesignIds={activeDeck} />
 
-        <div className="flex-1 flex items-start justify-center px-2 pt-5 pb-2" style={{ overflowX: 'hidden', overflowY: 'visible' }} data-tutorial="grid">
+        <div className="flex-1 flex items-start justify-center px-2 pt-5 pb-2 relative scanlines" style={{ overflowX: 'hidden', overflowY: 'visible' }} data-tutorial="grid">
           <Grid />
         </div>
 
@@ -333,23 +335,14 @@ export default function Level() {
       )}
 
       {/* Deck selector */}
-      {deckPhase && (
-        <DeckSelector
-          levelNumber={levelNum}
-          unlockedDesigns={unlockedDesigns}
-          bargain={activeGridStyle === 'bargain'}
-          onConfirm={handleDeckConfirmed}
-          onBack={() => navigate('/campaign')}
-        />
-      )}
-
-      {/* Design choice modal (offered after level completion) */}
+      {/* Family choice modal (offered at level 10, 15, 20… milestones) */}
       {resultShown && designChoicePair && (
-        <DesignChoiceModal
-          pair={designChoicePair}
-          onChoose={id => {
-            unlockDesign(id)
-            setUnlockedThisLevel([id])
+        <FamilyChoiceModal
+          entry={designChoicePair}
+          onChoose={series => {
+            const ids = getFamilyPackDesigns(series).map(d => d.id)
+            unlockDesigns(ids)
+            setUnlockedThisLevel(ids)
             setDesignChoicePair(null)
             setShowUnlocked(true)
           }}
@@ -386,35 +379,56 @@ export default function Level() {
   )
 }
 
-// ── Design Choice Modal ───────────────────────────────────────────────────────
-import { DESIGNS } from '../data/designLibrary'
+// ── Family Choice Modal ───────────────────────────────────────────────────────
+import { DESIGNS, getFamilyPackDesigns } from '../data/designLibrary'
 import { DesignMiniThumb } from '../components/ui/DeckSelector'
 
-function DesignChoiceModal({ pair, onChoose }) {
-  const [A, B] = pair.map(id => DESIGNS.find(d => d.id === id)).filter(Boolean)
-  if (!A && !B) return null
+const SERIES_ICONS = {
+  trees: '🌳', buildings: '🏛', celestial: '✦', animals: '🐾',
+  shapes: '⬡', weather: '❄', food: '🍎', symbols: '♾',
+  landscapes: '⛰', space: '🚀', abstract: '◈',
+}
 
+function FamilyChoiceModal({ entry, onChoose }) {
+  const { options } = entry
   return (
     <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/85 px-4">
-      <div className="card w-full max-w-sm text-center" style={{ padding: '2rem' }}>
-        <div className="text-xs font-black uppercase tracking-widest text-pixel-yellow mb-1">New Design Unlocked</div>
-        <h2 className="text-xl font-black text-white pixel-heading mb-2">Choose One</h2>
-        <p className="text-xs text-gray-500 mb-6">Pick a design to add to your collection permanently</p>
+      <div className="card w-full max-w-lg text-center" style={{ padding: '2rem' }}>
+        <div className="text-xs font-black uppercase tracking-widest text-neon-yellow mb-1">Milestone Reward</div>
+        <h2 className="text-2xl font-black text-white pixel-heading mb-1">Choose a Family</h2>
+        <p className="text-xs text-gray-500 mb-6">Pick one series — you'll receive all 10 of its core designs permanently</p>
         <div className="flex gap-4 justify-center">
-          {[A, B].filter(Boolean).map(design => (
-            <button
-              key={design.id}
-              onClick={() => onChoose(design.id)}
-              className="flex-1 rounded-xl border-2 border-game-border hover:border-pixel-green flex flex-col items-center gap-2 p-4 transition"
-              style={{ background: '#0d0d22' }}
-            >
-              <DesignMiniThumb design={design} size={64} centered />
-              <div className="text-sm font-black text-white">{design.name}</div>
-              <div className="text-xs text-pixel-blue capitalize">{design.blockType.replace(/_/g, ' ')}</div>
-              <div className="text-xs text-gray-500 capitalize">{design.series}</div>
-              <div className="text-xs text-gray-400 leading-snug">{design.desc}</div>
-            </button>
-          ))}
+          {options.map(series => {
+            const pack = getFamilyPackDesigns(series)
+            const icon = SERIES_ICONS[series] ?? '◆'
+            return (
+              <button
+                key={series}
+                onClick={() => onChoose(series)}
+                className="flex-1 rounded-xl border-2 border-game-border hover:border-neon-green flex flex-col items-center gap-3 p-4 transition"
+                style={{ background: '#0c0c28' }}
+              >
+                <div className="text-4xl">{icon}</div>
+                <div className="text-lg font-black text-white capitalize">{series}</div>
+                <div className="text-xs text-gray-500">{pack.length} designs</div>
+                <div className="flex flex-wrap gap-1 justify-center">
+                  {pack.slice(0, 5).map(d => (
+                    <div key={d.id} className="rounded-lg overflow-hidden border border-game-border" style={{ width: 28, height: 28 }}>
+                      <DesignMiniThumb design={d} size={28} />
+                    </div>
+                  ))}
+                  {pack.length > 5 && (
+                    <div className="rounded-lg border border-game-border flex items-center justify-center text-xs text-gray-500 font-black" style={{ width: 28, height: 28 }}>
+                      +{pack.length - 5}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 leading-snug">
+                  {pack.slice(0, 3).map(d => d.blockType.replace(/_/g, ' ')).join(' · ')}…
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

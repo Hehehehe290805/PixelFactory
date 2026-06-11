@@ -1403,27 +1403,29 @@ function mk(id, name, series, blockType, desc, unlockSource, patternKey, colors,
 const RAW_DESIGNS = [
 
   // ── FLOWERS ──────────────────────────────────────────────────────────────────
+  // ── 10 flower starters — given to players after completing Level 1 ────────────
   mk('daisy',          'Daisy',          'flowers', 'base',          'Steady output; white petals, golden center',                    'starter',         'daisy_star',       ['w','y','g']),
-  mk('rose',           'Rose',           'flowers', 'doubler',       '×2 output when surrounded by weaker designs',                   'campaign_choice', 'rose_bloom',       ['r','g'],      0),
-  mk('sunflower',      'Sunflower',      'flowers', 'prism',         '+5% per unique color in design (max +30%)',                     'campaign_choice', 'sunflower_big',    ['y','o'],      0),
-  mk('tulip',          'Tulip',          'flowers', 'amplifier',     '+8% output per occupied neighbor',                             'campaign_choice', 'cup_flower',       ['r','g'],      0),
-  mk('lily',           'Lily',           'flowers', 'echo',          '+4% per 10s stationary (max +80%)',                            'campaign_choice', 'cup_flower',       ['o','g'],      0),
-  mk('orchid',         'Orchid',         'flowers', 'focus',         'Output scales with dominant color ratio in design',            'campaign_choice', 'small_blossom',    ['v','w','g'],  0),
-  mk('hibiscus',       'Hibiscus',       'flowers', 'reactor',       'Ramps from 50% to 200% over 15s; resets on move',              'campaign_choice', 'cup_flower',       ['r','o','g'],  0),
-  mk('lotus',          'Lotus',          'flowers', 'cluster',       '+12% per occupied neighbor (excl. void)',                      'campaign_choice', 'cup_flower',       ['v','r','g'],  0),
-  mk('poppy',          'Poppy',          'flowers', 'cross_amp',     'Adds floor(pixelCount÷10) px/s to diagonal neighbors',         'campaign_choice', 'small_blossom',    ['r','o'],      0),
-  mk('bluebell',       'Bluebell',       'flowers', 'resonator',     '+50% if an orthogonal neighbor is same block type',            'campaign_choice', 'cup_flower',       ['b','g'],      0),
-  mk('marigold',       'Marigold',       'flowers', 'splitter',      'Gives ortho neighbors +20% of this block\'s rate',            'campaign_choice', 'small_blossom',    ['o','y'],      0),
-  mk('lavender',       'Lavender',       'flowers', 'conductor',     'Borrows highest synergy bonus from adjacent blocks',           'campaign_choice', 'small_blossom',    ['v','g'],      0),
-  mk('cherry_blossom', 'Cherry Blossom', 'flowers', 'mirror',        'Copies the output rate of its best ortho neighbor',           'shop',            'daisy_star',       ['w','r','g'],  220),
-  mk('chrysanthemum',  'Chrysanthemum',  'flowers', 'overflow',      '3× burst for 5s every 10s',                                   'shop',            'sunflower_big',    ['w','y'],      280),
-  mk('iris',           'Iris',           'flowers', 'catalyst',      'Design synergy bonuses in same row ×1.5',                     'shop',            'cup_flower',       ['b','v','g'],  300),
-  mk('cosmos',         'Cosmos',         'flowers', 'void',          '0 output; gives +15% to all 8 surrounding blocks',            'shop',            'small_blossom',    ['v','w'],      180),
-  mk('peony',          'Peony',          'flowers', 'color_checker', 'Dominant color ≥50% → −5% required output (one-time)',        'campaign_choice', 'rose_bloom',       ['r','w'],      0),
-  mk('daffodil',       'Daffodil',       'flowers', 'greedy',        'On complete: (myPx − neighborPx total) × 10 gold',            'campaign_choice', 'cup_flower',       ['y','o','g'],  0),
+  mk('rose',           'Rose',           'flowers', 'doubler',       '×2 output when no orthogonal neighbor shares this series',      'starter',         'rose_bloom',       ['r','g']),
+  mk('tulip',          'Tulip',          'flowers', 'amplifier',     '+8% output per occupied neighbor (all 8 directions)',           'starter',         'cup_flower',       ['r','g']),
+  mk('lily',           'Lily',           'flowers', 'echo',          '+4% per 10s stationary, stacks up to +80%',                    'starter',         'cup_flower',       ['o','g']),
+  mk('hibiscus',       'Hibiscus',       'flowers', 'reactor',       'Ramps from 50% to 200% output over 15s; resets on move',       'starter',         'cup_flower',       ['r','o','g']),
+  mk('lotus',          'Lotus',          'flowers', 'cluster',       '+12% per occupied neighbor (all 8, excl. void)',                'starter',         'cup_flower',       ['v','r','g']),
+  mk('poppy',          'Poppy',          'flowers', 'cross_amp',     '+0.5 px/s to each diagonal neighbor per cross_amp',            'starter',         'small_blossom',    ['r','o']),
+  mk('marigold',       'Marigold',       'flowers', 'splitter',      'Gives each ortho neighbor +20% of this block\'s rate',         'starter',         'small_blossom',    ['o','y']),
+  mk('lavender',       'Lavender',       'flowers', 'conductor',     'Borrows highest active synergy bonus from adjacent blocks',     'starter',         'small_blossom',    ['v','g']),
+  mk('peony',          'Peony',          'flowers', 'color_checker', 'On placement: reduces level\'s required output by 5%',         'starter',         'rose_bloom',       ['r','w']),
+  // ── Remaining flowers — campaign choice / shop ────────────────────────────
+  mk('sunflower',      'Sunflower',      'flowers', 'prism',         '+5% per unique non-white color in design (max +30%)',           'campaign_choice', 'sunflower_big',    ['y','o'],      0),
+  mk('orchid',         'Orchid',         'flowers', 'focus',         '+50% flat output bonus',                                       'campaign_choice', 'small_blossom',    ['v','w','g'],  0),
+  mk('bluebell',       'Bluebell',       'flowers', 'resonator',     '+50% if an orthogonal neighbor has the same block type',        'campaign_choice', 'cup_flower',       ['b','g'],      0),
+  mk('daffodil',       'Daffodil',       'flowers', 'greedy',        'On level complete: (myRate − avgNeighborRate) × 20 gold',       'campaign_choice', 'cup_flower',       ['y','o','g'],  0),
+  mk('cherry_blossom', 'Cherry Blossom', 'flowers', 'mirror',        'Copies the output rate of its best ortho neighbor',            'shop',            'daisy_star',       ['w','r','g'],  220),
+  mk('chrysanthemum',  'Chrysanthemum',  'flowers', 'overflow',      '3× output burst for 5s every 10s',                            'shop',            'sunflower_big',    ['w','y'],      280),
+  mk('iris',           'Iris',           'flowers', 'catalyst',      'Design synergy bonuses in same row are ×1.5',                  'shop',            'cup_flower',       ['b','v','g'],  300),
+  mk('cosmos',         'Cosmos',         'flowers', 'void',          '0 output; gives +15% to all 8 surrounding blocks',             'shop',            'small_blossom',    ['v','w'],      180),
 
   // ── TREES ────────────────────────────────────────────────────────────────────
-  mk('oak',            'Oak',            'trees',   'base',          'Steady output; classic round canopy',                         'starter',         'oak_round',        ['g','o']),
+  mk('oak',            'Oak',            'trees',   'base',          'Steady output; classic round canopy',                         'campaign_family', 'oak_round',        ['g','o']),
   mk('pine',           'Pine',           'trees',   'amplifier',     '+8% output per occupied neighbor',                            'campaign_choice', 'pine_pointed',     ['g','o'],      0),
   mk('palm',           'Palm',           'trees',   'reactor',       'Ramps from 50% to 200% over 15s; resets on move',             'campaign_choice', 'palm_tree',        ['g','y'],      0),
   mk('cherry_tree',    'Cherry Tree',    'trees',   'echo',          '+4% per 10s stationary (max +80%)',                           'campaign_choice', 'oak_round',        ['r','o'],      0),
@@ -1441,7 +1443,7 @@ const RAW_DESIGNS = [
   mk('sequoia',        'Sequoia',        'trees',   'forge',         'On complete: +3 gold per pixel held in this design',         'shop',            'pine_pointed',     ['o','g'],      300),
 
   // ── BUILDINGS ────────────────────────────────────────────────────────────────
-  mk('house',          'House',          'buildings','base',          'Solid output; the foundation block',                          'starter',         'house',            ['r','w','y']),
+  mk('house',          'House',          'buildings','base',          'Solid output; the foundation block',                          'campaign_family', 'house',            ['r','w','y']),
   mk('castle',         'Castle',         'buildings','resonator',     '+50% if an orthogonal neighbor is same block type',           'campaign_choice', 'castle',           ['w','b'],      0),
   mk('tower',          'Tower',          'towers',   'reactor',       'Ramps from 50% to 200% over 15s; resets on move',             'campaign_choice', 'tower',            ['w','b'],      0),
   mk('windmill',       'Windmill',       'buildings','echo',          '+4% per 10s stationary (max +80%)',                           'campaign_choice', 'windmill',         ['w','b'],      0),
@@ -1459,7 +1461,7 @@ const RAW_DESIGNS = [
   mk('church',         'Church',         'buildings','color_checker', 'Dominant color ≥50% → −5% required output (one-time)',       'shop',            'house',            ['w','y'],      200),
 
   // ── CELESTIAL ────────────────────────────────────────────────────────────────
-  mk('star',           'Star',           'celestial','base',          'Reliable output; bright and constant',                        'starter',         'star5',            ['y']),
+  mk('star',           'Star',           'celestial','base',          'Reliable output; bright and constant',                        'campaign_family', 'star5',            ['y']),
   mk('sun',            'Sun',            'celestial','prism',         '+5% per unique color in design (max +30%)',                   'campaign_choice', 'sun_rays',         ['y','o'],      0),
   mk('moon',           'Moon',           'celestial','echo',          '+4% per 10s stationary (max +80%)',                           'campaign_choice', 'crescent',         ['y','w'],      0),
   mk('cloud',          'Cloud',          'celestial','base',          'Soft production; floats above the grid',                     'campaign_choice', 'cloud',            ['w','b'],      0),
@@ -1477,7 +1479,7 @@ const RAW_DESIGNS = [
   mk('starburst',      'Starburst',      'celestial','resonator',     '+50% if an orthogonal neighbor is same block type',           'campaign_choice', 'star5',            ['y','o'],      0),
 
   // ── ANIMALS ──────────────────────────────────────────────────────────────────
-  mk('cat',            'Cat',            'animals', 'base',          'Curious and productive; watches the grid',                    'starter',         'cat_face',         ['o','w']),
+  mk('cat',            'Cat',            'animals', 'base',          'Curious and productive; watches the grid',                    'campaign_family', 'cat_face',         ['o','w']),
   mk('bird',           'Bird',           'animals', 'doubler',       '×2 output when surrounded by weaker designs',                 'campaign_choice', 'bird',             ['b','y'],      0),
   mk('fish',           'Fish',           'animals', 'prism',         '+5% per unique color in design (max +30%)',                   'campaign_choice', 'fish',             ['o','b'],      0),
   mk('butterfly',      'Butterfly',      'animals', 'amplifier',     '+8% output per occupied neighbor',                            'campaign_choice', 'butterfly',        ['o','y','b'],  0),
@@ -1497,7 +1499,7 @@ const RAW_DESIGNS = [
   mk('dolphin',        'Dolphin',        'animals', 'focus',         'Output scales with dominant color ratio in design',           'campaign_choice', 'fish',             ['b','w'],      0),
 
   // ── SHAPES ───────────────────────────────────────────────────────────────────
-  mk('circle',         'Circle',         'shapes',  'base',          'Pure form; maximum fill efficiency',                          'starter',         'circle',           ['b']),
+  mk('circle',         'Circle',         'shapes',  'base',          'Pure form; maximum fill efficiency',                          'campaign_family', 'circle',           ['b']),
   mk('diamond',        'Diamond',        'shapes',  'doubler',       '×2 output when surrounded by weaker designs',                 'campaign_choice', 'diamond',          ['b','w'],      0),
   mk('hexagon',        'Hexagon',        'shapes',  'amplifier',     '+8% output per occupied neighbor',                            'campaign_choice', 'hexagon',          ['o','y'],      0),
   mk('star_shape',     'Star',           'shapes',  'cross_amp',     'Adds floor(pixelCount÷10) px/s to diagonal neighbors',        'campaign_choice', 'star5',            ['y','o'],      0),
@@ -1513,7 +1515,7 @@ const RAW_DESIGNS = [
   mk('wavy_sh',        'Wave Pattern',   'shapes',  'catalyst',      'Design synergy bonuses in same row ×1.5',                   'shop',            'wave_ocean',       ['b','w'],      260),
 
   // ── FOOD ─────────────────────────────────────────────────────────────────────
-  mk('apple',          'Apple',          'food',    'greedy',        'On complete: (myPx − neighborPx total) × 10 gold',            'starter',         'apple_fruit',      ['r','g']),
+  mk('apple',          'Apple',          'food',    'greedy',        'On level complete: (myRate − avgNeighborRate) × 20 gold',     'campaign_family', 'apple_fruit',      ['r','g']),
   mk('mushroom',       'Mushroom',       'food',    'doubler',       '×2 output when surrounded by weaker designs',                 'campaign_choice', 'mushroom',         ['r','w'],      0),
   mk('grapes',         'Grapes',         'food',    'resonator',     '+50% if an orthogonal neighbor is same block type',           'campaign_choice', 'grapes_bunch',     ['v','g'],      0),
   mk('cherry',         'Cherry',         'food',    'forge',         'On complete: +3 gold per pixel held in this design',         'campaign_choice', 'small_blossom',    ['r','g'],      0),
@@ -1529,7 +1531,7 @@ const RAW_DESIGNS = [
   mk('pizza',          'Pizza',          'food',    'catalyst',      'Design synergy bonuses in same row ×1.5',                   'shop',            'circle',           ['y','r','o'],  280),
 
   // ── SYMBOLS ──────────────────────────────────────────────────────────────────
-  mk('heart',          'Heart',          'symbols', 'base',          'Warm and steady; love powers production',                     'starter',         'heart',            ['r']),
+  mk('heart',          'Heart',          'symbols', 'base',          'Warm and steady; love powers production',                     'campaign_family', 'heart',            ['r']),
   mk('crown',          'Crown',          'symbols', 'catalyst',      'Design synergy bonuses in same row ×1.5',                   'campaign_choice', 'crown',            ['y','o'],      0),
   mk('shield',         'Shield',         'symbols', 'resonator',     '+50% if an orthogonal neighbor is same block type',           'campaign_choice', 'shield',           ['b','w'],      0),
   mk('gem',            'Gem',            'symbols', 'prism',         '+5% per unique color in design (max +30%)',                   'campaign_choice', 'crystal_gem',      ['b','w'],      0),
@@ -1545,7 +1547,7 @@ const RAW_DESIGNS = [
   mk('yin_yang',       'Yin Yang',       'symbols', 'amplifier',     '+8% output per occupied neighbor',                            'shop',            'circle',           ['w','b'],      200),
 
   // ── WEATHER ──────────────────────────────────────────────────────────────────
-  mk('snowflake',      'Snowflake',      'weather', 'base',          'Cool and crisp; steady output in any condition',              'starter',         'snowflake',        ['w','b']),
+  mk('snowflake',      'Snowflake',      'weather', 'base',          'Cool and crisp; steady output in any condition',              'campaign_family', 'snowflake',        ['w','b']),
   mk('raindrop',       'Raindrop',       'weather', 'splitter',      'Gives ortho neighbors +20% of this block\'s rate',           'campaign_choice', 'diamond',          ['b','w'],      0),
   mk('tornado',        'Tornado',        'weather', 'reactor',       'Ramps from 50% to 200% over 15s; resets on move',             'campaign_choice', 'tornado',          ['w','b'],      0),
   mk('lightning_w',    'Lightning Bolt', 'weather', 'overflow',      '3× burst for 5s every 10s',                                  'campaign_choice', 'lightning_bolt',   ['y','w'],      0),
@@ -1559,7 +1561,7 @@ const RAW_DESIGNS = [
   mk('sun_rain',       'Sunny Rain',     'weather', 'resonator',     '+50% if an orthogonal neighbor is same block type',           'shop',            'sun_rays',         ['y','b','w'],  200),
 
   // ── LANDSCAPES ───────────────────────────────────────────────────────────────
-  mk('mountain',       'Mountain',       'landscapes','base',         'Solid as a mountain; reliable output',                       'starter',         'mountain',         ['w','b']),
+  mk('mountain',       'Mountain',       'landscapes','base',         'Solid as a mountain; reliable output',                       'campaign_family', 'mountain',         ['w','b']),
   mk('ocean_wave',     'Ocean Wave',     'landscapes','splitter',     'Gives ortho neighbors +20% of this block\'s rate',           'campaign_choice', 'wave_ocean',       ['b','w'],      0),
   mk('volcano',        'Volcano',        'landscapes','overflow',     '3× burst for 5s every 10s',                                  'campaign_choice', 'volcano',          ['r','o','b'],  0),
   mk('glacier',        'Glacier',        'landscapes','echo',         '+4% per 10s stationary (max +80%)',                          'campaign_choice', 'pyramid',          ['w','b'],      0),
@@ -1701,3 +1703,43 @@ export function getDesignLevelCost(design, bargain = false) {
 }
 
 export const ALL_SERIES = ['flowers','trees','buildings','celestial','animals','shapes','food','symbols','weather','landscapes','space','abstract','special']
+
+// ── Family grant packs ────────────────────────────────────────────────────────
+// When a player picks a family at a milestone, they receive these 10 designs.
+// Chosen to cover the widest variety of block types within the series.
+const FAMILY_PACKS = {
+  trees:      ['oak','pine','palm','cherry_tree','willow','apple_tree','bamboo','bonsai','maple','bamboo_tall'],
+  buildings:  ['house','castle','tower','windmill','barn','lighthouse','arch','pyramid','hut','cottage'],
+  celestial:  ['star','sun','moon','cloud','lightning','comet','crescent_moon','full_moon','shooting_star','comet_big'],
+  animals:    ['cat','bird','fish','butterfly','bee','fox','turtle','rabbit','frog','owl'],
+  shapes:     ['circle','diamond','hexagon','star_shape','spiral_shape','cross_shape','arrow_shape','checkers_shape','concentric_sh','triangle_sh'],
+  weather:    ['snowflake','raindrop','tornado','lightning_w','snowflake_big','ice_crystal','storm_cloud','fog_bank','hailstorm','thundercloud'],
+  food:       ['apple','mushroom','grapes','cherry','pineapple','watermelon','lemon','strawberry','banana','tomato'],
+  symbols:    ['heart','crown','shield','gem','anchor','sword','compass','hourglass','flame_sym','skull'],
+  landscapes: ['mountain','ocean_wave','volcano','glacier','desert','island','cave','forest_land','canyon','cliff'],
+  space:      ['planet_earth','rocket','galaxy_sp','asteroid','ufo','satellite','black_hole','nebula_sp','meteor_shower','comet_sp'],
+  abstract:   ['grid_pattern','checkers_ab','target_ab'],  // smaller series — grant all available
+}
+
+export function getFamilyPackDesigns(series) {
+  const ids = FAMILY_PACKS[series] ?? []
+  return ids.map(id => DESIGNS.find(d => d.id === id)).filter(Boolean)
+}
+
+// ── Family choice milestones ──────────────────────────────────────────────────
+// At each 5-level milestone, player picks 1 of 2 series and receives all 10 designs.
+const FAMILY_CHOICE_SCHEDULE = [
+  { level: 10,  options: ['trees', 'buildings'] },
+  { level: 15,  options: ['celestial', 'animals'] },
+  { level: 20,  options: ['shapes', 'weather'] },
+  { level: 25,  options: ['food', 'landscapes'] },
+  { level: 30,  options: ['symbols', 'space'] },
+  { level: 35,  options: ['abstract', 'trees'] },
+  { level: 40,  options: ['buildings', 'celestial'] },
+  { level: 45,  options: ['animals', 'shapes'] },
+  { level: 50,  options: ['weather', 'food'] },
+]
+
+export function getFamilyChoiceForLevel(levelNumber) {
+  return FAMILY_CHOICE_SCHEDULE.find(e => e.level === levelNumber) ?? null
+}

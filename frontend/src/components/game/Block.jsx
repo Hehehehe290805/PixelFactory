@@ -55,15 +55,29 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
     }
   }
 
-  const canvasSize     = BLOCK_CANVAS_SIZE * CELL
-  const fillRatio      = Math.min(1, block.pixelCount / (BLOCK_CANVAS_SIZE * BLOCK_CANVAS_SIZE))
-  const fillHex        = block.dominantColor ? (COLOR_HEX[block.dominantColor] ?? '#118ab2') : '#118ab2'
-  const isActive       = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
+  const WAVE_CYCLE_S  = 2.0   // fixed pulse cycle — slower, gives more pixels per float
+
+  // Series-based fill ratio (visual only — no longer tied to pixelCount)
+  const PREMIUM_SERIES = new Set(['space', 'celestial'])
+  const fillRatio      = PREMIUM_SERIES.has(block.series) ? 0.55 : 0.70
+  // Use block type color for fill hex, fallback to a neutral blue
+  const typeColor      = BLOCK_TYPE_VISUAL?.[block.type]?.color ?? '#6366f1'
+  const fillHex        = typeColor
+
+  const isActive       = showPulse && block.type !== 'void' && block.pauseTimer === 0
   const waveDir        = block.waveDir ?? 'up'
   const waveConf       = WAVE_MAP[waveDir] ?? WAVE_MAP.up
-  const cycleDuration  = block.pixelCount > 0 ? 37.5 / block.pixelCount : 1
-  const animDuration   = cycleDuration / Math.max(0.1, gameSpeed)
-  const floatAmount    = rate != null && rate > 0 ? `+${Math.max(1, Math.round(rate * cycleDuration))}` : null
+  const animDuration   = WAVE_CYCLE_S / Math.max(0.1, gameSpeed)
+  const floatAmount    = rate != null && rate > 0 ? `+${Math.max(1, Math.round(rate * WAVE_CYCLE_S))}` : null
+
+  const canvasSize     = BLOCK_CANVAS_SIZE * CELL
+
+  // Reactor progress for pulsing overlay
+  const reactorProgress = block.type === 'reactor' ? Math.min(1, (block.reactorAge ?? 0) / 150) : 0
+  const reactorPulseMs  = reactorProgress > 0 ? Math.max(400, Math.round(1400 - reactorProgress * 1000)) : 0
+  // Interpolate orange (#fb923c) → red (#f87171) as reactor warms up
+  const reactorHue      = Math.round(14 + reactorProgress * 6)  // HSL hue 14 (orange) → 20 (red)
+  const reactorColor    = reactorProgress > 0 ? `hsl(${reactorHue}, 95%, 65%)` : null
 
   return (
     <div
@@ -83,15 +97,27 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
           style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
         />
 
-        {/* Fill ratio indicator — uses scaleY instead of height to avoid layout thrash */}
+        {/* Fill ratio indicator */}
         {fillRatio > 0 && (
           <div
             className="absolute bottom-0 left-0 right-0 pointer-events-none"
             style={{
               height: '100%',
-              backgroundColor: `${fillHex}10`,
+              backgroundColor: `${fillHex}0e`,
               transform: `scaleY(${fillRatio})`,
               transformOrigin: 'bottom center',
+            }}
+          />
+        )}
+
+        {/* Reactor pulsing overlay */}
+        {reactorProgress > 0 && reactorColor && (
+          <div
+            className="absolute inset-0 pointer-events-none rounded"
+            style={{
+              background: `radial-gradient(circle at center, ${reactorColor}55 0%, transparent 70%)`,
+              animation: `breathe ${(reactorPulseMs / 1000).toFixed(2)}s ease-in-out infinite`,
+              opacity: 0.4 + reactorProgress * 0.4,
             }}
           />
         )}
@@ -158,13 +184,14 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
         </div>
       )}
 
-      {/* Type indicator — colored bottom border stripe, no text */}
+      {/* Type indicator — colored bottom stripe, glows when active */}
       <div
         className="absolute bottom-0 left-0 right-0 pointer-events-none"
         style={{
-          height: 3,
-          backgroundColor: BLOCK_TYPE_VISUAL[block.type]?.color ?? '#5c7abf',
-          opacity: 0.85,
+          height: 4,
+          backgroundColor: typeColor,
+          opacity: 0.9,
+          boxShadow: isActive ? `0 0 6px ${typeColor}` : undefined,
         }}
       />
     </div>
