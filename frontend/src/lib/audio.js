@@ -180,74 +180,74 @@ const TRACKS = {
     arpGain:  0.042,
   },
 
-  // ── Level 1-10: C major, 84 BPM, triangle — upbeat tutorial, encouraging ─────
+  // ── Level 1-10: C major, 100 BPM — upbeat from the start ───────────────────
   intro: {
     drones: [
       { freq: N.C3, gain: 0.038, type: 'sine' },
       { freq: N.G3, gain: 0.028, type: 'triangle' },
     ],
     arpNotes: [N.C4, N.E4, N.G4, N.C5, N.D5, N.C5, N.G4, N.E4],
-    noteDur:  0.714,  // 84 BPM
+    noteDur:  0.600,  // 100 BPM
     arpType:  'triangle',
     arpGain:  0.068,
   },
 
-  // ── Level 11-30: G major, 96 BPM, triangle — warm and peppy ────────────────
+  // ── Level 11-30: G major, 112 BPM ──────────────────────────────────────────
   apprentice: {
     drones: [
       { freq: N.G3, gain: 0.040, type: 'sine' },
       { freq: N.D4, gain: 0.026, type: 'triangle' },
     ],
     arpNotes: [N.G4, N.B4, N.D5, N.G5, N.Fs5, N.D5, N.B4, N.A4],
-    noteDur:  0.625,  // 96 BPM
+    noteDur:  0.536,  // 112 BPM
     arpType:  'triangle',
     arpGain:  0.062,
   },
 
-  // ── Level 31-60: D minor, 106 BPM, triangle — focused, rhythmic ─────────────
+  // ── Level 31-60: D minor, 122 BPM — focused, rhythmic ──────────────────────
   craftsman: {
     drones: [
       { freq: N.D3, gain: 0.042, type: 'sine' },
       { freq: N.A3, gain: 0.028, type: 'triangle' },
     ],
     arpNotes: [N.D4, N.A4, N.F4, N.C5, N.A4, N.D5, N.F4, N.E4],
-    noteDur:  0.566,  // 106 BPM
+    noteDur:  0.492,  // 122 BPM
     arpType:  'triangle',
     arpGain:  0.058,
   },
 
-  // ── Level 61-100: A minor, 116 BPM, triangle — energetic, driving ───────────
+  // ── Level 61-100: A minor, 132 BPM — energetic, driving ────────────────────
   expert: {
     drones: [
       { freq: N.A2, gain: 0.044, type: 'sine' },
       { freq: N.E3, gain: 0.030, type: 'triangle' },
     ],
     arpNotes: [N.A4, N.E5, N.C5, N.G5, N.E5, N.D5, N.C5, N.B4],
-    noteDur:  0.517,  // 116 BPM
+    noteDur:  0.455,  // 132 BPM
     arpType:  'triangle',
     arpGain:  0.055,
   },
 
-  // ── Level 101-150: E minor, 124 BPM, triangle — intense ─────────────────────
+  // ── Level 101-150: E minor, 142 BPM — intense, urgent ──────────────────────
   master: {
     drones: [
       { freq: N.E3, gain: 0.046, type: 'sine' },
       { freq: N.B3, gain: 0.030, type: 'triangle' },
     ],
     arpNotes: [N.E4, N.B4, N.G4, N.D5, N.B4, N.G5, N.Fs4, N.A4],
-    noteDur:  0.484,  // 124 BPM
+    noteDur:  0.423,  // 142 BPM
     arpType:  'triangle',
     arpGain:  0.052,
   },
 
-  // ── Level 151-200: B minor, 136 BPM, triangle/saw — epic peak ────────────────
+  // ── Level 151-200: B minor, 154 BPM — relentless, epic peak ─────────────────
   grandmaster: {
     drones: [
       { freq: N.B2,  gain: 0.046, type: 'sine' },
       { freq: N.Fs3, gain: 0.030, type: 'triangle' },
     ],
     arpNotes: [N.B4, N.Fs5, N.D5, N.A5, N.Fs5, N.E5, N.D5, N.Cs5],
-    noteDur:  0.441,  // 136 BPM
+    noteDur:  0.390,  // 154 BPM
     arpType:  'triangle',
     arpGain:  0.045,
   },

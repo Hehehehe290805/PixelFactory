@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 
 export default function PixelCounter({ requiredOutput, totalLabel = 'Total', preLevelBonus = 0 }) {
@@ -6,23 +5,6 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total', pre
   const remaining = Math.max(0, requiredOutput - totalPixelsProduced)
   const progress  = Math.min(1, totalPixelsProduced / requiredOutput)
   const complete  = progress >= 1
-
-  const prevRef       = useRef(totalPixelsProduced)
-  const lastFloatTime = useRef(0)
-  const [floats, setFloats] = useState([])
-
-  useEffect(() => {
-    if (totalPixelsProduced === 0) { prevRef.current = 0; lastFloatTime.current = 0; return }
-    const diff = totalPixelsProduced - prevRef.current
-    if (diff < 1) return
-    const now = Date.now()
-    if (now - lastFloatTime.current < 800) return
-    prevRef.current = totalPixelsProduced
-    lastFloatTime.current = now
-    const id = now + Math.random()
-    setFloats(f => [...f.slice(-3), { id, amount: Math.floor(diff) }])
-    setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 1100)
-  }, [totalPixelsProduced])
 
   return (
     <div
@@ -33,7 +15,7 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total', pre
       <div className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: '#3c3c72' }}>Output</div>
 
       {/* px/s hero number */}
-      <div className="mb-4 text-center relative" style={{ minHeight: 72 }}>
+      <div className="mb-4 text-center" style={{ minHeight: 56 }}>
         <div
           className="text-5xl font-black leading-none"
           style={{
@@ -44,27 +26,6 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total', pre
           {currentPxPerSecond.toFixed(1)}
         </div>
         <div className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: '#3c3c72' }}>px / sec</div>
-
-        {/* Floating +N */}
-        <div className="absolute inset-0 pointer-events-none" style={{ top: -8, overflow: 'visible' }}>
-          {floats.map(f => (
-            <span
-              key={f.id}
-              className="absolute left-1/2 font-black"
-              style={{
-                fontSize: 15,
-                color: '#34d399',
-                textShadow: '0 0 8px rgba(52,211,153,0.6)',
-                transform: 'translateX(-50%)',
-                bottom: '100%',
-                animation: 'floatUp 1.1s ease-out forwards',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              +{f.amount >= 1000 ? `${(f.amount / 1000).toFixed(1)}k` : f.amount}
-            </span>
-          ))}
-        </div>
       </div>
 
       <div className="progress-track mb-4">
