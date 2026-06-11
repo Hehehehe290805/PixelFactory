@@ -325,12 +325,13 @@ export const useGameStore = create((set, get) => ({
     set({
       inventory:           [...(state.inventory ?? []), ...(bonusBlocks ?? [])],
       designBuyCounts:     {},
-      randomBuyCount:      0,
       totalPixelsProduced: 0,
       pixelsSpentInShop:   0,
       currentPxPerSecond:  0,
       levelActive:         true,
       levelComplete:       false,
+      gamePaused:          false,
+      selectedBlockId:     null,
     })
   },
 

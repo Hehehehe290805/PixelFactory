@@ -23,7 +23,7 @@ const COLOR_HEX = {
   gold:'#ffc000', neon:'#39ff14', rainbow:'#ff6b9d',
 }
 
-export default function Block({ block, size = 48, showPulse = false, onClick, rate = null }) {
+export default function Block({ block, size = 48, showPulse = false, onClick, rate = null, gameSpeed = 1 }) {
   const canvasRef = useRef(null)
   const [pulsing, setPulsing] = useState(false)
   const [floatKey, setFloatKey] = useState(0)
@@ -62,6 +62,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
   const waveDir        = block.waveDir ?? 'up'
   const waveConf       = WAVE_MAP[waveDir] ?? WAVE_MAP.up
   const cycleDuration  = block.pixelCount > 0 ? 37.5 / block.pixelCount : 1
+  const animDuration   = cycleDuration / Math.max(0.1, gameSpeed)
   const floatAmount    = rate != null && rate > 0 ? `+${Math.max(1, Math.round(rate * cycleDuration))}` : null
 
   return (
@@ -106,7 +107,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
               )`,
               mixBlendMode: 'screen',
               transformOrigin: waveConf.origin,
-              animation: `${waveConf.anim} ${cycleDuration.toFixed(2)}s ease-in-out infinite`,
+              animation: `${waveConf.anim} ${animDuration.toFixed(3)}s ease-in-out infinite`,
             }}
           />
         )}

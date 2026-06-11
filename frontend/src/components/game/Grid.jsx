@@ -21,7 +21,7 @@ const WAVE_DIRS = [
 ]
 
 export default function Grid() {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, sellBlock, blockRateMap } = useGameStore()
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, sellBlock, blockRateMap, gamePaused, levelComplete, gameSpeed } = useGameStore()
   const [sellToast, setSellToast] = useState(null) // { refund, x, y }
   const cellSize = useGridCellSize()
 
@@ -39,8 +39,12 @@ export default function Grid() {
     return () => window.removeEventListener('keydown', onKey)
   }, [synergyPanel])
 
-  // Production pulse tracker
+  // Production pulse tracker — clears when paused or level/wave is complete
   useEffect(() => {
+    if (gamePaused || levelComplete) {
+      setPulsingSlots(new Set())
+      return
+    }
     const interval = setInterval(() => {
       const active = new Set()
       for (let r = 0; r < GRID_SIZE; r++) {
@@ -52,7 +56,7 @@ export default function Grid() {
       setPulsingSlots(active)
     }, TICK_MS)
     return () => clearInterval(interval)
-  }, [grid])
+  }, [grid, gamePaused, levelComplete])
 
   function handleCellClick(row, col, e) {
     const x = e.clientX
@@ -194,6 +198,7 @@ export default function Grid() {
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
               blockRate={blockRateMap?.[r]?.[c] ?? 0}
+              gameSpeed={gameSpeed}
               onBlockHoverStart={(block, x, y) => {
                 const design = DESIGNS.find(d => d.id === block.designId)
                 setHoverOverlay({ block, design, x, y })
