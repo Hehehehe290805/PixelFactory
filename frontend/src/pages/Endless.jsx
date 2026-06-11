@@ -38,8 +38,8 @@ function calcGold(wave, grandTotal) {
 export default function Endless() {
   const navigate = useNavigate()
   const {
-    grid, startLevel, levelComplete, resetLevel, totalPixelsProduced,
-    gamePaused, setPaused, restoreGrid,
+    grid, startLevel, startNextWave, levelComplete, resetLevel, totalPixelsProduced,
+    gamePaused, setPaused, restoreGrid, gameSpeed, setGameSpeed,
   } = useGameStore()
 
   const {
@@ -49,7 +49,7 @@ export default function Endless() {
   } = useUserStore()
 
   const { unlockedDesigns } = useDesignUnlocks()
-  const { unlockedBlocks }  = useShopStore()
+  const { unlockedBlocks, purchasedSpeeds } = useShopStore()
 
   const [wave, setWave]             = useState(1)
   const [phase, setPhase]           = useState('loading') // 'loading'|'deck'|'resume'|'playing'|'between'|'ended'
@@ -71,7 +71,7 @@ export default function Endless() {
   }
 
   function doStartWave(w, startingBlocks) {
-    startLevel(startingBlocks ?? [])
+    startNextWave(startingBlocks ?? [])
     setPhase('playing')
     setElapsed(0)
   }
@@ -249,6 +249,8 @@ export default function Endless() {
   }
 
   const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+  const ALL_SPEEDS = [0.5, 1, 2, 5, 10]
+  const availableSpeeds = ALL_SPEEDS.filter(s => s === 1 || (purchasedSpeeds ?? []).includes(s))
 
   // ── Loading / resume screen ──────────────────────────────────────────────────
   if (phase === 'loading') return null
@@ -303,6 +305,22 @@ export default function Endless() {
           <div className="text-white font-black text-sm">Wave {wave}</div>
         </div>
         <ProgressBar value={totalPixelsProduced} max={effectiveRequired} />
+        {availableSpeeds.length > 1 && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {availableSpeeds.map(s => (
+              <button
+                key={s}
+                onClick={() => setGameSpeed(s)}
+                className={`text-xs font-black px-1.5 py-1 rounded-lg border transition leading-none
+                  ${gameSpeed === s
+                    ? 'border-pixel-yellow text-pixel-yellow bg-pixel-yellow/10'
+                    : 'border-game-border text-gray-500 hover:border-gray-500'}`}
+              >
+                {s}×
+              </button>
+            ))}
+          </div>
+        )}
         <div className="text-white font-black font-mono text-xl flex-shrink-0">{fmt(elapsed)}</div>
       </div>
 

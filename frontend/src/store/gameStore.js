@@ -320,6 +320,20 @@ export const useGameStore = create((set, get) => ({
     })
   },
 
+  startNextWave(bonusBlocks) {
+    const state = get()
+    set({
+      inventory:           [...(state.inventory ?? []), ...(bonusBlocks ?? [])],
+      designBuyCounts:     {},
+      randomBuyCount:      0,
+      totalPixelsProduced: 0,
+      pixelsSpentInShop:   0,
+      currentPxPerSecond:  0,
+      levelActive:         true,
+      levelComplete:       false,
+    })
+  },
+
   restoreGrid(savedGrid, savedInventory) {
     set({ grid: savedGrid, inventory: savedInventory ?? [], levelActive: true })
   },
