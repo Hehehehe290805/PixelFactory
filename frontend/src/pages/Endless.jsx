@@ -521,7 +521,7 @@ function ProgressBar({ value, max }) {
         <span>{max.toLocaleString()} px</span>
       </div>
       <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${pct}%`, backgroundColor: '#1499cc' }} />
+        <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})`, backgroundColor: '#1499cc' }} />
       </div>
     </div>
   )

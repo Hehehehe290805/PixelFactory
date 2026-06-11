@@ -29,7 +29,7 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
   }, [totalPixelsProduced])
 
   return (
-    <div className="card relative">
+    <div data-tutorial="pixel-counter" className="card relative">
       <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">Output</h3>
 
       {/* px/s with floating +N overlays */}
@@ -61,7 +61,7 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
       <div className="progress-track mb-4">
         <div
           className="progress-fill"
-          style={{ width: `${progress * 100}%`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
+          style={{ transform: `scaleX(${progress})`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
         />
       </div>
 

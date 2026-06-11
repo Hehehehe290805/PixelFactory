@@ -83,14 +83,15 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
           style={{ width: size, height: size, imageRendering: 'pixelated', display: 'block' }}
         />
 
-        {/* Fill ratio indicator */}
+        {/* Fill ratio indicator — uses scaleY instead of height to avoid layout thrash */}
         {fillRatio > 0 && (
           <div
             className="absolute bottom-0 left-0 right-0 pointer-events-none"
             style={{
-              height: `${fillRatio * 100}%`,
+              height: '100%',
               backgroundColor: `${fillHex}10`,
-              transition: 'height 0.2s ease-out',
+              transform: `scaleY(${fillRatio})`,
+              transformOrigin: 'bottom center',
             }}
           />
         )}

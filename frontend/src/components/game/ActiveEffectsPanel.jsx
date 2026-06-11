@@ -171,7 +171,23 @@ export default function ActiveEffectsPanel() {
     prevActiveIds.current = nowActive
   }, [activeList]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const relevant = activeList.filter(s => s.active || s.progress > 0)
+  const relevant = activeList
+    .filter(s => s.active || s.progress > 0)
+    .sort((a, b) => {
+      // Active synergies always rise above in-progress ones
+      if (a.active !== b.active) return a.active ? -1 : 1
+      // Among active: higher level rises higher (Lv.3 > Lv.2 > Lv.1)
+      if (a.active) {
+        const lvDiff = (b.level ?? 1) - (a.level ?? 1)
+        if (lvDiff !== 0) return lvDiff
+        // Same level: higher bonus value rises higher
+        const defA = SYNERGY_DEFS[a.id]
+        const defB = SYNERGY_DEFS[b.id]
+        return (defB?.own ?? 0) - (defA?.own ?? 0)
+      }
+      // Inactive: higher progress fraction rises higher
+      return (b.progress / b.required) - (a.progress / a.required)
+    })
 
   if (relevant.length === 0) return (
     <div data-tutorial="active-effects" className="rounded-xl border-2 border-game-border px-3 py-2" style={{ background: '#0a0a1a' }}>

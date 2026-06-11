@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { useGameStore } from '../../store/gameStore'
-import { MAX_DECK } from '../../lib/constants'
+import { MAX_DECK, BLOCK_TYPES, BLOCK_TYPE_VISUAL } from '../../lib/constants'
 import { getDesignSynergies } from '../../engine/designSynergies'
 import { tooltipPos } from '../../lib/tooltipPos'
 
@@ -231,15 +231,25 @@ export function DesignTooltipBody({ design, cost, blockType }) {
   const synergies = getDesignSynergies(design)
   // blockType prop = the randomly-assigned type for this instance (if known)
   const displayType = blockType ?? design.blockType
+  const typeInfo    = BLOCK_TYPES[displayType]
   return (
     <>
       <DesignMiniThumb design={design} size={72} centered />
       <div className="text-sm font-black text-white leading-tight">{design.name}</div>
       <div className="flex items-center justify-between gap-1">
-        <div className="text-xs text-pixel-blue font-bold capitalize">{displayType.replace(/_/g, ' ')}</div>
+        <div className="text-xs font-bold capitalize" style={{ color: BLOCK_TYPE_VISUAL?.[displayType]?.color ?? '#1499cc' }}>
+          {typeInfo?.label ?? displayType.replace(/_/g, ' ')}
+        </div>
+        <div className="text-xs text-gray-600 capitalize">{design.series}</div>
       </div>
-      <div className="text-xs text-gray-500 capitalize">{design.series}</div>
-      <div className="text-xs text-gray-400 leading-snug">{design.desc}</div>
+
+      {/* Block type effect description */}
+      {typeInfo?.desc && (
+        <div className="text-[10px] text-gray-300 leading-snug py-1 px-1.5 rounded-lg" style={{ background: '#ffffff08' }}>
+          {typeInfo.desc}
+        </div>
+      )}
+
       {synergies.length > 0 && (
         <div className="pt-1 border-t border-game-border">
           <div className="text-[10px] font-black uppercase tracking-wide text-gray-600 mb-1">Synergies</div>
@@ -251,9 +261,11 @@ export function DesignTooltipBody({ design, cost, blockType }) {
       {cost != null && (
         <div className="text-xs text-pixel-yellow font-bold pt-0.5">{cost}px in shop</div>
       )}
-      <div className="text-[9px] text-gray-700 border-t border-game-border pt-1 italic">
-        Block type assigned randomly on purchase
-      </div>
+      {!blockType && (
+        <div className="text-[9px] text-gray-700 border-t border-game-border pt-1 italic">
+          Actual type assigned randomly on purchase
+        </div>
+      )}
     </>
   )
 }

@@ -66,6 +66,7 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
 
   return (
     <div
+      data-tutorial="shop-sidebar"
       className="flex flex-col gap-0 overflow-hidden flex-shrink-0 border-r-2 border-game-border"
       style={{ width: 164, background: '#080816' }}
       onMouseMove={handleMouseMove}

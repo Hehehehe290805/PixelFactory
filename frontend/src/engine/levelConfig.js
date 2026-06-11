@@ -1,18 +1,19 @@
-// Levels 1-10 are hand-crafted tutorials.
+// Levels 1-5 are a comprehensive tutorial phase (no timer, no deck selector).
+// Levels 6-10 are hand-crafted non-tutorial levels.
 // Levels 11-200 are generated via makeLevels().
 
 // Required outputs scaled for new production rate (pixelCount/37.5 px/s per block).
 const HAND_CRAFTED = [
-  { number: 1,  name: 'Tutorial',      requiredOutput: 80,    timeLimitSeconds: 120, tutorial: true },
-  { number: 2,  name: 'Color Lab',     requiredOutput: 50,    timeLimitSeconds: 150 },
-  { number: 3,  name: 'Double Down',   requiredOutput: 100,   timeLimitSeconds: 180 },
-  { number: 4,  name: 'Crossfire',     requiredOutput: 200,   timeLimitSeconds: 200 },
-  { number: 5,  name: 'Color Theory',  requiredOutput: 400,   timeLimitSeconds: 220 },
-  { number: 6,  name: 'Gold Rush',     requiredOutput: 700,   timeLimitSeconds: 240 },
-  { number: 7,  name: 'Set Puzzle',    requiredOutput: 1_200, timeLimitSeconds: 260, hint: 'Try placing designs of the same series in a row for a synergy bonus!' },
-  { number: 8,  name: 'Synergy',       requiredOutput: 2_000, timeLimitSeconds: 280 },
-  { number: 9,  name: 'Dominance',     requiredOutput: 3_500, timeLimitSeconds: 300 },
-  { number: 10, name: 'Full Factory',  requiredOutput: 5_500, timeLimitSeconds: 330 },
+  { number: 1,  name: 'Hello Factory',   requiredOutput: 80,    timeLimitSeconds: 180, tutorial: true, tutorialLevel: 1 },
+  { number: 2,  name: 'The Dashboard',   requiredOutput: 220,   timeLimitSeconds: 200, tutorial: true, tutorialLevel: 2 },
+  { number: 3,  name: 'Open Shop',       requiredOutput: 420,   timeLimitSeconds: 260, tutorial: true, tutorialLevel: 3 },
+  { number: 4,  name: 'Synergy Lab',     requiredOutput: 750,   timeLimitSeconds: 320, tutorial: true, tutorialLevel: 4 },
+  { number: 5,  name: 'Block Workshop',  requiredOutput: 1_100, timeLimitSeconds: 380, tutorial: true, tutorialLevel: 5 },
+  { number: 6,  name: 'Gold Rush',       requiredOutput: 700,   timeLimitSeconds: 240 },
+  { number: 7,  name: 'Set Puzzle',      requiredOutput: 1_200, timeLimitSeconds: 260, hint: 'Try placing designs of the same series in a row for a synergy bonus!' },
+  { number: 8,  name: 'Synergy',         requiredOutput: 2_000, timeLimitSeconds: 280 },
+  { number: 9,  name: 'Dominance',       requiredOutput: 3_500, timeLimitSeconds: 300 },
+  { number: 10, name: 'Full Factory',    requiredOutput: 5_500, timeLimitSeconds: 330 },
 ]
 
 // ── Tier name pools (levels 11-200) ────────────────────────────────────────

@@ -25,6 +25,26 @@ import DeckSelector from '../components/ui/DeckSelector'
 
 const GOLD_BY_STARS = { 3: 100, 2: 70, 1: 50, 0: 0 }
 
+// ── Tutorial helpers ──────────────────────────────────────────────────────────
+function getTutorialStartingBlocks(levelNum) {
+  const ids = {
+    1: ['daisy', 'oak', 'house', 'star'],
+    2: ['daisy', 'cat', 'heart', 'snowflake', 'mountain', 'circle'],
+    3: ['daisy', 'oak'],
+    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'cat', 'house'],
+    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'oak', 'cat'],
+  }[levelNum] ?? ['daisy', 'oak', 'house', 'star']
+  return ids.map(id => createBlock(id)).filter(Boolean)
+}
+
+function getTutorialDeck(levelNum) {
+  return {
+    3: ['daisy', 'oak', 'house', 'star', 'cat'],
+    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus'],
+    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus'],
+  }[levelNum] ?? []
+}
+
 export default function Level() {
   const { levelNumber } = useParams()
   const navigate        = useNavigate()
@@ -51,7 +71,6 @@ export default function Level() {
   const [timeRemaining, setTimeRemaining] = useState(config?.timeLimitSeconds ?? 120)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [resultShown, setResultShown]       = useState(false)
-  const [learningShown, setLearningShown]   = useState(false)
   const [stars, setStars]                   = useState(0)
   const [goldEarned, setGoldEarned]         = useState(0)
   const tabHiddenAtRef = useRef(null)
@@ -71,6 +90,11 @@ export default function Level() {
   // Inventory open state for tutorial
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [tutorialDone, setTutorialDone]   = useState(false)
+
+  // Pre-level learning card (shown between deck selection and gameplay for non-tutorial levels)
+  const preLevelContent = !isTutorial ? getLevelContent(levelNum) : null
+  const [preLevelPhase, setPreLevelPhase] = useState(false)
+  const [preLevelBonus, setPreLevelBonus] = useState(0)
 
   const effectiveRequired = config
     ? (activeGridStyle === 'efficiency'
@@ -105,6 +129,20 @@ export default function Level() {
     setDeckPhase(false)
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)
+
+    // Show pre-level learning card if available
+    if (showLearning && preLevelContent) {
+      setPreLevelPhase(true)
+    }
+  }
+
+  function handlePreLevelContinue(wasCorrect) {
+    if (wasCorrect === true && preLevelContent?.type === 'quiz') {
+      const bonus = Math.floor(effectiveRequired * 0.15)
+      setPreLevelBonus(bonus)
+      addPixels(bonus)
+    }
+    setPreLevelPhase(false)
   }
 
   // Start music when gameplay begins (deck phase ends); stop on unmount
@@ -117,11 +155,14 @@ export default function Level() {
   useEffect(() => {
     if (!config) { navigate('/campaign'); return }
     if (config.tutorial) {
-      // Give the player 4 starter designs to work with before they earn their collection
-      const tutorialBlocks = ['daisy', 'oak', 'house', 'star']
-        .map(id => createBlock(id))
-        .filter(Boolean)
+      const tutorialBlocks = getTutorialStartingBlocks(levelNum)
       startLevel(tutorialBlocks)
+      // Give levels 3-5 a deck so the shop sidebar has designs to sell
+      const tutDeck = getTutorialDeck(levelNum)
+      if (tutDeck.length > 0) {
+        setActiveDeck(tutDeck)
+        setDeckSelection(tutDeck)
+      }
       setTimeRemaining(effectiveTimeLimit)
       setElapsedSeconds(0)
     }
@@ -153,7 +194,7 @@ export default function Level() {
 
   // Timer
   useEffect(() => {
-    if (!config || levelComplete || resultShown || config.tutorial || gamePaused || deckPhase) return
+    if (!config || levelComplete || resultShown || config.tutorial || gamePaused || deckPhase || preLevelPhase) return
     const interval = setInterval(() => {
       setTimeRemaining(t => {
         const dec = gameSpeed
@@ -167,7 +208,7 @@ export default function Level() {
 
   // Tutorial elapsed (no time limit)
   useEffect(() => {
-    if (!config?.tutorial || levelComplete || resultShown || gamePaused || deckPhase) return
+    if (!config?.tutorial || levelComplete || resultShown || gamePaused || deckPhase || preLevelPhase) return
     const interval = setInterval(() => setElapsedSeconds(e => e + 1), 1000)
     return () => clearInterval(interval)
   }, [config, levelComplete, resultShown, gamePaused, deckPhase]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -208,24 +249,22 @@ export default function Level() {
 
   function handleAfterUnlocked() {
     setShowUnlocked(false)
-    const content = getLevelContent(levelNum)
-    if (showLearning && content) setLearningShown(true)
-    else navigate('/campaign')
+    navigate('/campaign')
   }
 
   function handleRetry() {
     setResultShown(false)
-    setLearningShown(false)
     setElapsedSeconds(0)
     setDesignChoicePair(null)
     setUnlockedThisLevel([])
     setShowUnlocked(false)
+    setPreLevelBonus(0)
     resetLevel()
     if (isTutorial) {
-      const tutorialBlocks = ['daisy', 'oak', 'house', 'star']
-        .map(id => createBlock(id))
-        .filter(Boolean)
+      const tutorialBlocks = getTutorialStartingBlocks(levelNum)
       startLevel(tutorialBlocks)
+      const tutDeck = getTutorialDeck(levelNum)
+      if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
     } else {
       setDeckPhase(true)
@@ -235,12 +274,7 @@ export default function Level() {
   function handleStarResultContinue() {
     if (designChoicePair) return
     if (unlockedThisLevel.length > 0) { playDesignUnlock(); setShowUnlocked(true); return }
-    const content = getLevelContent(levelNum)
-    if (showLearning && content) {
-      setLearningShown(true)
-    } else {
-      navigate('/campaign')
-    }
+    navigate('/campaign')
   }
 
   if (!config) return null
@@ -248,7 +282,7 @@ export default function Level() {
 
   return (
     <div className="h-screen bg-game-bg flex flex-col overflow-hidden select-none">
-      {!deckPhase && <ProductionEngine requiredOutput={effectiveRequired} />}
+      {!deckPhase && !preLevelPhase && <ProductionEngine requiredOutput={effectiveRequired} />}
 
       <LevelHUD
         config={{ ...config, timeLimitSeconds: effectiveTimeLimit }}
@@ -258,15 +292,15 @@ export default function Level() {
       />
 
       {/* Main play area */}
-      <div className="flex flex-1 gap-0 overflow-hidden min-h-0">
+      <div className="flex flex-1 gap-0 min-h-0" style={{ overflow: 'hidden' }}>
         <ShopSidebar deckDesignIds={activeDeck} />
 
-        <div className="flex-1 flex items-start justify-center overflow-hidden px-2 py-2" data-tutorial="grid">
+        <div className="flex-1 flex items-start justify-center px-2 pt-5 pb-2" style={{ overflowX: 'hidden', overflowY: 'visible' }} data-tutorial="grid">
           <Grid />
         </div>
 
-        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 240 }}>
-          <PixelCounter requiredOutput={effectiveRequired} />
+        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 284 }}>
+          <PixelCounter requiredOutput={effectiveRequired} preLevelBonus={preLevelBonus} />
           <ActiveEffectsPanel />
         </div>
       </div>
@@ -279,6 +313,7 @@ export default function Level() {
           active={!resultShown && !deckPhase && !tutorialDone}
           inventoryOpen={inventoryOpen}
           onDone={() => setTutorialDone(true)}
+          tutorialLevel={config.tutorialLevel ?? 1}
         />
       )}
 
@@ -326,7 +361,18 @@ export default function Level() {
         <DesignsUnlockedPanel designIds={unlockedThisLevel} onContinue={handleAfterUnlocked} />
       )}
 
-      {resultShown && !designChoicePair && !showUnlocked && !learningShown && (
+      {/* Pre-level learning card (non-tutorial levels only) */}
+      {!deckPhase && preLevelPhase && preLevelContent && (
+        <LearningCard
+          content={preLevelContent}
+          levelNumber={levelNum}
+          mode="pre"
+          bonusAmount={Math.floor(effectiveRequired * 0.15)}
+          onContinue={handlePreLevelContinue}
+        />
+      )}
+
+      {resultShown && !designChoicePair && !showUnlocked && (
         <StarResult
           stars={stars}
           levelConfig={config}
@@ -334,14 +380,6 @@ export default function Level() {
           goldEarned={goldEarned}
           onContinue={handleStarResultContinue}
           onRetry={handleRetry}
-        />
-      )}
-
-      {resultShown && !designChoicePair && !showUnlocked && learningShown && (
-        <LearningCard
-          content={getLevelContent(levelNum)}
-          levelNumber={levelNum}
-          onContinue={() => navigate('/campaign')}
         />
       )}
     </div>

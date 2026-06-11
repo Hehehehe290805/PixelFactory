@@ -25,7 +25,7 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
   const availableSpeeds = ALL_SPEEDS.filter(s => s === 1 || purchasedSpeeds.includes(s))
 
   return (
-    <div className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0 select-none">
+    <div data-tutorial="level-hud" className="bg-game-card border-b-2 border-game-border px-3 py-2 flex items-center gap-3 flex-shrink-0 select-none">
       {/* Pause */}
       <button
         onClick={() => setPaused(true)}
@@ -49,7 +49,7 @@ export default function LevelHUD({ config, effectiveRequired, timeRemaining, ela
         <div className="progress-track">
           <div
             className="progress-fill"
-            style={{ width: `${progress * 100}%`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
+            style={{ transform: `scaleX(${progress})`, backgroundColor: progress >= 1 ? '#00d49a' : '#1499cc' }}
           />
         </div>
       </div>
