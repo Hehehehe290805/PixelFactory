@@ -1,6 +1,6 @@
 // ── Design Synergy Engine ──────────────────────────────────────────────────────
-// All synergies are spatially constrained (zone, row/col, adjacency, radius, distance).
-// No synergy activates from arbitrary grid-wide counts alone.
+// All synergies require spatial proximity — none activate from arbitrary grid-wide counts.
+// Each synergy has 3 levels; bonuses scale at L1×1.0, L2×1.6, L3×2.2.
 
 import { GRID_SIZE } from '../lib/constants'
 
@@ -8,20 +8,12 @@ const ORTHO = [[-1,0],[1,0],[0,-1],[0,1]]
 const DIAG  = [[-1,-1],[-1,1],[1,-1],[1,1]]
 const ALL8  = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 
-// ── Synergy definitions ───────────────────────────────────────────────────────
-// type: 'series_count'    — N unique designs of same series within a maxSpan×maxSpan zone
-//       'exact_count'     — N copies of same design id anywhere on grid
-//       'adjacency_pair'  — two specific design ids placed orthogonally adjacent
-//       'row_series'      — N designs of same series in the same row (duplicates count)
-//       'column_series'   — N designs of same series in the same column (duplicates count)
-//       'long_range'      — two designs at least minDist (Manhattan) cells apart (same design allowed)
-//       'core_radius'     — coreDesignId/coreSeries as anchor + N satellites within radius cells
-//       'block_type_count'— N blocks sharing the same blockType anywhere on grid
-//       'cross_family'    — specific designs AND/OR series from DIFFERENT families all on grid
-//       'meta_synergy'    — requires other synergy IDs to all be currently active (MUST be last)
+// Level bonus multipliers indexed by level (0=inactive)
+const LEVEL_MULTS = [0, 1.0, 1.6, 2.2]
 
+// ── Synergy definitions ───────────────────────────────────────────────────────
 export const SYNERGY_DEFS = {
-  // ── Series count synergies — zone-constrained, unique designs required ─────────
+  // ── Series count — zone-constrained, unique designs required ─────────────────
   GARDEN: {
     name: 'Garden', type: 'series_count', series: 'flowers', required: 7, maxSpan: 7,
     own: 0.70, radiation: { type: 'ortho', amount: 0.20 },
@@ -83,7 +75,7 @@ export const SYNERGY_DEFS = {
     desc: '5 unique abstract designs in a 5×5 zone → +90%; radiates +22% all 8 dirs',
   },
 
-  // ── Adjacency pair synergies — specific design IDs only ──────────────────────
+  // ── Adjacency pair synergies ──────────────────────────────────────────────────
   SUN_AND_MOON: {
     name: 'Sun & Moon', type: 'adjacency_pair',
     designA: 'sun', designB: 'moon',
@@ -145,80 +137,80 @@ export const SYNERGY_DEFS = {
     desc: 'Bee adjacent to Daisy → both +100%; spreads +16% ortho',
   },
 
-  // ── Row synergies (N same-series in one row, duplicates count) ──────────────
+  // ── Row synergies (duplicates count) ─────────────────────────────────────────
   FLOWER_ROW: {
     name: 'Flower Row', type: 'row_series', series: 'flowers', required: 5,
     own: 0.80, radiation: null,
-    desc: '5 flower designs in same row → +80% each in that row',
+    desc: '5 flower designs in same row → +80% each',
   },
   BUILDING_ROW: {
     name: 'City Block', type: 'row_series', series: 'buildings', required: 5,
     own: 0.90, radiation: null,
-    desc: '5 building designs in same row → +90% each in that row',
+    desc: '5 building designs in same row → +90% each',
   },
   ANIMAL_ROW: {
     name: 'Animal Kingdom', type: 'row_series', series: 'animals', required: 5,
     own: 0.75, radiation: { type: 'ortho', amount: 0.20 },
-    desc: '5 animal designs in same row → +75% each; spreads +20% to cells above/below',
+    desc: '5 animal designs in same row → +75% each; spreads +20% above/below',
   },
   SPACE_ROW: {
     name: 'Orbital Array', type: 'row_series', series: 'space', required: 5,
     own: 1.00, radiation: { type: 'all8', amount: 0.20 },
-    desc: '5 space designs in same row → +100% each; radiates +20% to adjacent cells',
+    desc: '5 space designs in same row → +100% each; radiates +20%',
   },
   SHAPE_ROW: {
     name: 'Pattern Matrix', type: 'row_series', series: 'shapes', required: 4,
     own: 0.70, radiation: null,
-    desc: '4 shape designs in same row → +70% each in that row',
+    desc: '4 shape designs in same row → +70% each',
   },
   WEATHER_ROW: {
     name: 'Storm Line', type: 'row_series', series: 'weather', required: 4,
     own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '4 weather designs in same row → +75% each; spreads +18% to cells above/below',
+    desc: '4 weather designs in same row → +75% each; spreads +18%',
   },
   TREE_ROW: {
     name: 'Tree Line', type: 'row_series', series: 'trees', required: 4,
     own: 0.70, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '4 tree designs in same row → +70% each; spreads +18% to cells above/below',
+    desc: '4 tree designs in same row → +70% each; spreads +18%',
   },
 
-  // ── Column synergies (N same-series in one column, duplicates count) ──────────
+  // ── Column synergies (duplicates count) ──────────────────────────────────────
   FLOWER_COLUMN: {
     name: 'Flower Column', type: 'column_series', series: 'flowers', required: 5,
     own: 0.80, radiation: null,
-    desc: '5 flower designs in same column → +80% each in that column',
+    desc: '5 flower designs in same column → +80% each',
   },
   BUILDING_COLUMN: {
     name: 'Skyscraper Row', type: 'column_series', series: 'buildings', required: 5,
     own: 0.90, radiation: null,
-    desc: '5 building designs in same column → +90% each in that column',
+    desc: '5 building designs in same column → +90% each',
   },
   SPACE_COLUMN: {
     name: 'Launch Pad', type: 'column_series', series: 'space', required: 5,
     own: 1.00, radiation: { type: 'all8', amount: 0.20 },
-    desc: '5 space designs in same column → +100% each; radiates +20% to adjacent cells',
+    desc: '5 space designs in same column → +100% each; radiates +20%',
   },
   ANIMAL_COLUMN: {
     name: 'Migration Path', type: 'column_series', series: 'animals', required: 4,
     own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '4 animal designs in same column → +75% each; spreads +18% to cells left/right',
+    desc: '4 animal designs in same column → +75% each; spreads +18%',
   },
   TREE_COLUMN: {
     name: 'Deep Forest', type: 'column_series', series: 'trees', required: 4,
     own: 0.70, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '4 tree designs in same column → +70% each; spreads +18% to cells left/right',
+    desc: '4 tree designs in same column → +70% each; spreads +18%',
   },
 
-  // ── Long-range synergies (blocks ≥ minDist Manhattan distance apart) ──────────
+  // ── Long-range (same design allowed) ─────────────────────────────────────────
   DISTANT_STARS: {
     name: 'Distant Stars', type: 'long_range', series: 'space', minDist: 7,
     own: 0.90, radiation: { type: 'all8', amount: 0.20 },
-    desc: '2 space designs ≥7 cells apart → both +90%; radiates +20% nearby',
+    desc: '2 space designs ≥7 cells apart → both +90%; radiates +20%',
   },
   ANTIPODES: {
     name: 'Antipodes', type: 'long_range', series: 'landscapes', minDist: 8,
     own: 0.85, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '2 landscape designs ≥8 cells apart → both +85%; spreads +18% ortho',
+    desc: '2 landscape designs ≥8 cells apart → both +85%; spreads +18%',
   },
   POLAR_WINDS: {
     name: 'Polar Winds', type: 'long_range',
@@ -229,25 +221,25 @@ export const SYNERGY_DEFS = {
   TRANSCONTINENTAL: {
     name: 'Transcontinental', type: 'long_range', series: 'buildings', minDist: 7,
     own: 0.80, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '2 building designs ≥7 cells apart → both +80%; spreads +18% ortho',
+    desc: '2 building designs ≥7 cells apart → both +80%; spreads +18%',
   },
   WILD_MIGRATION: {
     name: 'Wild Migration', type: 'long_range', series: 'animals', minDist: 6,
     own: 0.85, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '2 animal designs ≥6 cells apart → both +85%; spreads +18% ortho',
+    desc: '2 animal designs ≥6 cells apart → both +85%; spreads +18%',
   },
   STAR_SCATTER: {
     name: 'Star Scatter', type: 'long_range', series: 'celestial', minDist: 8,
     own: 1.05, radiation: { type: 'all8', amount: 0.22 },
-    desc: '2 celestial designs ≥8 cells apart → both +105%; radiates +22% all around',
+    desc: '2 celestial designs ≥8 cells apart → both +105%; radiates +22%',
   },
   ABSTRACT_SPREAD: {
     name: 'Abstract Spread', type: 'long_range', series: 'abstract', minDist: 6,
     own: 0.80, radiation: { type: 'all8', amount: 0.20 },
-    desc: '2 abstract designs ≥6 cells apart → both +80%; radiates +20% nearby',
+    desc: '2 abstract designs ≥6 cells apart → both +80%; radiates +20%',
   },
 
-  // ── Core-radius synergies (anchor block + N satellites within radius) ──────────
+  // ── Core-radius (satellites can repeat) ──────────────────────────────────────
   SOLAR_SYSTEM: {
     name: 'Solar System', type: 'core_radius',
     coreDesignId: 'sun', satelliteSeries: 'space',
@@ -284,55 +276,55 @@ export const SYNERGY_DEFS = {
     desc: 'Any flower as core + 4 other flowers within 2 cells → core +120%, ring +70%',
   },
 
-  // ── Block-type synergies (N blocks sharing the same blockType) ────────────────
+  // ── Block-type synergies ──────────────────────────────────────────────────────
   DOUBLE_DOWN: {
     name: 'Double Down', type: 'block_type_count', blockType: 'doubler', required: 3,
     own: 0.50, radiation: { type: 'ortho', amount: 0.16 },
-    desc: '3 doubler blocks → +50% each; spreads +16% to ortho neighbors',
+    desc: '3 doubler blocks → +50% each; spreads +16% ortho',
   },
   REACTOR_NETWORK: {
     name: 'Reactor Network', type: 'block_type_count', blockType: 'reactor', required: 2,
     own: 0.60, radiation: { type: 'all8', amount: 0.20 },
-    desc: '2 reactor blocks → +60% each; radiates +20% in all 8 directions',
+    desc: '2 reactor blocks → +60% each; radiates +20% all 8 dirs',
   },
   ECHO_CHAMBER: {
     name: 'Echo Chamber', type: 'block_type_count', blockType: 'echo', required: 3,
     own: 0.45, radiation: { type: 'ortho', amount: 0.15 },
-    desc: '3 echo blocks → +45% each; spreads +15% to ortho neighbors',
+    desc: '3 echo blocks → +45% each; spreads +15% ortho',
   },
   SPECIALIST: {
     name: 'Specialist', type: 'block_type_count', required: 5,
     own: 0.90, radiation: { type: 'all8', amount: 0.20 },
-    desc: '5 blocks of the same effect type → +90% each; radiates +20% in all directions',
+    desc: '5 blocks of same effect type → +90% each; radiates +20%',
   },
 
-  // ── Cross-family synergies ─────────────────────────────────────────────────────
+  // ── Cross-family — all pieces must be within maxSpan×maxSpan zone ─────────────
   ORCHARD: {
-    name: 'Orchard', type: 'cross_family',
+    name: 'Orchard', type: 'cross_family', maxSpan: 5,
     requires: [{ designId: 'apple' }, { series: 'trees', count: 1 }],
     own: 0.80, radiation: { type: 'ortho', amount: 0.18 },
     reward: { type: 'gold', amount: 40 },
-    desc: 'Apple + any tree design on grid → +80%; spreads +18% ortho. Reward: +40 gold',
+    desc: 'Apple + any tree in a 5×5 zone → +80%; spreads +18% ortho. Reward: +40 gold',
   },
   CHRISTMAS_TREE: {
-    name: 'Christmas Tree', type: 'cross_family',
+    name: 'Christmas Tree', type: 'cross_family', maxSpan: 4,
     requires: [{ designId: 'star' }, { designId: 'snowflake' }, { series: 'trees', count: 1 }],
     own: 1.00, radiation: { type: 'all8', amount: 0.20 },
     reward: { type: 'random_block' },
-    desc: 'Star + Snowflake + any tree → +100%; radiates +20%. Reward: bonus block',
+    desc: 'Star + Snowflake + any tree in a 4×4 zone → +100%; radiates +20%. Reward: bonus block',
   },
   SUNBLOSSOM: {
-    name: 'Sunblossom', type: 'cross_family',
+    name: 'Sunblossom', type: 'cross_family', maxSpan: 5,
     requires: [{ designId: 'sun' }, { series: 'flowers', count: 3 }],
     own: 0.90, radiation: { type: 'ortho', amount: 0.20 },
     reward: { type: 'pixels', amount: 250 },
-    desc: 'Sun + 3 unique flower designs on grid → +90%; spreads +20% ortho. Reward: +250px',
+    desc: 'Sun + 3 unique flowers in a 5×5 zone → +90%; spreads +20% ortho. Reward: +250px',
   },
   DUNGEON_KEEPER: {
-    name: 'Dungeon Keeper', type: 'cross_family',
+    name: 'Dungeon Keeper', type: 'cross_family', maxSpan: 5,
     requires: [{ designId: 'dragon' }, { series: 'buildings', count: 2 }],
     own: 0.95, radiation: { type: 'diag', amount: 0.20 },
-    desc: 'Dragon + 2 building designs on grid → +95%; spreads +20% diagonally',
+    desc: 'Dragon + 2 buildings in a 5×5 zone → +95%; spreads +20% diagonally',
   },
   HOWLING_MOON: {
     name: 'Howling Moon', type: 'cross_family',
@@ -350,35 +342,35 @@ export const SYNERGY_DEFS = {
     desc: 'Phoenix adjacent to Volcano → both +120%; radiates +22%. Reward: +500px',
   },
   ALIEN_CITY: {
-    name: 'Alien City', type: 'cross_family',
+    name: 'Alien City', type: 'cross_family', maxSpan: 6,
     requires: [{ series: 'space', count: 2 }, { series: 'buildings', count: 3 }],
     own: 0.85, radiation: { type: 'all8', amount: 0.18 },
-    desc: '2 space + 3 building designs on grid → +85%; radiates +18% all around',
+    desc: '2 space + 3 buildings in a 6×6 zone → +85%; radiates +18%',
   },
   CELESTIAL_GARDEN: {
-    name: 'Celestial Garden', type: 'cross_family',
+    name: 'Celestial Garden', type: 'cross_family', maxSpan: 5,
     requires: [{ series: 'celestial', count: 2 }, { series: 'flowers', count: 2 }],
     own: 0.80, radiation: { type: 'all8', amount: 0.18 },
     reward: { type: 'gold', amount: 25 },
-    desc: '2 celestial + 2 flower designs on grid → +80%; radiates +18%. Reward: +25 gold',
+    desc: '2 celestial + 2 flowers in a 5×5 zone → +80%; radiates +18%. Reward: +25 gold',
   },
   WINTER_PEAK: {
-    name: 'Winter Peak', type: 'cross_family',
+    name: 'Winter Peak', type: 'cross_family', maxSpan: 5,
     requires: [{ designId: 'mountain' }, { series: 'weather', count: 2 }],
     own: 0.90, radiation: { type: 'ortho', amount: 0.18 },
-    desc: 'Mountain + 2 weather designs on grid → +90%; spreads +18% ortho',
+    desc: 'Mountain + 2 weather designs in a 5×5 zone → +90%; spreads +18% ortho',
   },
   TIDE_POOL: {
-    name: 'Tide Pool', type: 'cross_family',
+    name: 'Tide Pool', type: 'cross_family', maxSpan: 6,
     requires: [{ series: 'animals', count: 2 }, { series: 'landscapes', count: 2 }],
     own: 0.75, radiation: { type: 'ortho', amount: 0.18 },
-    desc: '2 animal + 2 landscape designs on grid → +75%; spreads +18% ortho',
+    desc: '2 animals + 2 landscapes in a 6×6 zone → +75%; spreads +18% ortho',
   },
   STORM_CASTLE: {
-    name: 'Storm Castle', type: 'cross_family',
+    name: 'Storm Castle', type: 'cross_family', maxSpan: 5,
     requires: [{ series: 'weather', count: 2 }, { series: 'buildings', count: 2 }],
     own: 0.80, radiation: { type: 'diag', amount: 0.18 },
-    desc: '2 weather + 2 building designs on grid → +80%; spreads +18% diagonally',
+    desc: '2 weather + 2 buildings in a 5×5 zone → +80%; spreads +18% diagonally',
   },
 
   // ── Meta-synergies — MUST be defined last ─────────────────────────────────────
@@ -429,6 +421,49 @@ export const TYPE_LABELS = {
   meta_synergy:    'Meta',
 }
 
+// ── Level threshold helpers ───────────────────────────────────────────────────
+// levelProgress is the metric used to determine which level is achieved.
+
+function getL2(def) {
+  switch (def.type) {
+    case 'series_count':     return (def.required ?? 1) + 2
+    case 'adjacency_pair':   return 2
+    case 'row_series':       return (def.required ?? 1) + 2
+    case 'column_series':    return (def.required ?? 1) + 2
+    case 'long_range':       return 4
+    case 'core_radius':      return (def.requiredSatellites ?? 1) + 1
+    case 'block_type_count': return (def.required ?? 1) + 2
+    case 'cross_family': {
+      const total = (def.requires ?? []).reduce((s, r) => s + (r.count ?? 1), 0)
+      return total <= 3 ? 3 : 2
+    }
+    default: return Infinity
+  }
+}
+
+function getL3(def) {
+  switch (def.type) {
+    case 'series_count':     return (def.required ?? 1) + 4
+    case 'adjacency_pair':   return 3
+    case 'row_series':       return (def.required ?? 1) + 4
+    case 'column_series':    return (def.required ?? 1) + 4
+    case 'long_range':       return 6
+    case 'core_radius':      return (def.requiredSatellites ?? 1) + 2
+    case 'block_type_count': return (def.required ?? 1) + 4
+    case 'cross_family': {
+      const total = (def.requires ?? []).reduce((s, r) => s + (r.count ?? 1), 0)
+      return total <= 3 ? 5 : 3
+    }
+    default: return Infinity
+  }
+}
+
+function computeLevel(levelProgress, l2, l3) {
+  if (levelProgress >= l3) return 3
+  if (levelProgress >= l2) return 2
+  return 1
+}
+
 // ── Design synergy lookup (for tooltips) ──────────────────────────────────────
 export function getDesignSynergies(design) {
   const names = []
@@ -473,10 +508,10 @@ function getDefPriority(def) {
 // ── Detection ─────────────────────────────────────────────────────────────────
 
 /**
- * Main function. Returns:
- *   synergyMap[r][c] = id of highest-value active synergy affecting that cell (or null)
- *   activeList = all synergy states for the ActiveEffectsPanel
- *   bonusMap[r][c] = total additive output bonus for that cell (own + radiation received)
+ * Returns:
+ *   synergyMap[r][c]  — id of highest-value active synergy for that cell (or null)
+ *   bonusMap[r][c]    — total additive output bonus for that cell
+ *   activeList        — synergy states for ActiveEffectsPanel, each with { level, l2, l3 }
  */
 export function buildSynergyData(grid, neuralGridStyle = false) {
   const threshold = neuralGridStyle ? -1 : 0
@@ -508,7 +543,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   const synergyMap = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null))
   const activeList = []
 
-  function applyRadiation(r, c, def, excludeKeys = null) {
+  function applyRadiation(r, c, def, mult, excludeKeys = null) {
     if (!def.radiation) return
     const dirs = def.radiation.type === 'ortho' ? ORTHO
                : def.radiation.type === 'diag'  ? DIAG : ALL8
@@ -516,7 +551,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       const nr = r + dr, nc = c + dc
       if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE || !grid[nr][nc]) continue
       if (excludeKeys && excludeKeys.has(`${nr},${nc}`)) continue
-      bonusMap[nr][nc] += def.radiation.amount
+      bonusMap[nr][nc] += def.radiation.amount * mult
     }
   }
 
@@ -528,70 +563,71 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
     }
   }
 
+  function pushEntry(synergyId, def, active, progress, levelProgress, required) {
+    const l2 = getL2(def)
+    const l3 = getL3(def)
+    const level = active ? computeLevel(levelProgress, l2, l3) : 0
+    activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress, required, level, l2, l3, reward: def.reward ?? null })
+    return level
+  }
+
   for (const [synergyId, def] of Object.entries(SYNERGY_DEFS)) {
     const required = (def.required ?? 0) + threshold
 
-    // ── Series count — zone-constrained sliding window, unique designs required ─
+    // ── Series count — zone sliding window, unique designs required ────────────
     if (def.type === 'series_count') {
-      let bestCount = 0
+      let bestUnique = 0
       const activeCellKeys = new Set()
 
-      if (def.maxSpan) {
-        const span = def.maxSpan
-        for (let r0 = 0; r0 + span <= GRID_SIZE; r0++) {
-          for (let c0 = 0; c0 + span <= GRID_SIZE; c0++) {
-            const inZone = blocks.filter(b =>
-              b.series === def.series &&
-              b.r >= r0 && b.r < r0 + span &&
-              b.c >= c0 && b.c < c0 + span
-            )
-            const uniqueInZone = new Set(inZone.map(b => b.designId)).size
-            bestCount = Math.max(bestCount, uniqueInZone)
-            if (uniqueInZone >= required) {
-              for (const { r, c } of inZone) activeCellKeys.add(`${r},${c}`)
-            }
-          }
-        }
-      } else {
-        bestCount = uCount(def.series)
-        if (bestCount >= required) {
-          for (const { r, c, series } of blocks) {
-            if (series === def.series) activeCellKeys.add(`${r},${c}`)
+      const span = def.maxSpan ?? GRID_SIZE
+      for (let r0 = 0; r0 + span <= GRID_SIZE; r0++) {
+        for (let c0 = 0; c0 + span <= GRID_SIZE; c0++) {
+          const inZone = blocks.filter(b =>
+            b.series === def.series &&
+            b.r >= r0 && b.r < r0 + span &&
+            b.c >= c0 && b.c < c0 + span
+          )
+          const uniqueInZone = new Set(inZone.map(b => b.designId)).size
+          if (uniqueInZone > bestUnique) bestUnique = uniqueInZone
+          if (uniqueInZone >= required) {
+            for (const { r, c } of inZone) activeCellKeys.add(`${r},${c}`)
           }
         }
       }
 
       const active = activeCellKeys.size > 0
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: bestCount, required: def.required, reward: def.reward ?? null })
+      const level  = pushEntry(synergyId, def, active, bestUnique, bestUnique, def.required)
       if (!active) continue
+      const mult = LEVEL_MULTS[level]
 
       for (const key of activeCellKeys) {
         const [r, c] = key.split(',').map(Number)
-        bonusMap[r][c] += def.own
+        bonusMap[r][c] += def.own * mult
         tryAssignMap(r, c, synergyId, def)
-        applyRadiation(r, c, def)
+        applyRadiation(r, c, def, mult)
       }
     }
 
     // ── Exact count ───────────────────────────────────────────────────────────
     else if (def.type === 'exact_count') {
-      const count = designCount[def.designId] ?? 0
+      const count  = designCount[def.designId] ?? 0
       const active = count >= required
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: count, required: def.required, reward: def.reward ?? null })
+      const level  = pushEntry(synergyId, def, active, count, count, def.required)
       if (!active) continue
+      const mult = LEVEL_MULTS[level]
 
       for (const { r, c, designId } of blocks) {
         if (designId !== def.designId) continue
-        bonusMap[r][c] += def.own
+        bonusMap[r][c] += def.own * mult
         tryAssignMap(r, c, synergyId, def)
-        applyRadiation(r, c, def)
+        applyRadiation(r, c, def, mult)
       }
     }
 
-    // ── Adjacency pair ────────────────────────────────────────────────────────
+    // ── Adjacency pair — levelProgress = number of valid adjacent pairs ────────
     else if (def.type === 'adjacency_pair') {
       const qualifyingCells = new Set()
-      let anyFound = false
+      let pairCount = 0
 
       for (const a of blocks) {
         if (a.designId !== def.designA) continue
@@ -600,69 +636,77 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           if (Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1) {
             qualifyingCells.add(`${a.r},${a.c}`)
             qualifyingCells.add(`${b.r},${b.c}`)
-            anyFound = true
+            pairCount++
           }
         }
       }
 
-      const aCount = Math.min(designCount[def.designA] ?? 0, 1)
-      const bCount = Math.min(designCount[def.designB] ?? 0, 1)
-      const progress = anyFound ? 2 : aCount + bCount
+      const anyFound = pairCount > 0
+      const aCount   = Math.min(designCount[def.designA] ?? 0, 1)
+      const bCount   = Math.min(designCount[def.designB] ?? 0, 1)
+      const progress = anyFound ? pairCount + 1 : aCount + bCount  // offset so 1 pair shows as 2/2
 
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: anyFound, progress, required: 2, reward: def.reward ?? null })
+      const level = pushEntry(synergyId, def, anyFound, anyFound ? 2 : progress, pairCount, 1)
       if (!anyFound) continue
+      const mult = LEVEL_MULTS[level]
 
       for (const key of qualifyingCells) {
         const [r, c] = key.split(',').map(Number)
-        bonusMap[r][c] += def.own
+        bonusMap[r][c] += def.own * mult
         tryAssignMap(r, c, synergyId, def)
-        applyRadiation(r, c, def)
+        applyRadiation(r, c, def, mult)
       }
     }
 
-    // ── Row series — duplicates count, radiation stays outside qualifying row ──
+    // ── Row series — duplicates count, levelProgress = count in best row ───────
     else if (def.type === 'row_series') {
-      let totalActive = 0
+      let totalActive   = 0
       let maxCountInRow = 0
       for (let r = 0; r < GRID_SIZE; r++) {
-        const rowCells = blocks.filter(b => b.r === r && b.series === def.series)
+        const rowCells   = blocks.filter(b => b.r === r && b.series === def.series)
         const countInRow = rowCells.length
-        maxCountInRow = Math.max(maxCountInRow, countInRow)
+        if (countInRow > maxCountInRow) maxCountInRow = countInRow
         if (countInRow >= required) {
           totalActive += countInRow
           const rowKeys = new Set(rowCells.map(({ r: cr, c: cc }) => `${cr},${cc}`))
+          const level   = computeLevel(countInRow, getL2(def), getL3(def))
+          const mult    = LEVEL_MULTS[level]
           for (const { c } of rowCells) {
-            bonusMap[r][c] += def.own
+            bonusMap[r][c] += def.own * mult
             tryAssignMap(r, c, synergyId, def)
-            applyRadiation(r, c, def, rowKeys)
+            applyRadiation(r, c, def, mult, rowKeys)
           }
         }
       }
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxCountInRow, required: def.required, reward: def.reward ?? null })
+      const active = totalActive > 0
+      pushEntry(synergyId, def, active, maxCountInRow, maxCountInRow, def.required)
     }
 
-    // ── Column series — duplicates count, radiation stays outside qualifying col ─
+    // ── Column series — duplicates count ─────────────────────────────────────
     else if (def.type === 'column_series') {
-      let totalActive = 0
+      let totalActive   = 0
       let maxCountInCol = 0
       for (let c = 0; c < GRID_SIZE; c++) {
-        const colCells = blocks.filter(b => b.c === c && b.series === def.series)
+        const colCells   = blocks.filter(b => b.c === c && b.series === def.series)
         const countInCol = colCells.length
-        maxCountInCol = Math.max(maxCountInCol, countInCol)
+        if (countInCol > maxCountInCol) maxCountInCol = countInCol
         if (countInCol >= required) {
           totalActive += countInCol
           const colKeys = new Set(colCells.map(({ r: cr, c: cc }) => `${cr},${cc}`))
+          const level   = computeLevel(countInCol, getL2(def), getL3(def))
+          const mult    = LEVEL_MULTS[level]
           for (const { r } of colCells) {
-            bonusMap[r][c] += def.own
+            bonusMap[r][c] += def.own * mult
             tryAssignMap(r, c, synergyId, def)
-            applyRadiation(r, c, def, colKeys)
+            applyRadiation(r, c, def, mult, colKeys)
           }
         }
       }
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: totalActive > 0, progress: maxCountInCol, required: def.required, reward: def.reward ?? null })
+      const active = totalActive > 0
+      pushEntry(synergyId, def, active, maxCountInCol, maxCountInCol, def.required)
     }
 
-    // ── Long-range (≥ minDist Manhattan distance apart, same design allowed) ──
+    // ── Long-range — same design allowed; levelProgress = qualifying blocks count
     else if (def.type === 'long_range') {
       const qualifyingCells = new Set()
       let anyFound = false
@@ -696,28 +740,31 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         }
       }
 
-      const qualifyingCount = def.series
+      const qualCount    = def.series
         ? (seriesCount[def.series] ?? 0)
         : Math.min(blocks.filter(b => def.designA ? b.designId === def.designA : b.series === def.seriesA).length, 1)
           + Math.min(blocks.filter(b => def.designB ? b.designId === def.designB : b.series === def.seriesB).length, 1)
+      const levelProgress = anyFound ? qualifyingCells.size : 0
+      const progress      = anyFound ? 2 : Math.min(qualCount, 1)
 
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: anyFound, progress: anyFound ? 2 : Math.min(qualifyingCount, 1), required: 2, reward: def.reward ?? null })
+      const level = pushEntry(synergyId, def, anyFound, progress, levelProgress, 2)
       if (!anyFound) continue
+      const mult = LEVEL_MULTS[level]
 
       for (const key of qualifyingCells) {
         const [r, c] = key.split(',').map(Number)
-        bonusMap[r][c] += def.own
+        bonusMap[r][c] += def.own * mult
         tryAssignMap(r, c, synergyId, def)
-        applyRadiation(r, c, def)
+        applyRadiation(r, c, def, mult)
       }
     }
 
-    // ── Core-radius (anchor + N satellites within radius, duplicates count) ────
+    // ── Core-radius — satellites can repeat; levelProgress = satCount ──────────
     else if (def.type === 'core_radius') {
       const coreCells      = new Set()
       const satelliteCells = new Set()
       let anyFound     = false
-      let bestProgress = 0
+      let bestSatCount = 0
 
       const satRequired = def.requiredSatellites + threshold
 
@@ -734,8 +781,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         })
 
         const satCount = nearSatellites.length
-        bestProgress = Math.max(bestProgress, satCount)
-
+        if (satCount > bestSatCount) bestSatCount = satCount
         if (satCount >= satRequired) {
           anyFound = true
           coreCells.add(`${core.r},${core.c}`)
@@ -743,20 +789,20 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         }
       }
 
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: anyFound, progress: bestProgress, required: def.requiredSatellites, reward: def.reward ?? null })
+      const level = pushEntry(synergyId, def, anyFound, bestSatCount, bestSatCount, def.requiredSatellites)
       if (!anyFound) continue
+      const mult = LEVEL_MULTS[level]
 
       for (const key of coreCells) {
         const [r, c] = key.split(',').map(Number)
-        bonusMap[r][c] += def.ownCore
+        bonusMap[r][c] += def.ownCore * mult
         tryAssignMap(r, c, synergyId, def)
-        applyRadiation(r, c, def)
+        applyRadiation(r, c, def, mult)
       }
       for (const key of satelliteCells) {
-        // Skip cells that are also cores — they already received ownCore
         if (coreCells.has(key)) continue
         const [r, c] = key.split(',').map(Number)
-        bonusMap[r][c] += def.ownSatellite
+        bonusMap[r][c] += def.ownSatellite * mult
         tryAssignMap(r, c, synergyId, def)
       }
     }
@@ -766,16 +812,17 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       if (def.blockType) {
         const count  = typeCount[def.blockType] ?? 0
         const active = count >= required
-        activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: count, required: def.required, reward: def.reward ?? null })
+        const level  = pushEntry(synergyId, def, active, count, count, def.required)
         if (!active) continue
+        const mult = LEVEL_MULTS[level]
         for (const { r, c, blockType } of blocks) {
           if (blockType !== def.blockType) continue
-          bonusMap[r][c] += def.own
+          bonusMap[r][c] += def.own * mult
           tryAssignMap(r, c, synergyId, def)
-          applyRadiation(r, c, def)
+          applyRadiation(r, c, def, mult)
         }
       } else {
-        // SPECIALIST: all block types that independently reach the threshold get the bonus
+        // SPECIALIST
         let bestCount = 0
         const qualifyingTypes = []
         for (const [bt, cnt] of Object.entries(typeCount)) {
@@ -783,42 +830,39 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
           if (cnt >= required) qualifyingTypes.push(bt)
         }
         const active = qualifyingTypes.length > 0
-        activeList.push({ id: synergyId, name: def.name, desc: def.desc, active, progress: bestCount, required: def.required, reward: def.reward ?? null })
+        const level  = pushEntry(synergyId, def, active, bestCount, bestCount, def.required)
         if (!active) continue
+        const mult = LEVEL_MULTS[level]
         for (const { r, c, blockType } of blocks) {
           if (!qualifyingTypes.includes(blockType)) continue
-          bonusMap[r][c] += def.own
+          bonusMap[r][c] += def.own * mult
           tryAssignMap(r, c, synergyId, def)
-          applyRadiation(r, c, def)
+          applyRadiation(r, c, def, mult)
         }
       }
     }
 
-    // ── Cross-family ──────────────────────────────────────────────────────────
+    // ── Cross-family — zone-based when maxSpan present ────────────────────────
     else if (def.type === 'cross_family') {
-      const requireResults = def.requires.map(req => {
-        if (req.designId) {
-          return (designCount[req.designId] ?? 0) >= 1
-        } else if (req.series) {
-          return uCount(req.series) >= (req.count ?? 1)
-        }
-        return false
-      })
-      const progress   = requireResults.filter(Boolean).length
-      const totalPieces = def.requires.length
-      let allMet = requireResults.every(Boolean)
-
-      if (allMet && def.requireAdjacent) {
+      if (def.requireAdjacent) {
+        // Adjacency-constrained cross_family — existing logic
         const designIdReqs = def.requires.filter(r => r.designId).map(r => r.designId)
-        if (designIdReqs.length === 2) {
+        let allMet = def.requires.every(req => req.designId ? (designCount[req.designId] ?? 0) >= 1 : uCount(req.series) >= (req.count ?? 1))
+        let adjacentFound = false
+        const qualifyingCells = new Set()
+
+        if (allMet && designIdReqs.length === 2) {
           const [dA, dB] = designIdReqs
-          let adjacentFound = false
           outer: for (const a of blocks) {
             if (a.designId !== dA) continue
             for (const [dr, dc] of ORTHO) {
               const nr = a.r + dr, nc = a.c + dc
               if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-                if (grid[nr][nc]?.designId === dB) { adjacentFound = true; break outer }
+                if (grid[nr][nc]?.designId === dB) {
+                  adjacentFound = true
+                  qualifyingCells.add(`${a.r},${a.c}`)
+                  qualifyingCells.add(`${nr},${nc}`)
+                }
               }
             }
           }
@@ -826,54 +870,117 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
         } else {
           allMet = false
         }
-      }
 
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: allMet, progress, required: totalPieces, reward: def.reward ?? null })
-      if (!allMet) continue
+        const aCount    = Math.min(designCount[designIdReqs[0]] ?? 0, 1)
+        const bCount    = Math.min(designCount[designIdReqs[1]] ?? 0, 1)
+        const pairCount = qualifyingCells.size / 2
+        const progress  = allMet ? 2 : aCount + bCount
 
-      if (def.requireAdjacent) {
-        const designIdReqs = def.requires.filter(r => r.designId).map(r => r.designId)
-        const [dA, dB] = designIdReqs
-        const qualifyingCells = new Set()
-        for (const a of blocks) {
-          if (a.designId !== dA) continue
-          for (const [dr, dc] of ORTHO) {
-            const nr = a.r + dr, nc = a.c + dc
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-              if (grid[nr][nc]?.designId === dB) {
-                qualifyingCells.add(`${a.r},${a.c}`)
-                qualifyingCells.add(`${nr},${nc}`)
+        const level = pushEntry(synergyId, def, allMet, progress, pairCount, 2)
+        if (!allMet) continue
+        const mult = LEVEL_MULTS[level]
+
+        for (const key of qualifyingCells) {
+          const [r, c] = key.split(',').map(Number)
+          bonusMap[r][c] += def.own * mult
+          tryAssignMap(r, c, synergyId, def)
+          applyRadiation(r, c, def, mult)
+        }
+      } else if (def.maxSpan) {
+        // Zone-constrained cross_family
+        // levelCount in a zone = min over all requirements of floor(zoneCount / baseCount)
+        const l2 = getL2(def)
+        const l3 = getL3(def)
+        let bestLevelCount = 0
+        let bestZoneKeys   = null
+
+        const span = def.maxSpan
+        for (let r0 = 0; r0 + span <= GRID_SIZE; r0++) {
+          for (let c0 = 0; c0 + span <= GRID_SIZE; c0++) {
+            const zoneBlocks = blocks.filter(b =>
+              b.r >= r0 && b.r < r0 + span &&
+              b.c >= c0 && b.c < c0 + span
+            )
+
+            // Compute min scaled count for each requirement
+            let minScaled = Infinity
+            for (const req of def.requires) {
+              let zoneCount = 0
+              if (req.designId) {
+                zoneCount = zoneBlocks.filter(b => b.designId === req.designId).length
+              } else if (req.series) {
+                zoneCount = zoneBlocks.filter(b => b.series === req.series).length
               }
+              const baseCount = req.count ?? 1
+              minScaled = Math.min(minScaled, Math.floor(zoneCount / baseCount))
+            }
+            if (minScaled === Infinity) minScaled = 0
+
+            if (minScaled > bestLevelCount) {
+              bestLevelCount = minScaled
+              // Collect qualifying cells for this zone
+              const keys = new Set()
+              for (const req of def.requires) {
+                const matching = req.designId
+                  ? zoneBlocks.filter(b => b.designId === req.designId)
+                  : zoneBlocks.filter(b => b.series === req.series)
+                for (const { r, c } of matching) keys.add(`${r},${c}`)
+              }
+              bestZoneKeys = keys
             }
           }
         }
-        for (const key of qualifyingCells) {
+
+        const active = bestLevelCount >= 1
+        // Display progress: count of requirement pieces satisfied (0..totalPieces)
+        const requireResults = def.requires.map(req =>
+          req.designId ? (designCount[req.designId] ?? 0) >= 1 : uCount(req.series) >= (req.count ?? 1)
+        )
+        const displayProgress = active ? def.requires.length : requireResults.filter(Boolean).length
+
+        const level = pushEntry(synergyId, def, active, displayProgress, bestLevelCount, def.requires.length)
+        if (!active) continue
+        const mult = LEVEL_MULTS[level]
+
+        for (const key of (bestZoneKeys ?? new Set())) {
           const [r, c] = key.split(',').map(Number)
-          bonusMap[r][c] += def.own
+          bonusMap[r][c] += def.own * mult
           tryAssignMap(r, c, synergyId, def)
-          applyRadiation(r, c, def)
+          applyRadiation(r, c, def, mult)
         }
       } else {
+        // No zone constraint, no adjacency — fall back to grid-wide (legacy)
+        const requireResults = def.requires.map(req =>
+          req.designId ? (designCount[req.designId] ?? 0) >= 1 : uCount(req.series) >= (req.count ?? 1)
+        )
+        const progress    = requireResults.filter(Boolean).length
+        const totalPieces = def.requires.length
+        const allMet      = requireResults.every(Boolean)
+
+        const level = pushEntry(synergyId, def, allMet, progress, allMet ? 1 : 0, totalPieces)
+        if (!allMet) continue
+        const mult = LEVEL_MULTS[level]
+
         for (const { r, c, designId, series } of blocks) {
           const qualifies = def.requires.some(req =>
             (req.designId && req.designId === designId) ||
             (req.series   && req.series   === series)
           )
           if (!qualifies) continue
-          bonusMap[r][c] += def.own
+          bonusMap[r][c] += def.own * mult
           tryAssignMap(r, c, synergyId, def)
-          applyRadiation(r, c, def)
+          applyRadiation(r, c, def, mult)
         }
       }
     }
 
     // ── Meta-synergy ──────────────────────────────────────────────────────────
     else if (def.type === 'meta_synergy') {
-      const requiredActiveIds = def.requires
-      const progress = requiredActiveIds.filter(id => activeList.find(a => a.id === id)?.active).length
-      const allActive = progress === requiredActiveIds.length
+      const requiredIds = def.requires
+      const progress    = requiredIds.filter(id => activeList.find(a => a.id === id)?.active).length
+      const allActive   = progress === requiredIds.length
 
-      activeList.push({ id: synergyId, name: def.name, desc: def.desc, active: allActive, progress, required: requiredActiveIds.length, reward: def.reward ?? null })
+      pushEntry(synergyId, def, allActive, progress, allActive ? 1 : 0, requiredIds.length)
       if (!allActive) continue
 
       if (def.affectsAll) {
@@ -884,9 +991,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       } else {
         for (let r = 0; r < GRID_SIZE; r++) {
           for (let c = 0; c < GRID_SIZE; c++) {
-            if (synergyMap[r][c] !== null) {
-              bonusMap[r][c] += def.own
-            }
+            if (synergyMap[r][c] !== null) bonusMap[r][c] += def.own
           }
         }
       }
@@ -896,12 +1001,10 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
   return { synergyMap, bonusMap, activeList }
 }
 
-// Returns additive output multiplier for a cell (1 + bonus)
 export function getSynergyMultiplier(r, c, bonusMap) {
   return 1 + (bonusMap[r]?.[c] ?? 0)
 }
 
-// Synergy bonus between two same-series adjacent blocks (+15% base)
 export function getAdjacencySynergyBonus(r, c, grid) {
   const block = grid[r][c]
   if (!block?.series) return 1
@@ -912,7 +1015,6 @@ export function getAdjacencySynergyBonus(r, c, grid) {
   return 1
 }
 
-// Highest synergy bonus for Conductor block to borrow from any of its 8 neighbours
 export function getBestNeighborSynergyBonus(r, c, grid, bonusMap) {
   let best = 0
   for (const [dr, dc] of ALL8) {

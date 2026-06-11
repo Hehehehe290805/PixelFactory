@@ -8,9 +8,12 @@ function emptyGrid() {
 
 let nextBlockId = 1
 
-// Pick a random block type from the given pool (use getOwnedBlockTypes to build it).
+// Pick a random block type: 80% base, 20% from non-base unlocked types.
 export function pickRandomType(pool = ['base']) {
-  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'base'
+  if (!pool.length) return 'base'
+  const nonBase = pool.filter(t => t !== 'base')
+  if (!nonBase.length || Math.random() < 0.80) return 'base'
+  return nonBase[Math.floor(Math.random() * nonBase.length)]
 }
 
 // Create a block instance from a design id/object.

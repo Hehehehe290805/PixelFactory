@@ -88,14 +88,25 @@ function synergySetupText(def) {
   }
 }
 
+// ── Level display helpers ─────────────────────────────────────────────────────
+const LEVEL_MULTS = [0, 1.0, 1.6, 2.2]
+const LEVEL_DOTS  = ['', '●', '●●', '●●●']
+const LEVEL_COLORS = ['', '#00d49a', '#1499cc', '#a066f0']
+
+function levelLabel(level) {
+  if (!level || level < 1) return null
+  return { dots: LEVEL_DOTS[level], color: LEVEL_COLORS[level], label: `Lv.${level}` }
+}
+
 // ── Short bonus line ──────────────────────────────────────────────────────────
-function bonusSummary(def) {
+function bonusSummary(def, level = 1) {
   if (!def) return ''
+  const mult = LEVEL_MULTS[level] ?? 1.0
   if (def.type === 'core_radius') {
-    return `core +${Math.round(def.ownCore * 100)}% · ring +${Math.round(def.ownSatellite * 100)}%`
+    return `core +${Math.round(def.ownCore * mult * 100)}% · ring +${Math.round(def.ownSatellite * mult * 100)}%`
   }
-  let s = `+${Math.round(def.own * 100)}% output`
-  if (def.radiation) s += ` · radiates +${Math.round(def.radiation.amount * 100)}%`
+  let s = `+${Math.round(def.own * mult * 100)}% output`
+  if (def.radiation) s += ` · radiates +${Math.round(def.radiation.amount * mult * 100)}%`
   return s
 }
 
@@ -133,6 +144,7 @@ export default function ActiveEffectsPanel() {
   useEffect(() => {
     const nowActive = new Set(activeList.filter(s => s.active).map(s => s.id))
     for (const id of nowActive) {
+      // Only fire sound + reward when newly activated at level 1 (not on level-up)
       if (!prevActiveIds.current.has(id)) {
         const def = SYNERGY_DEFS[id]
         playSynergyActivate(def?.type)
@@ -180,6 +192,8 @@ export default function ActiveEffectsPanel() {
           const isOpen    = openId === s.id
           const typeLabel = TYPE_LABELS[def?.type] ?? ''
           const typeColor = TYPE_COLORS[def?.type] ?? '#888'
+          const lv        = levelLabel(s.level)
+          const lvColor   = lv?.color ?? '#00d49a'
 
           return (
             <div key={s.id}>
@@ -188,12 +202,24 @@ export default function ActiveEffectsPanel() {
                 className={`w-full rounded-lg px-2 py-1.5 text-left transition
                   ${s.active ? 'bg-pixel-green/10 border border-pixel-green/30' : 'bg-white/3 border border-game-border'}
                   ${isOpen ? 'rounded-b-none border-b-0' : ''}`}
+                style={s.active && s.level > 1 ? { borderColor: lvColor + '55', background: lvColor + '10' } : undefined}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`text-xs font-black truncate ${s.active ? 'text-pixel-green' : 'text-gray-400'}`}>
+                  <span className={`text-xs font-black truncate ${s.active ? 'text-pixel-green' : 'text-gray-400'}`}
+                    style={s.active && s.level > 1 ? { color: lvColor } : undefined}
+                  >
                     {s.active ? '✦ ' : ''}{s.name}
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Level indicator */}
+                    {s.active && lv && (
+                      <span
+                        className="text-[9px] font-black px-1 rounded"
+                        style={{ color: lvColor, background: lvColor + '22', letterSpacing: 1 }}
+                      >
+                        {lv.dots}
+                      </span>
+                    )}
                     <span className={`text-[10px] font-bold ${s.active ? 'text-pixel-green/80' : 'text-gray-600'}`}>
                       {s.progress}/{s.required}
                     </span>
@@ -201,16 +227,20 @@ export default function ActiveEffectsPanel() {
                   </div>
                 </div>
 
+                {/* Progress bar — for active synergies shows level progress */}
                 <div className="mt-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${s.active ? 'bg-pixel-green' : 'bg-gray-600'}`}
-                    style={{ width: `${pct * 100}%` }}
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${pct * 100}%`,
+                      backgroundColor: s.active ? lvColor : '#4a5568',
+                    }}
                   />
                 </div>
 
                 {s.active && def && !isOpen && (
-                  <div className="text-[10px] text-pixel-green/60 mt-0.5 font-semibold">
-                    {bonusSummary(def)}
+                  <div className="text-[10px] mt-0.5 font-semibold" style={{ color: lvColor + 'aa' }}>
+                    {bonusSummary(def, s.level)}
                   </div>
                 )}
               </button>
@@ -218,18 +248,38 @@ export default function ActiveEffectsPanel() {
               {isOpen && (
                 <div className={`px-2 py-2 rounded-b-lg border border-t-0 flex flex-col gap-1.5
                   ${s.active ? 'border-pixel-green/30 bg-pixel-green/5' : 'border-game-border bg-white/2'}`}
+                  style={s.active && s.level > 1 ? { borderColor: lvColor + '44', background: lvColor + '08' } : undefined}
                 >
-                  {typeLabel && (
-                    <span
-                      className="self-start text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest"
-                      style={{ background: typeColor + '22', color: typeColor, border: `1px solid ${typeColor}44` }}
-                    >
-                      {typeLabel}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {typeLabel && (
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest"
+                        style={{ background: typeColor + '22', color: typeColor, border: `1px solid ${typeColor}44` }}
+                      >
+                        {typeLabel}
+                      </span>
+                    )}
+                    {s.active && lv && (
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest"
+                        style={{ background: lvColor + '22', color: lvColor, border: `1px solid ${lvColor}44` }}
+                      >
+                        {lv.label} {lv.dots}
+                      </span>
+                    )}
+                  </div>
 
                   {s.active && def && (
-                    <div className="text-[10px] text-pixel-green font-bold">{bonusSummary(def)}</div>
+                    <div className="text-[10px] font-bold" style={{ color: lvColor }}>
+                      {bonusSummary(def, s.level)}
+                    </div>
+                  )}
+
+                  {/* Next level hint */}
+                  {s.active && s.level < 3 && s.l2 && (
+                    <div className="text-[9px] text-gray-600">
+                      Lv.{s.level + 1} at {s.level === 1 ? s.l2 : s.l3} — {(s.level === 1 ? s.l2 : s.l3) - s.progress} more needed
+                    </div>
                   )}
 
                   <div className="flex flex-col gap-0.5">
