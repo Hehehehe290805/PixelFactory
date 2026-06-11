@@ -9,19 +9,6 @@ GitHub: **https://github.com/Hehehehe290805/PixelFactory**
 
 ---
 
-## Pending Action Required
-
-**Supabase schema** — Two columns must be added manually in the Supabase SQL Editor before design unlocks and endless-minute tracking persist across sessions:
-
-```sql
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_designs JSONB DEFAULT '[]';
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS endless_minutes FLOAT DEFAULT 0;
-```
-
-Everything else is fully implemented and working.
-
----
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -62,7 +49,7 @@ PixelFactory/
 │   │   │   │   └── ShopSidebar.jsx        # Deck shop + random block + sell zone (drag to sell 20%)
 │   │   │   ├── ui/
 │   │   │   │   ├── AchievementToast.jsx
-│   │   │   │   ├── DeckSelector.jsx       # Pre-level: pick 3 designs (max 2× same), no pre-buy
+│   │   │   │   ├── DeckSelector.jsx       # Pre-level: pick 3 designs (max 2× same)
 │   │   │   │   ├── LearningCard.jsx       # Post-level fact card (L1–12) or quiz (L13+)
 │   │   │   │   ├── StarResult.jsx         # No stars on tutorial; green ✓ checkmark instead
 │   │   │   │   └── TutorialOverlay.jsx    # Spotlight tutorial (clip-path grayout + pulsing ring)
@@ -72,7 +59,7 @@ PixelFactory/
 │   │   ├── pages/
 │   │   │   ├── Home.jsx
 │   │   │   ├── Campaign.jsx        # Level select; design choice modal at levels 5,10,15,...
-│   │   │   ├── Level.jsx           # DeckSelector → pre-buy → game; no BlockEditor
+│   │   │   ├── Level.jsx           # DeckSelector → game
 │   │   │   ├── Endless.jsx         # End Run flow; endless design unlock tracking
 │   │   │   ├── Profile.jsx         # Design collection: unlocked + locked designs
 │   │   │   ├── Shop.jsx            # Permanent shop: grid styles, 30 shop-only designs, speed boosts
@@ -86,8 +73,8 @@ PixelFactory/
 │   │   │   └── settingsStore.js  # showTutorial, showLearning, musicEnabled/Volume, sfxEnabled/Volume (persisted)
 │   │   ├── engine/
 │   │   │   ├── productionEngine.js   # Full tick: base + design synergy + block effects
-│   │   │   ├── blockEffects.js       # All 19 block effect functions (adapted for fixed pixelLayout)
-│   │   │   ├── designSynergies.js    # Design series synergy detection (replaces setDetector + synergyEngine)
+│   │   │   ├── blockEffects.js       # All 19 block effect functions
+│   │   │   ├── designSynergies.js    # Design series synergy detection
 │   │   │   ├── achievementEngine.js  # Achievement condition checks (design-based)
 │   │   │   └── levelConfig.js        # 10 hand-crafted + 190 generated levels
 │   │   ├── data/
@@ -95,10 +82,10 @@ PixelFactory/
 │   │   │   └── learningContent.js    # Facts (L1–12), quiz questions (L13+), Endless questions + rewards
 │   │   ├── lib/
 │   │   │   ├── supabase.js
-│   │   │   ├── constants.js          # BLOCK_TYPES, GRID_STYLES, GRID_SIZE, TICK_MS (no PIXEL_COLORS/SETS)
+│   │   │   ├── constants.js          # BLOCK_TYPES, GRID_STYLES, GRID_SIZE, TICK_MS
 │   │   │   ├── designUnlocks.js      # Design unlock milestones + useDesignUnlocks() hook
 │   │   │   ├── validate.js
-│   │   │   └── unlocks.js            # Legacy block-type unlocks (kept for compatibility)
+│   │   │   └── unlocks.js            # Block-type unlock pool
 │   │   ├── hooks/
 │   │   │   └── useGridCellSize.js
 │   │   ├── App.jsx
@@ -177,7 +164,7 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
 
 ## Design Synergy System (`engine/designSynergies.js`)
 
-Replaces the old pixel-set / radiation system. **~75 synergies across 10 types.** Synergies are harder to activate (higher required counts), stronger when triggered, and some grant one-time rewards on first activation.
+**~75 synergies across 10 types.** Synergies activate when designs are arranged in specific spatial patterns. Stronger synergies require more designs and some grant one-time rewards on first activation.
 
 ### Synergy Types
 
@@ -312,23 +299,25 @@ getBestNeighborSynergyBonus(r, c, grid, bonusMap)  // used by Conductor
 
 Priority for `synergyMap[r][c]`: the synergy whose `ownCore ?? own` is largest wins the cell (so the most impactful active synergy is displayed per block).
 
-### Conductor Block (updated)
+### Conductor Block
+
 Borrows the highest `bonusMap` value from any of the 8 adjacent cells.
 
 ---
 
-## Block Types (19 total — all kept)
+## Block Types (19 total)
 
-All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
+All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design.
 
-### Notes on adapted effects:
+### Block Effect Notes
+
 - **Base**: `pixelCount / 37.5` px/s — pixelCount is fixed per design (~80–120 typical)
 - **Color Checker**: `dominantColor` is precomputed from the design's pixel art; triggers immediately on placement if dominant color ≥50% of design
 - **Focus**: `focusColor` = design's `dominantColor`; multiplier = `1 + dominantColorRatio` (fixed per design, ~1.6–1.9×)
 - **Prism**: counts unique non-white/silver colors in the design's fixed pixel art
 - **Conductor**: borrows highest active synergy bonus from adjacent blocks' `activeSynergy` field
-- **Greedy/Forge**: use `pixelCount` as before
-- All timing-based effects (Reactor, Echo, Overflow) work unchanged
+- **Greedy/Forge**: use `pixelCount` for their calculations
+- All timing-based effects (Reactor, Echo, Overflow) work independently of design
 
 ### Base Set (intro with starters)
 | Block | Effect |
@@ -339,7 +328,7 @@ All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
 | **Color Checker** | dominantColor ≥50% → −5% required output (one-time, on placement) |
 | **Greedy** | On complete: `(myPixelCount − Σneighbor.pixelCount) × 10` gold |
 
-### Campaign-Unlocked Specials (via design unlock milestones)
+### Campaign-Unlocked Specials
 | Block | Effect |
 |---|---|
 | Amplifier | +8% per occupied neighbor (all 8) |
@@ -370,7 +359,7 @@ All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
   // Grid & blocks
   grid,               // 12×12 array of block instance | null
   inventory,          // design instances in hand (not yet placed)
-  deckSelection,      // [designId × 10] — chosen before each level
+  deckSelection,      // [designId × 3] — chosen before each level
 
   // Production
   totalPixelsProduced, // append-only; win condition
@@ -390,7 +379,7 @@ All effects work on the fixed `pixelLayout`/`pixelCount` of the design.
   buyShopItem(cost),     // deducts from pixelsSpentInShop budget; returns bool
   setGameSpeed(speed),
   setPaused(bool),
-  startLevel(levelBlocks),   // no startingPixels param; deck pre-buys handled separately
+  startLevel(levelBlocks),
   resetLevel(), completeLevel(),
 }
 ```
@@ -461,7 +450,7 @@ At levels 5, 10, 15, 20, 25, 30 (and every 5 levels after), a design choice moda
 
 1. **DeckSelector** screen opens before each level
 2. Player picks up to **3 designs** from their collection — same design can appear up to **2×** in one deck
-3. No pre-buy phase — level starts with an empty inventory; deck designs are in the `ShopSidebar`
+3. Level starts with an empty inventory; deck designs are available in the `ShopSidebar`
 4. **Mid-level shop**: buy copies of deck designs using produced pixels; each purchase assigns a **random block type** from the unlocked pool
 5. **Random block**: always available in the shop at `200px × 2^purchaseCount` (doubles every buy)
 
@@ -520,8 +509,6 @@ Displayed on the right side of the play area, below `PixelCounter`.
 
 ## Grid Styles (12 total)
 
-Same as before. **Neural** grid style now reduces design synergy trigger thresholds by 1 instead of the old Color Checker reduction.
-
 | Style | Cost | Effect |
 |---|---|---|
 | Base | Free | — |
@@ -556,7 +543,7 @@ setPxPerSecond(totalPxPerSec * gameSpeed)
 ```js
 // productionEngine.js computeTick — pure function
 function computeTick(grid, { activeGridStyle, gridTick }) {
-  synergyMap   = buildSynergyData(grid).synergyMap   // replaces setMap + dominanceMap
+  synergyMap   = buildSynergyData(grid).synergyMap
   catalystRows = buildCatalystRows(grid)
   // first pass: base × synergy × block effects → rateMap
   // second pass: + flat adds (CrossAmp, Splitter), × all multipliers, grid-style mods
@@ -632,27 +619,26 @@ setSfxVolume(0–1)            // updates sfxMasterGain immediately
 
 ---
 
-## Pause System (unchanged)
+## Pause System
 
 - ⏸ button calls `setPaused(true)`
 - `ProductionEngine` skips tick when `gamePaused === true`
-- **No auto-pause on editor** — BlockEditor no longer exists
 - **Pause modal** (z-70): Continue, Settings, Exit Level
 - `beforeunload` warning active during active level run
 
 ---
 
-## Wave Animation (Block.jsx — unchanged)
+## Wave Animation (Block.jsx)
 
-`block.waveDir` (default `'up'`) — 8 directions. CSS keyframes unchanged. Duration = `37.5 / pixelCount` seconds.
+`block.waveDir` (default `'up'`) — 8 directions. Duration = `37.5 / pixelCount` seconds.
 
 Radial wheel on occupied cell: Move, Replace, Wave (sub-wheel), Synergy (shows synergy list panel for that block), Remove. No right-click — the Synergy option replaces it. When selecting a design to place from an empty-cell wheel, the inventory is first deduplicated by `designId` so each design shows at most once.
 
 ---
 
-## Tutorial System (TutorialOverlay.jsx — updated steps)
+## Tutorial System (TutorialOverlay.jsx)
 
-Level 1 only. Revised steps without painting:
+Level 1 only. Spotlight tutorial using clip-path grayout + pulsing ring.
 
 **Steps:**
 1. `welcome` — manual
@@ -679,11 +665,11 @@ Currency: **gold**. Stored in `shopStore`.
 | Shop-Only Block Types | overflow, mirror, catalyst, void (unlocks designs of those types in deck) |
 | Speed Boosts | 0.5× (150g), 2× (250g), 5× (500g), 10× (1000g) |
 
-Shop-only block type unlocks work differently now: buying e.g. "Overflow" in the shop unlocks the ability to add Overflow-type designs to your deck.
+Buying a shop-only block type (e.g. "Overflow") unlocks the ability to add that effect type to designs drawn during a run.
 
 ---
 
-## Endless Mode (updated unlock tracking)
+## Endless Mode
 
 - `userStore.endlessMinutes` — total accumulated minutes in endless runs (persisted)
 - When `endlessMinutes >= 20` and design not yet unlocked → grant Rainbow Prism design
@@ -693,7 +679,7 @@ Shop-only block type unlocks work differently now: buying e.g. "Overflow" in the
 
 ## Profile Page (`Profile.jsx`)
 
-Now shows **Design Collection** instead of templates:
+Shows the full **Design Collection**:
 - All 200+ designs shown in a grid
 - Unlocked: full color, shows name + series
 - Locked: grayscale silhouette with "???" name + unlock hint
@@ -725,7 +711,7 @@ Auth emails (OTP verification, password reset) are sent through Brevo's free SMT
 
 ### RLS Trigger
 
-The `profiles` table requires a trigger that automatically inserts a row on new user signup. If registration fails silently, check that this trigger exists in Supabase:
+The `profiles` table requires a trigger that automatically inserts a row on new user signup:
 
 ```sql
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -753,9 +739,9 @@ All user data lives in `userStore.js`:
 
 ---
 
-## Supabase Schema Notes
+## Supabase Schema
 
-Unchanged from before. The `templates` table is no longer used by gameplay but kept for backwards compatibility.
+See `supabase/schema.sql`. Key columns on the `profiles` table: `id`, `gold`, `campaign_progress` (JSONB), `achievements`, `unlocked_designs` (JSONB), `endless_minutes` (float).
 
 ---
 
@@ -763,23 +749,22 @@ Unchanged from before. The `templates` table is no longer used by gameplay but k
 
 1. **`totalPixelsProduced` is append-only** — never decremented, used for win condition.
 2. **In-level shop uses produced pixels** — `pixelsSpentInShop` tracks spending; win condition unaffected.
-3. **Deck pre-buy uses starting pixels** (budget = `50 + level × 5`, capped 300) — NOT gold.
-4. **Permanent shop uses gold** — grid styles, shop-only designs, speed boosts.
-5. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
-6. **Design pixel art is immutable** — `pixelLayout` is always read from the design library, never from user edits.
-7. **`pixelCount` and `dominantColor` are precomputed** in the design library — do not recompute at runtime.
-8. **Design synergies replace sets** — `buildSynergyData(grid)` returns `synergyMap` used instead of old `setMap`.
-9. **Focus effect is now deterministic** — `focusColor = dominantColor`, multiplier = `1 + (dominantColorCount / pixelCount)`, fixed per design.
-10. **Color Checker always triggers on placement** — since the design's dominant color is already ≥50%, placing a color_checker design always reduces required output by 5%.
-11. **Speed boosts are permanent** — `shopStore.purchasedSpeeds`; affect both production AND timer.
-12. **Text selection disabled globally** — `user-select: none` on `body`; re-enabled for `input`/`textarea`.
-13. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, profiles CRUD.
-14. **Achievements require login** — guest players cannot earn achievements.
-15. **Never commit env files** — `frontend/.env` gitignored.
+3. **Permanent shop uses gold** — grid styles, shop-only designs, speed boosts.
+4. **Block move resets**: `reactorAge` and `echoAge` reset to 0 on move.
+5. **Design pixel art is immutable** — `pixelLayout` is always read from the design library, never from user edits.
+6. **`pixelCount` and `dominantColor` are precomputed** in the design library — do not recompute at runtime.
+7. **`buildSynergyData(grid)`** returns `synergyMap`, `bonusMap`, and `activeList` — used by `productionEngine` and `ActiveEffectsPanel`.
+8. **Focus effect is deterministic** — `focusColor = dominantColor`, multiplier = `1 + (dominantColorCount / pixelCount)`, fixed per design.
+9. **Color Checker always triggers on placement** — the design's dominant color is precomputed at ≥50%, so placing a color_checker design always reduces required output by 5%.
+10. **Speed boosts are permanent** — `shopStore.purchasedSpeeds`; affect both production AND timer.
+11. **Text selection disabled globally** — `user-select: none` on `body`; re-enabled for `input`/`textarea`.
+12. **Supabase only for**: auth, gold, campaign_progress, achievements, endless_scores, profiles CRUD.
+13. **Achievements require login** — guest players cannot earn achievements.
+14. **Never commit env files** — `frontend/.env` gitignored.
 
 ---
 
-## Deployment (unchanged)
+## Deployment
 
 - GitHub Actions → GitHub Pages
 - URL: `https://Hehehehe290805.github.io/PixelFactory/`
@@ -796,11 +781,12 @@ Unchanged from before. The `templates` table is no longer used by gameplay but k
 
 ---
 
-## Learning System (unchanged)
+## Learning System
 
-Parallel computing education via LearningCard (post-level) and Endless quizzes.
-- Campaign quiz correct answers now tracked for design unlock milestones (25 and 50).
-- See old learning system docs; quiz mechanics are the same.
+Parallel computing education via `LearningCard` (post-level) and Endless quizzes.
+- Levels 1–12 show a fact card after completion.
+- Levels 13+ show a multiple-choice quiz; correct answers accumulate toward design unlock milestones (25 and 50).
+- Endless mode has its own quiz pool with separate rewards.
 
 ---
 
@@ -816,7 +802,8 @@ Design series synergies map directly to PDC concepts:
 | Adjacency synergy | Shared-memory locality — processes on the same cache line cooperate |
 | Row synergy (Urban Planning) | NUMA domain — threads on the same memory node get a locality bonus |
 | Conductor borrowing synergy bonus | Work stealing — a thread borrows the efficiency gains of its neighbor |
-| Deck selection (10 designs) | Thread pool configuration — choosing which thread types to instantiate |
-| Pre-buy budget (starting pixels) | Bootstrap cost — allocating initial resources before execution begins |
-
-All other PDC mappings from block effects (Reactor warm-up, Echo locality, Splitter work distribution, Void coordinator) remain the same.
+| Deck selection (3 designs) | Thread pool configuration — choosing which thread types to instantiate |
+| Reactor warm-up | Thread spin-up cost — a newly launched process takes time to reach full throughput |
+| Echo locality bonus | Cache warming — a stationary process benefits from hot data |
+| Splitter work distribution | Work broadcasting — a thread pushes partial load to its neighbors |
+| Void coordinator | Dedicated coordinator thread — zero output, but amplifies surrounding workers |

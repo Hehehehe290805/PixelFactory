@@ -14,10 +14,9 @@ Live at: **https://Hehehehe290805.github.io/PixelFactory/**
 
 ### Core Loop
 
-1. **Pick your deck** — Before each level, choose 10 designs from your unlocked collection
-2. **Pre-buy** — Spend starting pixels to buy some deck designs into your opening hand
-3. **Play** — Place blocks on the grid; the engine ticks every 100 ms producing pixels in parallel
-4. **Win** — Reach the required pixel total before time runs out (or in Endless: survive as long as possible)
+1. **Pick your deck** — Before each level, choose up to 3 designs from your unlocked collection
+2. **Play** — Buy designs from the in-level shop using produced pixels, place them on the grid; the engine ticks every 100 ms producing pixels in parallel
+3. **Win** — Reach the required pixel total before time runs out (or in Endless: survive as long as possible)
 
 ### Designs & Block Types
 
@@ -51,7 +50,7 @@ Every block on the grid is a **design** — a fixed 16×16 pixel artwork that co
 
 ## Design Synergy System
 
-Synergies activate when designs are arranged in specific spatial patterns. There are **7 synergy types**:
+Synergies activate when designs are arranged in specific spatial patterns. There are **10 synergy types**:
 
 ### 1. Series Count — place N of the same series anywhere
 > Example: 5 flower designs anywhere on the grid → **Garden** (+20% each, +8% ortho radiation)
@@ -83,7 +82,7 @@ Rewards spreading designs across the full grid. The Manhattan distance between t
 | Transcontinental | 2 buildings ≥5 apart | +20% · +7% ortho |
 | Wild Migration | 2 animals ≥5 apart | +22% · +6% ortho |
 
-### 6. Core Radius — place an anchor design, then surround it with satellites
+### 7. Core Radius — place an anchor design, then surround it with satellites
 > Example: Place Sun on the grid, then put 3+ space designs within 3 cells → **Solar System** (Sun +40%, satellites +20%)
 
 One "core" block acts as an anchor. The bonus activates when enough "satellite" designs are placed within a radius (Manhattan distance) of the core. Core and satellites get different bonus values.
@@ -96,15 +95,15 @@ One "core" block acts as an anchor. The bonus activates when enough "satellite" 
 | Mountain Kingdom | Mountain | 3 landscape designs | 2 | +30% | +18% |
 | Blooming Core | any flower | 4 flower designs | 3 | +35% | +15% |
 
-### 8. Cross Family — place specific designs from different series on the grid
+### 8. Cross-Family — place specific designs from different series on the grid
 > Example: Apple + 2 tree designs → **Orchard** (+45%, +40 gold reward). Star + Snowflake + any tree → **Christmas Tree** (+55%, grants a free random block!)
 
 Some cross-family synergies require the named designs to be **adjacent**.
 
-### 10. Meta Synergy — activate two or more other synergies simultaneously
+### 9. Meta Synergy — activate two or more other synergies simultaneously
 > Example: GARDEN + FOREST both active → **Primordial Grove** (+35% to all synergy cells, grants a free random block!)
 
-### 9. Block Type Count — place N blocks sharing the same effect type
+### 10. Block Type Count — place N blocks sharing the same effect type
 > Example: 5 of the same block type → **Specialist** (+45%, radiates all-8). Requires 5 — hard to pull off.
 
 | Synergy | Condition | Bonus |
@@ -126,7 +125,7 @@ During a level, the right-side panel lists every synergy that is active or in pr
 ### Before Each Level
 1. **DeckSelector** opens — pick up to **3 designs** from your collection
 2. Same design can appear **up to 2×** in one deck — e.g. [Rose, Rose, Oak]
-3. No pre-buy phase — level starts with an empty inventory
+3. Level starts with an empty inventory; your chosen designs appear in the in-level shop
 
 ### In-Level Shop
 - Shows your unique deck designs; each purchase assigns a **random block type** from your unlocked pool
@@ -283,7 +282,7 @@ App runs at `http://localhost:5173/PixelFactory/`
 
 ## Database Setup (Supabase)
 
-Run `supabase/schema.sql` once in the SQL Editor. For future changes, run only the changed block — not the full file (existing policies error on re-run).
+Run `supabase/schema.sql` once in the SQL Editor to create all tables, policies, and triggers.
 
 ---
 
@@ -306,4 +305,4 @@ Run `supabase/schema.sql` once in the SQL Editor. For future changes, run only t
 | `backend/.env` | `SUPABASE_SERVICE_ROLE_KEY` | Never |
 | `frontend/.env.example` | Template — copy and fill | Yes |
 
-See [CLAUDE.md](CLAUDE.md) for full architecture and implementation details.
+See [CLAUDE.md](CLAUDE.md) for full architecture and codebase reference.
