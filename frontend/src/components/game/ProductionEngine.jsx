@@ -9,7 +9,7 @@ import { TICK_MS } from '../../lib/constants'
 export default function ProductionEngine({ requiredOutput }) {
   const {
     grid, levelActive, levelComplete,
-    addPixels, setPxPerSecond, tickCooldowns, completeLevel, updateBlockSynergies,
+    addPixels, setPxPerSecond, tickCooldowns, completeLevel, updateBlockSynergies, updateBlockRates,
     gameSpeed, gamePaused,
   } = useGameStore()
 
@@ -47,12 +47,13 @@ export default function ProductionEngine({ requiredOutput }) {
       tickCooldowns(TICK_MS)
       gridTickRef.current++
 
-      const { totalThisTick, totalPxPerSec, synergyMap } = computeTick(gridRef.current, {
+      const { totalThisTick, totalPxPerSec, synergyMap, finalRateMap } = computeTick(gridRef.current, {
         activeGridStyle: gridStyleRef.current,
         gridTick: gridTickRef.current,
       })
 
       updateBlockSynergies(synergyMap)
+      updateBlockRates(finalRateMap)
       setPxPerSecond(totalPxPerSec * gameSpeedRef.current)
 
       const scaled = totalThisTick * gameSpeedRef.current

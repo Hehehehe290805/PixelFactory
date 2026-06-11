@@ -21,7 +21,7 @@ const WAVE_DIRS = [
 ]
 
 export default function Grid() {
-  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, sellBlock } = useGameStore()
+  const { grid, inventory, placeBlock, moveBlock, removeBlock, setWaveDir, sellBlock, blockRateMap } = useGameStore()
   const [sellToast, setSellToast] = useState(null) // { refund, x, y }
   const cellSize = useGridCellSize()
 
@@ -193,6 +193,7 @@ export default function Grid() {
               onBlockSelect={null}
               pulsing={pulsingSlots.has(`${r}-${c}`)}
               onCellClick={handleCellClick}
+              blockRate={blockRateMap?.[r]?.[c] ?? 0}
               onBlockHoverStart={(block, x, y) => {
                 const design = DESIGNS.find(d => d.id === block.designId)
                 setHoverOverlay({ block, design, x, y })

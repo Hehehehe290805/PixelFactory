@@ -23,7 +23,7 @@ const COLOR_HEX = {
   gold:'#ffc000', neon:'#39ff14', rainbow:'#ff6b9d',
 }
 
-export default function Block({ block, size = 48, showPulse = false, onClick }) {
+export default function Block({ block, size = 48, showPulse = false, onClick, rate = null }) {
   const canvasRef = useRef(null)
   const [pulsing, setPulsing] = useState(false)
   const [floatKey, setFloatKey] = useState(0)
@@ -61,8 +61,8 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
   const isActive       = showPulse && block.pixelCount > 0 && block.pauseTimer === 0
   const waveDir        = block.waveDir ?? 'up'
   const waveConf       = WAVE_MAP[waveDir] ?? WAVE_MAP.up
-  const cycleDuration  = 3.5
-  const floatAmount    = '+1'
+  const cycleDuration  = block.pixelCount > 0 ? 37.5 / block.pixelCount : 1
+  const floatAmount    = rate != null && rate > 0 ? `+${Math.max(1, Math.round(rate * cycleDuration))}` : null
 
   return (
     <div
@@ -114,7 +114,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick }) 
 
       {/* Floating +N */}
       <AnimatePresence>
-        {floatKey > 0 && (
+        {floatKey > 0 && floatAmount && (
           <motion.div
             key={floatKey}
             initial={{ opacity: 1, y: 0 }}

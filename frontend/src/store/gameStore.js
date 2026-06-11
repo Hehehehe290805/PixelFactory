@@ -72,6 +72,7 @@ export const useGameStore = create((set, get) => ({
   totalPixelsProduced: 0,
   pixelsSpentInShop:   0,
   currentPxPerSecond:  0,
+  blockRateMap:        null,      // 12×12 array of per-block px/s rates (updated each tick)
   levelActive:         false,
   levelComplete:       false,
   gameSpeed:           1,
@@ -294,6 +295,10 @@ export const useGameStore = create((set, get) => ({
       })
     )
     if (changed) set({ grid: newGrid })
+  },
+
+  updateBlockRates(rateMap) {
+    set({ blockRateMap: rateMap })
   },
 
   // ── Level lifecycle ─────────────────────────────────────────────────────────

@@ -87,6 +87,7 @@ export function computeTick(grid, { activeGridStyle = 'base', gridTick = 0 } = {
   // Second pass: block-type effects
   let totalThisTick = 0
   let totalPxPerSec = 0
+  const finalRateMap = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
 
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
@@ -126,12 +127,13 @@ export function computeTick(grid, { activeGridStyle = 'base', gridTick = 0 } = {
       if (mods.cascade) rate *= cascadeRowMult(r)
       if (mods.lattice) rate *= getLatticeBonus(r, c, grid)
 
+      finalRateMap[r][c] = rate
       totalPxPerSec += rate
       totalThisTick += rate / (1000 / TICK_MS)
     }
   }
 
-  return { totalThisTick, totalPxPerSec, synergyMap, bonusMap, activeList }
+  return { totalThisTick, totalPxPerSec, synergyMap, bonusMap, activeList, finalRateMap }
 }
 
 // For Level.jsx — efficiency grid style reduces required output by 10%

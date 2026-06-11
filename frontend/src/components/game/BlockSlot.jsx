@@ -13,6 +13,7 @@ export default function BlockSlot({
   onBlockHoverEnd,     // () — called on mouse leave
   moveTarget = false,
   moveSource = false,
+  blockRate = 0,
 }) {
   const { placeBlock, removeBlock, moveBlock, sellBlock } = useGameStore()
   const [dragOver, setDragOver] = useState(false)
@@ -94,7 +95,7 @@ export default function BlockSlot({
     >
       {block && (
         <div draggable onDragStart={handleDragStart} style={{ width: '100%', height: '100%' }}>
-          <Block block={block} size={cellSize} showPulse={pulsing} />
+          <Block block={block} size={cellSize} showPulse={pulsing} rate={blockRate} />
         </div>
       )}
 

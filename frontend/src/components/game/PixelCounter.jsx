@@ -13,14 +13,13 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
 
   useEffect(() => {
     const diff = totalPixelsProduced - prevRef.current
-    prevRef.current = totalPixelsProduced
     if (diff < 1) return
     const now = Date.now()
     if (now - lastFloatTime.current < 800) return
+    prevRef.current = totalPixelsProduced
     lastFloatTime.current = now
     const id = now + Math.random()
     setFloats(f => [...f.slice(-3), { id, amount: Math.floor(diff) }])
-    // No cleanup return — letting the timeout fire naturally so it's never cancelled
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 1100)
   }, [totalPixelsProduced])
 
