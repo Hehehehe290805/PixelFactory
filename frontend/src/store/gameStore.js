@@ -332,6 +332,8 @@ export const useGameStore = create((set, get) => ({
       levelComplete:       false,
       gamePaused:          false,
       selectedBlockId:     null,
+      randomBuyCount:      state.randomBuyCount,
+      gameSpeed:           state.gameSpeed,
     })
   },
 
