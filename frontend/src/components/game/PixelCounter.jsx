@@ -12,6 +12,11 @@ export default function PixelCounter({ requiredOutput, totalLabel = 'Total' }) {
   const [floats, setFloats] = useState([])
 
   useEffect(() => {
+    if (totalPixelsProduced === 0) {
+      prevRef.current = 0
+      lastFloatTime.current = 0
+      return
+    }
     const diff = totalPixelsProduced - prevRef.current
     if (diff < 1) return
     const now = Date.now()

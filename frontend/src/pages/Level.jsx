@@ -265,7 +265,7 @@ export default function Level() {
           <Grid />
         </div>
 
-        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 196 }}>
+        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 240 }}>
           <PixelCounter requiredOutput={effectiveRequired} />
           <ActiveEffectsPanel />
         </div>

@@ -330,7 +330,7 @@ export default function Endless() {
         <div className="flex-1 flex items-start justify-center overflow-hidden px-2 py-2">
           <Grid />
         </div>
-        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 196 }}>
+        <div className="flex flex-col gap-3 flex-shrink-0 overflow-y-auto py-2 pr-2" style={{ width: 240 }}>
           <PixelCounter requiredOutput={effectiveRequired} totalLabel="This wave" />
           <ActiveEffectsPanel />
           <div className="card text-xs font-semibold text-gray-400 space-y-2">
