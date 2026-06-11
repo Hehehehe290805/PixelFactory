@@ -6,18 +6,78 @@ import { DESIGNS, ALL_SERIES } from '../data/designLibrary'
 import { GRID_STYLES, BLOCK_TYPES, BLOCK_TYPE_VISUAL } from '../lib/constants'
 import { useDesignUnlocks } from '../lib/designUnlocks'
 import { DesignMiniThumb, DesignTooltipBody } from '../components/ui/DeckSelector'
+import { SYNERGY_DEFS, TYPE_LABELS } from '../engine/designSynergies'
 
-const TABS = ['templates', 'blocks', 'grids']
+const TABS = ['templates', 'blocks', 'grids', 'synergies']
 
 const GATED_BLOCK_TYPES = ['overflow', 'mirror', 'catalyst', 'void']
 
+// Synergies that are visible immediately without any discovery requirement
+const BASIC_SYNERGY_IDS = new Set([
+  'DOUBLE_DOWN', 'REACTOR_NETWORK', 'ECHO_CHAMBER', 'SPECIALIST', 'BEE_AND_FLOWER',
+])
+
+const TYPE_COLORS = {
+  exact_count:     '#ffd166',
+  adjacency_pair:  '#f03e4e',
+  long_range:      '#00d49a',
+  core_radius:     '#fb923c',
+  block_type_count:'#6366f1',
+  cross_family:    '#f472b6',
+  meta_synergy:    '#a78bfa',
+}
+
+function getSynergyHint(def) {
+  if (!def) return 'Mysterious combination'
+  switch (def.type) {
+    case 'adjacency_pair':
+      return `Place "${def.designA}" directly next to "${def.designB}"`
+    case 'long_range':
+      return def.series
+        ? `Two ${def.series} designs at least ${def.minDist} cells apart`
+        : `${def.seriesA ?? def.designA} and ${def.seriesB ?? def.designB} far apart`
+    case 'core_radius': {
+      const core = def.coreDesignId ?? `any ${def.coreSeries}`
+      return `${core} + ${def.requiredSatellites}+ ${def.satelliteSeries} within ${def.radius} cells`
+    }
+    case 'block_type_count':
+      return def.blockType
+        ? `${def.required}+ blocks with the "${def.blockType}" effect`
+        : `5+ blocks of the same effect type`
+    case 'cross_family': {
+      const parts = (def.requires ?? []).map(r => r.designId ?? `${r.count ?? 1} ${r.series}`)
+      return `Cross-family: ${parts.join(' + ')}`
+    }
+    case 'meta_synergy':
+      return `Requires: ${(def.requires ?? []).join(' + ')} both active`
+    default:
+      return def.desc ?? 'Mysterious combination'
+  }
+}
+
+function getBonusSummary(def) {
+  if (!def) return ''
+  if (def.type === 'core_radius')
+    return `Core +${Math.round(def.ownCore * 100)}% · Ring +${Math.round(def.ownSatellite * 100)}%`
+  return `+${Math.round((def.own ?? 0) * 100)}%${def.radiation ? ` · radiates +${Math.round(def.radiation.amount * 100)}%` : ''}`
+}
+
+const ALL_SYNERGY_IDS = Object.keys(SYNERGY_DEFS)
+
 export default function Profile() {
-  const { user } = useUserStore()
+  const { user, discoveredSynergies = [] } = useUserStore()
   const { isDesignUnlocked, unlockedDesigns } = useDesignUnlocks()
   const { activeGridStyle, purchasedGridStyles = ['base'], isBlockTypeUnlocked } = useShopStore()
 
+  // A synergy is "known" if it's basic, or the player has discovered/revealed it
+  const knownSynergies = new Set([
+    ...BASIC_SYNERGY_IDS,
+    ...discoveredSynergies,
+  ])
+
   const [tab, setTab]               = useState('templates')
   const [seriesFilter, setSeriesFilter] = useState('all')
+  const [synergyFilter, setSynergyFilter] = useState('all')
   const [hoveredId, setHoveredId]   = useState(null)
   const [mousePos, setMousePos]     = useState({ x: 0, y: 0 })
 
@@ -58,17 +118,22 @@ export default function Profile() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-5">
+        <div className="flex gap-2 mb-5 flex-wrap">
           {TABS.map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`text-xs font-black px-4 py-1.5 rounded-lg border transition capitalize
                 ${tab === t
-                  ? 'bg-pixel-blue/20 border-pixel-blue text-pixel-blue'
-                  : 'border-game-border text-gray-500 hover:text-white'}`}
+                  ? 'bg-neon-indigo/20 border-neon-indigo text-neon-indigo'
+                  : 'border-void-border text-gray-500 hover:text-white'}`}
             >
               {t}
+              {t === 'synergies' && (
+                <span className="ml-1 opacity-60">
+                  {knownSynergies.size}/{ALL_SYNERGY_IDS.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -276,6 +341,111 @@ export default function Profile() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+        {/* ── SYNERGIES TAB ──────────────────────────────────────────────────── */}
+        {tab === 'synergies' && (
+          <div>
+            {/* Progress */}
+            <div className="flex items-center gap-3 mb-5 p-3 rounded-xl border" style={{ background: '#0c0c28', borderColor: '#1e1e48' }}>
+              <div className="flex-1">
+                <div className="flex justify-between text-xs font-bold mb-1" style={{ color: '#7b78a8' }}>
+                  <span>Synergies Discovered</span>
+                  <span style={{ color: '#ddd8f8' }}>{knownSynergies.size} / {ALL_SYNERGY_IDS.length}</span>
+                </div>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{ transform: `scaleX(${knownSynergies.size / ALL_SYNERGY_IDS.length})` }}
+                  />
+                </div>
+              </div>
+              <Link to="/shop" className="btn btn-secondary text-xs px-3 py-1.5">
+                Roll Scrolls →
+              </Link>
+            </div>
+
+            {/* Type filter */}
+            <div className="flex gap-1.5 mb-4 flex-wrap">
+              {['all', ...Object.keys(TYPE_LABELS)].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setSynergyFilter(t)}
+                  className="text-xs font-black px-2 py-1 rounded-lg border transition"
+                  style={synergyFilter === t
+                    ? { background: (TYPE_COLORS[t] ?? '#6366f1') + '20', borderColor: TYPE_COLORS[t] ?? '#6366f1', color: TYPE_COLORS[t] ?? '#6366f1' }
+                    : { background: 'transparent', borderColor: '#1e1e48', color: '#3c3c72' }
+                  }
+                >
+                  {t === 'all' ? 'All' : TYPE_LABELS[t] ?? t}
+                </button>
+              ))}
+            </div>
+
+            {/* Synergy cards */}
+            <div className="flex flex-col gap-2">
+              {ALL_SYNERGY_IDS
+                .filter(id => synergyFilter === 'all' || SYNERGY_DEFS[id]?.type === synergyFilter)
+                .map(id => {
+                  const def     = SYNERGY_DEFS[id]
+                  const known   = knownSynergies.has(id)
+                  const typeCol = TYPE_COLORS[def?.type] ?? '#6366f1'
+                  const typeLabel = TYPE_LABELS[def?.type] ?? def?.type ?? ''
+
+                  return (
+                    <div
+                      key={id}
+                      className="rounded-xl border flex gap-3 p-3 transition"
+                      style={{
+                        background: known ? '#0c0c28' : '#08081c',
+                        borderColor: known ? typeCol + '44' : '#1e1e48',
+                        borderLeft: `4px solid ${known ? typeCol : '#1e1e48'}`,
+                        opacity: known ? 1 : 0.7,
+                      }}
+                    >
+                      {/* Type badge */}
+                      <div className="flex-shrink-0 pt-0.5">
+                        <span
+                          className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest"
+                          style={{
+                            background: (known ? typeCol : '#2e2e60') + '22',
+                            color: known ? typeCol : '#3c3c72',
+                            border: `1px solid ${(known ? typeCol : '#2e2e60')}44`,
+                          }}
+                        >
+                          {typeLabel}
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-black text-sm" style={{ color: known ? '#ddd8f8' : '#3c3c72' }}>
+                            {known ? def.name : '??? Unknown Synergy'}
+                          </div>
+                          {known && def && (
+                            <div className="text-xs font-bold flex-shrink-0" style={{ color: typeCol }}>
+                              {getBonusSummary(def)}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-xs mt-1" style={{ color: known ? '#7b78a8' : '#2e2e60' }}>
+                          {known ? getSynergyHint(def) : 'Activate this synergy in a level — or reveal it with a Synergy Scroll from the Shop'}
+                        </div>
+
+                        {known && def?.reward && (
+                          <div className="text-[10px] mt-1 font-bold" style={{ color: '#fbbf24' }}>
+                            {def.reward.type === 'random_block' ? '🎁 Rewards a free random block on first activation' :
+                             def.reward.type === 'pixels'       ? `✨ Rewards +${def.reward.amount?.toLocaleString()} pixels on first activation` :
+                             def.reward.type === 'gold'         ? `💰 Rewards +${def.reward.amount}g on first activation` : null}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </div>
         )}

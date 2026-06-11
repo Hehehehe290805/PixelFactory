@@ -1,11 +1,12 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { startMusic, stopMusic, getLevelTrack, playLevelComplete, playDesignUnlock } from '../lib/audio'
 import { useGameStore, createBlock, pickRandomType } from '../store/gameStore'
+import { DESIGNS, getFamilyPackDesigns } from '../data/designLibrary'
 import { getOwnedBlockTypes } from '../lib/constants'
 import { useUserStore } from '../store/userStore'
 import { useShopStore } from '../store/shopStore'
-import { getLevelConfig } from '../engine/levelConfig'
+import { getLevelConfig, SERIES_TINT } from '../engine/levelConfig'
 import { totalGreedyBonus, totalForgeBonus } from '../engine/blockEffects'
 import { checkLevelComplete, checkGreedy } from '../engine/achievementEngine'
 import { useDesignUnlocks, shouldShowFamilyChoice, getStarterDesignIds } from '../lib/designUnlocks'
@@ -21,27 +22,32 @@ import LearningCard from '../components/ui/LearningCard'
 import TutorialOverlay from '../components/ui/TutorialOverlay'
 import InventoryPanel from '../components/game/InventoryPanel'
 import ShopSidebar from '../components/game/ShopSidebar'
-import DeckSelector from '../components/ui/DeckSelector'
+import ShopDeckSelector from '../components/ui/ShopDeckSelector'
 
 const GOLD_BY_STARS = { 3: 100, 2: 70, 1: 50, 0: 0 }
 
 // ── Tutorial helpers ──────────────────────────────────────────────────────────
+// Tutorial levels use only flowers — the player's first family.
+// Level 1: 4 basic starters. Level 2: 6 starters to fill more of the grid.
+// Level 3-4: start small (2-3 blocks), buy the rest from the tutorial shop.
+// Level 5: 7 different flower types to showcase block type variety.
 function getTutorialStartingBlocks(levelNum) {
   const ids = {
-    1: ['daisy', 'oak', 'house', 'star'],
-    2: ['daisy', 'cat', 'heart', 'snowflake', 'mountain', 'circle'],
-    3: ['daisy', 'oak'],
-    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'cat', 'house'],
-    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'oak', 'cat'],
-  }[levelNum] ?? ['daisy', 'oak', 'house', 'star']
+    1: ['daisy', 'tulip', 'lily', 'poppy'],
+    2: ['daisy', 'rose', 'tulip', 'lily', 'lotus', 'marigold'],
+    3: ['daisy', 'rose'],
+    4: ['daisy', 'rose', 'tulip'],
+    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'lotus', 'poppy'],
+  }[levelNum] ?? ['daisy', 'tulip', 'lily', 'poppy']
   return ids.map(id => createBlock(id)).filter(Boolean)
 }
 
 function getTutorialDeck(levelNum) {
+  // All flower-family shop decks for tutorial levels 3-5
   return {
-    3: ['daisy', 'oak', 'house', 'star', 'cat'],
-    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus'],
-    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus'],
+    3: ['daisy', 'rose', 'tulip', 'lily', 'lotus', 'marigold', 'lavender', 'hibiscus'],
+    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'lotus', 'marigold', 'lavender'],
+    5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'lotus', 'poppy', 'marigold'],
   }[levelNum] ?? []
 }
 
@@ -65,6 +71,19 @@ export default function Level() {
   } = useUserStore()
 
   const { activeGridStyle } = useShopStore()
+
+  // Compute dominant series from preset deck → level tint
+  const levelTint = useMemo(() => {
+    const deck = config?.presetDeck ?? []
+    if (!deck.length) return null
+    const counts = {}
+    for (const id of deck) {
+      const d = DESIGNS.find(x => x.id === id)
+      if (d?.series) counts[d.series] = (counts[d.series] ?? 0) + 1
+    }
+    const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]
+    return dominant ? (SERIES_TINT[dominant] ?? null) : null
+  }, [config?.number])
   const { showLearning }    = useSettingsStore()
   const { unlockedDesigns } = useDesignUnlocks()
 
@@ -75,10 +94,11 @@ export default function Level() {
   const [goldEarned, setGoldEarned]         = useState(0)
   const tabHiddenAtRef = useRef(null)
 
-  // No deck selector — levels use preset decks defined in levelConfig
   const isTutorial = config?.tutorial === true
-  const [deckPhase] = useState(false)   // always false — DeckSelector removed
-  const [activeDeck, setActiveDeck] = useState([])   // designIds for current level
+  // Non-tutorial levels show a pre-level shop deck selection (8 designs)
+  const [shopDeckPhase, setShopDeckPhase] = useState(!isTutorial)
+  const [deckPhase] = useState(false)   // DeckSelector removed
+  const [activeDeck, setActiveDeck] = useState([])   // designIds shown in shop
 
   // Design choice modal (offered after certain level completions)
   const [designChoicePair, setDesignChoicePair] = useState(null)
@@ -108,17 +128,26 @@ export default function Level() {
         : config.timeLimitSeconds)
     : 120
 
-  function startLevelWithDeck(designIds) {
-    setActiveDeck(designIds)
-    setDeckSelection(designIds)
+  // Called when the user confirms their 8-card shop deck (non-tutorial levels)
+  function handleShopDeckConfirmed(shopDeckIds) {
+    setActiveDeck(shopDeckIds)
+    setDeckSelection(shopDeckIds)
+    setShopDeckPhase(false)
 
+    // Starter blocks come from level config (presetDeck), not user selection
+    startLevelWithStarters(config.presetDeck ?? [])
+  }
+
+  // Start the level using the level's preset starter designs as free starting blocks
+  function startLevelWithStarters(starterIds) {
     const { unlockedBlocks } = useShopStore.getState()
     const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
-    const uniqueDesigns = [...new Set(designIds)]
-    const copiesPerDesign = uniqueDesigns.length === 1 ? 6 : uniqueDesigns.length === 2 ? 3 : 2
+
+    // Give 2 copies of each unique starter design
+    const uniqueStarters = [...new Set(starterIds)]
     const startingBlocks = []
-    for (const id of uniqueDesigns) {
-      for (let i = 0; i < copiesPerDesign; i++) {
+    for (const id of uniqueStarters) {
+      for (let i = 0; i < 2; i++) {
         const block = createBlock(id, pickRandomType(typePool), 0)
         if (block) startingBlocks.push(block)
       }
@@ -142,11 +171,11 @@ export default function Level() {
     setPreLevelPhase(false)
   }
 
-  // Start music when gameplay begins (deck phase ends); stop on unmount
+  // Start music when gameplay begins; stop on unmount
   useEffect(() => {
-    if (!deckPhase) startMusic(getLevelTrack(levelNum))
+    if (!shopDeckPhase && !deckPhase) startMusic(getLevelTrack(levelNum))
     else stopMusic(1.0)
-  }, [deckPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shopDeckPhase, deckPhase]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => stopMusic(0.8), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -158,11 +187,8 @@ export default function Level() {
       if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
       setElapsedSeconds(0)
-    } else {
-      // Use preset deck from level config
-      const deck = config.presetDeck ?? []
-      startLevelWithDeck(deck)
     }
+    // Non-tutorial levels wait for shop deck selection before starting
     return () => resetLevel()
   }, [levelNum]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -191,7 +217,7 @@ export default function Level() {
 
   // Timer
   useEffect(() => {
-    if (!config || levelComplete || resultShown || config.tutorial || gamePaused || deckPhase || preLevelPhase) return
+    if (!config || levelComplete || resultShown || config.tutorial || gamePaused || deckPhase || shopDeckPhase || preLevelPhase) return
     const interval = setInterval(() => {
       setTimeRemaining(t => {
         const dec = gameSpeed
@@ -269,7 +295,7 @@ export default function Level() {
       if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
     } else {
-      startLevelWithDeck(config.presetDeck ?? [])
+      setShopDeckPhase(true)  // re-show shop deck selection for retry
     }
   }
 
@@ -283,8 +309,11 @@ export default function Level() {
   if (!user) { navigate('/'); return null }
 
   return (
-    <div className="h-screen bg-game-bg flex flex-col overflow-hidden select-none">
-      {!deckPhase && !preLevelPhase && <ProductionEngine requiredOutput={effectiveRequired} />}
+    <div
+      className="h-screen flex flex-col overflow-hidden select-none"
+      style={{ background: levelTint?.bg ?? '#06061a' }}
+    >
+      {!shopDeckPhase && !deckPhase && !preLevelPhase && <ProductionEngine requiredOutput={effectiveRequired} />}
 
       <LevelHUD
         config={{ ...config, timeLimitSeconds: effectiveTimeLimit }}
@@ -294,7 +323,13 @@ export default function Level() {
       />
 
       {/* Main play area */}
-      <div className="flex flex-1 gap-0 min-h-0" style={{ overflow: 'hidden' }}>
+      <div
+        className="flex flex-1 gap-0 min-h-0"
+        style={{
+          overflow: 'hidden',
+          borderTop: levelTint ? `1px solid ${levelTint.rim}22` : undefined,
+        }}
+      >
         <ShopSidebar deckDesignIds={activeDeck} />
 
         <div className="flex-1 flex items-start justify-center px-2 pt-5 pb-2 relative scanlines" style={{ overflowX: 'hidden', overflowY: 'visible' }} data-tutorial="grid">
@@ -335,6 +370,15 @@ export default function Level() {
       )}
 
       {/* Deck selector */}
+      {/* Pre-level shop deck selection for non-tutorial levels */}
+      {!isTutorial && shopDeckPhase && (
+        <ShopDeckSelector
+          unlockedDesigns={unlockedDesigns}
+          levelNumber={levelNum}
+          onConfirm={handleShopDeckConfirmed}
+        />
+      )}
+
       {/* Family choice modal (offered at level 10, 15, 20… milestones) */}
       {resultShown && designChoicePair && (
         <FamilyChoiceModal
@@ -380,7 +424,6 @@ export default function Level() {
 }
 
 // ── Family Choice Modal ───────────────────────────────────────────────────────
-import { DESIGNS, getFamilyPackDesigns } from '../data/designLibrary'
 import { DesignMiniThumb } from '../components/ui/DeckSelector'
 
 const SERIES_ICONS = {

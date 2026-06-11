@@ -17,6 +17,23 @@ const HAND_CRAFTED = [
   { number: 10, name: 'Full Factory',    requiredOutput: 5_500, timeLimitSeconds: 330, presetDeck: ['daisy','rose','house','castle','star','sun'] },
 ]
 
+// ── Series-based tint colors for level atmosphere ────────────────────────────
+export const SERIES_TINT = {
+  flowers:    { bg: '#1a0620', rim: '#c026d3', accent: '#e879f9' },
+  trees:      { bg: '#041a0a', rim: '#16a34a', accent: '#4ade80' },
+  buildings:  { bg: '#0a0a1a', rim: '#6366f1', accent: '#818cf8' },
+  celestial:  { bg: '#0c0a1e', rim: '#7c3aed', accent: '#c4b5fd' },
+  animals:    { bg: '#1a0c04', rim: '#d97706', accent: '#fbbf24' },
+  shapes:     { bg: '#04101a', rim: '#0284c7', accent: '#38bdf8' },
+  weather:    { bg: '#04101a', rim: '#0891b2', accent: '#67e8f9' },
+  food:       { bg: '#1a0808', rim: '#dc2626', accent: '#f87171' },
+  symbols:    { bg: '#100818', rim: '#9333ea', accent: '#c084fc' },
+  landscapes: { bg: '#061010', rim: '#0d9488', accent: '#2dd4bf' },
+  space:      { bg: '#06061a', rim: '#1d4ed8', accent: '#60a5fa' },
+  abstract:   { bg: '#0a0a0a', rim: '#475569', accent: '#94a3b8' },
+}
+
+
 // ── Preset deck generation for levels 11-200 ──────────────────────────────────
 // Cycles through thematic patterns, mixing series at higher tiers.
 const DECK_PATTERNS = [

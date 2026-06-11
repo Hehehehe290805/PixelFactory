@@ -88,13 +88,13 @@ function sfxTone(freq, type, startTime, duration, peakGain = 0.25) {
 
 // Synergy activate — distinct arpeggio per type so the player learns each pattern
 const SYNERGY_SOUNDS = {
-  series_count:     { notes: [523, 659, 784, 1047], gap: 0.08, gain: 0.20, type: 'sine' },
-  exact_count:      { notes: [659, 988, 1319],       gap: 0.09, gain: 0.20, type: 'sine' },
-  adjacency_pair:   { notes: [880, 1109],             gap: 0.11, gain: 0.22, type: 'sine' },
-  row_series:       { notes: [440, 554, 659, 784],    gap: 0.07, gain: 0.18, type: 'triangle' },
-  long_range:       { notes: [330, 494, 740, 1109],   gap: 0.13, gain: 0.20, type: 'sine' },
-  core_radius:      { notes: [392, 494, 587, 784, 988], gap: 0.09, gain: 0.18, type: 'sine' },
-  block_type_count: { notes: [440, 660, 880],          gap: 0.07, gain: 0.16, type: 'square' },
+  exact_count:      { notes: [659, 988, 1319],            gap: 0.09, gain: 0.20, type: 'sine' },
+  adjacency_pair:   { notes: [880, 1109, 1320],           gap: 0.11, gain: 0.22, type: 'sine' },
+  long_range:       { notes: [330, 494, 740, 1109],       gap: 0.13, gain: 0.20, type: 'sine' },
+  core_radius:      { notes: [392, 494, 587, 784, 988],   gap: 0.09, gain: 0.18, type: 'sine' },
+  block_type_count: { notes: [440, 660, 880],             gap: 0.07, gain: 0.16, type: 'square' },
+  cross_family:     { notes: [523, 659, 784, 1047, 1319], gap: 0.08, gain: 0.22, type: 'sine' },
+  meta_synergy:     { notes: [880, 1109, 1320, 1760],     gap: 0.10, gain: 0.24, type: 'sine' },
 }
 
 export function playSynergyActivate(synergyType) {
@@ -167,102 +167,102 @@ const N = {
 }
 
 const TRACKS = {
-  // ── Level 1-10: C major, 72 BPM, sine — calm, tutorial feel ────────────────
+  // ── Menu / lobby: C major pentatonic, 52 BPM, triangle — warm, cosy, NOT creepy ─
+  // Very quiet drones, slow flowing arpeggio, all consonant notes.
+  menu: {
+    drones: [
+      { freq: N.C3, gain: 0.016, type: 'triangle' },  // barely audible — just warmth
+      { freq: N.G3, gain: 0.012, type: 'triangle' },
+    ],
+    arpNotes: [N.C4, N.E4, N.G4, N.A4, N.C5, N.G4, N.E4, N.D4, N.E4, N.G4, N.A4, N.G4],
+    noteDur:  1.154,  // 52 BPM — unhurried and gentle
+    arpType:  'triangle',
+    arpGain:  0.042,
+  },
+
+  // ── Level 1-10: C major, 84 BPM, triangle — upbeat tutorial, encouraging ─────
   intro: {
     drones: [
-      { freq: N.C3, gain: 0.048, type: 'sine' },
-      { freq: N.G3, gain: 0.038, type: 'sine' },
-      { freq: N.C4, gain: 0.028, type: 'sine' },
+      { freq: N.C3, gain: 0.038, type: 'sine' },
+      { freq: N.G3, gain: 0.028, type: 'triangle' },
     ],
-    arpNotes: [N.C4, N.E4, N.G4, N.C5, N.G4, N.E4, N.C4, N.G3],
-    noteDur:  0.833,   // 72 BPM
-    arpType:  'sine',
-    arpGain:  0.065,
+    arpNotes: [N.C4, N.E4, N.G4, N.C5, N.D5, N.C5, N.G4, N.E4],
+    noteDur:  0.714,  // 84 BPM
+    arpType:  'triangle',
+    arpGain:  0.068,
   },
-  // ── Level 11-30: G major, 88 BPM, triangle — warm, hopeful ─────────────────
+
+  // ── Level 11-30: G major, 96 BPM, triangle — warm and peppy ────────────────
   apprentice: {
     drones: [
-      { freq: N.G3, gain: 0.048, type: 'sine' },
-      { freq: N.B3, gain: 0.038, type: 'sine' },
-      { freq: N.D4, gain: 0.030, type: 'sine' },
+      { freq: N.G3, gain: 0.040, type: 'sine' },
+      { freq: N.D4, gain: 0.026, type: 'triangle' },
     ],
-    arpNotes: [N.G4, N.B4, N.D5, N.G5, N.D5, N.B4, N.G4, N.A4],
-    noteDur:  0.682,   // 88 BPM
+    arpNotes: [N.G4, N.B4, N.D5, N.G5, N.Fs5, N.D5, N.B4, N.A4],
+    noteDur:  0.625,  // 96 BPM
+    arpType:  'triangle',
+    arpGain:  0.062,
+  },
+
+  // ── Level 31-60: D minor, 106 BPM, triangle — focused, rhythmic ─────────────
+  craftsman: {
+    drones: [
+      { freq: N.D3, gain: 0.042, type: 'sine' },
+      { freq: N.A3, gain: 0.028, type: 'triangle' },
+    ],
+    arpNotes: [N.D4, N.A4, N.F4, N.C5, N.A4, N.D5, N.F4, N.E4],
+    noteDur:  0.566,  // 106 BPM
     arpType:  'triangle',
     arpGain:  0.058,
   },
-  // ── Level 31-60: D minor, 96 BPM, triangle — focused, rhythmic ─────────────
-  craftsman: {
-    drones: [
-      { freq: N.D3, gain: 0.048, type: 'sine' },
-      { freq: N.F3, gain: 0.038, type: 'sine' },
-      { freq: N.A3, gain: 0.030, type: 'sine' },
-    ],
-    arpNotes: [N.D4, N.F4, N.A4, N.C5, N.A4, N.F4, N.D4, N.E4],
-    noteDur:  0.625,   // 96 BPM
-    arpType:  'triangle',
-    arpGain:  0.055,
-  },
-  // ── Level 61-100: A minor, 108 BPM, triangle — energetic, driving ───────────
+
+  // ── Level 61-100: A minor, 116 BPM, triangle — energetic, driving ───────────
   expert: {
     drones: [
-      { freq: N.A2, gain: 0.050, type: 'sine' },
-      { freq: N.E3, gain: 0.040, type: 'sine' },
-      { freq: N.C3, gain: 0.030, type: 'sine' },
+      { freq: N.A2, gain: 0.044, type: 'sine' },
+      { freq: N.E3, gain: 0.030, type: 'triangle' },
     ],
-    arpNotes: [N.A4, N.C5, N.E5, N.G5, N.E5, N.C5, N.A4, N.B4],
-    noteDur:  0.556,   // 108 BPM
+    arpNotes: [N.A4, N.E5, N.C5, N.G5, N.E5, N.D5, N.C5, N.B4],
+    noteDur:  0.517,  // 116 BPM
     arpType:  'triangle',
     arpGain:  0.055,
   },
-  // ── Level 101-150: E minor, 118 BPM, triangle — intense, tense ──────────────
+
+  // ── Level 101-150: E minor, 124 BPM, triangle — intense ─────────────────────
   master: {
     drones: [
-      { freq: N.E3, gain: 0.050, type: 'sine' },
-      { freq: N.G3, gain: 0.040, type: 'sine' },
-      { freq: N.B3, gain: 0.032, type: 'sine' },
+      { freq: N.E3, gain: 0.046, type: 'sine' },
+      { freq: N.B3, gain: 0.030, type: 'triangle' },
     ],
-    arpNotes: [N.E4, N.G4, N.B4, N.D5, N.B4, N.G4, N.E4, N.Fs4],
-    noteDur:  0.508,   // 118 BPM
+    arpNotes: [N.E4, N.B4, N.G4, N.D5, N.B4, N.G5, N.Fs4, N.A4],
+    noteDur:  0.484,  // 124 BPM
     arpType:  'triangle',
     arpGain:  0.052,
   },
-  // ── Level 151-200: B minor, 132 BPM, sawtooth — epic, driving ───────────────
+
+  // ── Level 151-200: B minor, 136 BPM, triangle/saw — epic peak ────────────────
   grandmaster: {
     drones: [
-      { freq: N.B2,  gain: 0.050, type: 'sine' },
-      { freq: N.Fs3, gain: 0.038, type: 'sine' },
-      { freq: N.D3,  gain: 0.032, type: 'sine' },
+      { freq: N.B2,  gain: 0.046, type: 'sine' },
+      { freq: N.Fs3, gain: 0.030, type: 'triangle' },
     ],
-    arpNotes: [N.B4, N.D5, N.Fs5, N.A5, N.Fs5, N.D5, N.B4, N.Cs5],
-    noteDur:  0.454,   // 132 BPM
-    arpType:  'sawtooth',
-    arpGain:  0.042,
+    arpNotes: [N.B4, N.Fs5, N.D5, N.A5, N.Fs5, N.E5, N.D5, N.Cs5],
+    noteDur:  0.441,  // 136 BPM
+    arpType:  'triangle',
+    arpGain:  0.045,
   },
-  // ── Menu / lobby: A major, 68 BPM, sine — bright, inviting ─────────────────
-  menu: {
-    drones: [
-      { freq: N.A2,  gain: 0.040, type: 'sine' },
-      { freq: N.E3,  gain: 0.038, type: 'sine' },
-      { freq: N.A3,  gain: 0.030, type: 'sine' },
-    ],
-    arpNotes: [N.A4, N.Cs5, N.E5, N.A5, N.E5, N.Cs5, N.A4, N.B4],
-    noteDur:  0.882,   // 68 BPM
-    arpType:  'sine',
-    arpGain:  0.052,
-  },
-  // ── Endless: F lydian, 76 BPM, sine — meditative, flowing ──────────────────
+
+  // ── Endless: F lydian, 80 BPM, triangle — meditative, flowing ───────────────
   endless: {
     drones: [
-      { freq: N.F2,  gain: 0.038, type: 'sine' },
-      { freq: N.C3,  gain: 0.048, type: 'sine' },
-      { freq: N.F3,  gain: 0.040, type: 'sine' },
-      { freq: N.C4,  gain: 0.028, type: 'sine' },
+      { freq: N.F2,  gain: 0.028, type: 'sine' },
+      { freq: N.C3,  gain: 0.036, type: 'triangle' },
+      { freq: N.F3,  gain: 0.030, type: 'triangle' },
     ],
-    arpNotes: [N.F4, N.G4, N.A4, N.B4, N.C5, N.B4, N.A4, N.G4],
-    noteDur:  0.789,   // 76 BPM (B4 = lydian #4)
-    arpType:  'sine',
-    arpGain:  0.055,
+    arpNotes: [N.F4, N.G4, N.A4, N.B4, N.C5, N.D5, N.C5, N.B4, N.A4, N.G4],
+    noteDur:  0.750,  // 80 BPM
+    arpType:  'triangle',
+    arpGain:  0.052,
   },
 }
 

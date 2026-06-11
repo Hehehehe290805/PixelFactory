@@ -123,7 +123,7 @@ function rewardLabel(reward) {
 export default function ActiveEffectsPanel() {
   const { grid, addPixels, grantRandomBlock, totalPixelsProduced } = useGameStore()
   const { activeGridStyle, unlockedBlocks }   = useShopStore()
-  const { addGold }                           = useUserStore()
+  const { addGold, discoverSynergy }           = useUserStore()
   const { unlockedDesigns }                   = useDesignUnlocks()
   const [openId, setOpenId] = useState(null)
 
@@ -148,6 +148,8 @@ export default function ActiveEffectsPanel() {
       if (!prevActiveIds.current.has(id)) {
         const def = SYNERGY_DEFS[id]
         playSynergyActivate(def?.type)
+        // Auto-discover on first activation this session
+        discoverSynergy(id)
 
         // Fire reward only once per level, even if the synergy cycles inactive→active
         if (!rewardedIds.current.has(id)) {

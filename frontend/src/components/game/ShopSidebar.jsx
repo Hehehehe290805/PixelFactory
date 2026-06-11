@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useGameStore, getRandomBlockCost } from '../../store/gameStore'
+import { useGameStore } from '../../store/gameStore'
 import { useShopStore } from '../../store/shopStore'
 import { DESIGNS, getDesignLevelCost } from '../../data/designLibrary'
 import { useDesignUnlocks } from '../../lib/designUnlocks'
@@ -11,31 +11,22 @@ import { playPurchase } from '../../lib/audio'
 export default function ShopSidebar({ deckDesignIds = [] }) {
   const {
     totalPixelsProduced, pixelsSpentInShop,
-    buyDesignFromShop, buyRandomDesign, designBuyCounts = {}, randomBuyCount, sellBlock,
+    buyDesignFromShop, designBuyCounts = {}, sellBlock,
   } = useGameStore()
   const { activeGridStyle, unlockedBlocks } = useShopStore()
   const { unlockedDesigns } = useDesignUnlocks()
 
-  const [flashId, setFlashId]         = useState(null)   // designId that just flashed
-  const [flashOk, setFlashOk]         = useState(false)
-  const [randomFlash, setRandomFlash] = useState(null)
-  const [lastRandom, setLastRandom]   = useState(null)
-  const [sellFlash, setSellFlash]     = useState(null)
-  const [sellOver, setSellOver]       = useState(false)
-  const [hoveredId, setHoveredId]     = useState(null)
-  const [hoveredRandom, setHoveredRandom] = useState(false)
-  const [mousePos, setMousePos]       = useState({ x: 0, y: 0 })
+  const [flashId, setFlashId]   = useState(null)
+  const [flashOk, setFlashOk]   = useState(false)
+  const [sellFlash, setSellFlash] = useState(null)
+  const [sellOver, setSellOver]   = useState(false)
+  const [hoveredId, setHoveredId] = useState(null)
+  const [mousePos, setMousePos]   = useState({ x: 0, y: 0 })
   const handleMouseMove = useCallback((e) => setMousePos({ x: e.clientX, y: e.clientY }), [])
 
   const balance  = Math.floor(totalPixelsProduced - pixelsSpentInShop)
   const bargain  = activeGridStyle === 'bargain'
   const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
-
-  const randomCost = (() => {
-    const base = getRandomBlockCost(randomBuyCount)
-    return bargain ? Math.floor(base * 0.8) : base
-  })()
-  const nextRandomCost = getRandomBlockCost(randomBuyCount + 1)
 
   // Deduplicate deck by designId for display
   const deckDesigns = [...new Set(deckDesignIds)]
@@ -52,19 +43,6 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
       setFlashId(design.id); setFlashOk(false)
     }
     setTimeout(() => setFlashId(null), 700)
-  }
-
-  function handleBuyRandom() {
-    const unlockedIds = unlockedDesigns.map(d => d.id)
-    const block = buyRandomDesign(unlockedIds, deckDesignIds, typePool)
-    if (block) {
-      try { playPurchase() } catch {}
-      setLastRandom(DESIGNS.find(x => x.id === block.designId) ?? null)
-      setRandomFlash('ok')
-    } else {
-      setRandomFlash('fail')
-    }
-    setTimeout(() => setRandomFlash(null), 1200)
   }
 
   function handleSellDragOver(e) { e.preventDefault(); setSellOver(true) }
@@ -148,45 +126,6 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
           )
         })}
 
-        {/* Divider if there are deck cards */}
-        {deckDesigns.length > 0 && (
-          <div className="border-t border-game-border my-0.5" />
-        )}
-
-        {/* Random block */}
-        <div
-          onMouseEnter={() => setHoveredRandom(true)}
-          onMouseLeave={() => setHoveredRandom(false)}
-          onClick={handleBuyRandom}
-          className="rounded-xl border flex flex-col gap-1 p-1.5 cursor-pointer transition"
-          style={{
-            background: randomFlash === 'ok' ? '#6366f118' : randomFlash === 'fail' ? '#f8717118' : '#0c0c28',
-            borderColor: randomFlash === 'ok' ? '#6366f1' : randomFlash === 'fail' ? '#f87171'
-                         : hoveredRandom ? '#6366f188'
-                         : balance >= randomCost ? '#1e1e48' : '#1a1a38',
-            opacity: balance >= randomCost ? 1 : 0.45,
-          }}
-        >
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center justify-center flex-shrink-0 rounded overflow-hidden"
-              style={{ width: 32, height: 32, background: '#0a0a1a', border: '1px solid #1e1e48' }}>
-              {randomFlash === 'ok' && lastRandom
-                ? <DesignThumb design={lastRandom} size={32} />
-                : <span className="text-gray-500 font-black" style={{ fontSize: 18 }}>?</span>
-              }
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-black text-neon-indigo leading-tight">Random</div>
-              <div className="text-[9px] text-gray-600 leading-snug">×2 each buy</div>
-            </div>
-          </div>
-          <div className="flex items-end justify-between">
-            <div className="text-[9px] text-gray-700">next: {nextRandomCost.toLocaleString()}px</div>
-            <div className={`text-[12px] font-black ${balance >= randomCost ? 'text-neon-yellow' : 'text-gray-600'}`}>
-              {randomCost.toLocaleString()}px
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Sell zone */}
@@ -225,20 +164,6 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
         </div>
       )}
 
-      {/* Random tooltip */}
-      {hoveredRandom && !hoveredDesign && (
-        <div
-          style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 90, pointerEvents: 'none', background: '#0c0c28' }}
-          className="rounded-xl border border-game-border p-2.5 flex flex-col gap-1.5"
-        >
-          <div className="text-sm font-black text-neon-indigo">Random Design</div>
-          <div className="text-xs text-gray-400 leading-snug">
-            Surprise design from your collection with a randomly assigned block type. Cost doubles each purchase.
-          </div>
-          <div className="text-xs text-neon-yellow font-bold">{randomCost.toLocaleString()}px</div>
-          <div className="text-[10px] text-gray-600">Next: {nextRandomCost.toLocaleString()}px</div>
-        </div>
-      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ function persist(state) {
       purchasedSpeeds:     state.purchasedSpeeds,
       purchasedGridStyles: state.purchasedGridStyles,
       designRollCount:     state.designRollCount,
+      synergyScrollCount:  state.synergyScrollCount,
     }))
   } catch {}
 }
@@ -40,6 +41,9 @@ export const useShopStore = create((set, get) => ({
 
   // How many gold design rolls have been done (cost = min(100*(n+1), 1000))
   designRollCount: saved.designRollCount ?? 0,
+
+  // How many synergy scrolls have been purchased (cost starts at 50g, +25g each)
+  synergyScrollCount: saved.synergyScrollCount ?? 0,
 
   setGridStyle(key) {
     set({ activeGridStyle: key })
@@ -75,6 +79,13 @@ export const useShopStore = create((set, get) => ({
     const next = state.designRollCount + 1
     set({ designRollCount: next })
     persist({ ...state, designRollCount: next })
+  },
+
+  incrementSynergyScrollCount() {
+    const state = get()
+    const next = state.synergyScrollCount + 1
+    set({ synergyScrollCount: next })
+    persist({ ...state, synergyScrollCount: next })
   },
 
   isBlockTypeUnlocked(key) {

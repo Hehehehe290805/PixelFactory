@@ -6,6 +6,7 @@ import { GRID_STYLES, BLOCK_TYPES } from '../lib/constants'
 import { DESIGNS, getShopDesigns } from '../data/designLibrary'
 import { DesignMiniThumb } from '../components/ui/DeckSelector'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SYNERGY_DEFS, TYPE_LABELS } from '../engine/designSynergies'
 
 // Block types gated behind permanent shop unlock (enable shop designs of that type in deck)
 const GATED_BLOCK_TYPES = ['overflow', 'mirror', 'catalyst', 'void']
@@ -22,15 +23,23 @@ function getDesignRollCost(rollCount) {
   return Math.min(100 * (rollCount + 1), 1000)
 }
 
+function getSynergyScrollCost(scrollCount) {
+  return Math.min(50 + scrollCount * 25, 500)
+}
+
+// Synergies the player always knows — not eligible for scroll reveal
+const BASIC_SYNERGY_IDS = new Set(['DOUBLE_DOWN', 'REACTOR_NETWORK', 'ECHO_CHAMBER', 'SPECIALIST', 'BEE_AND_FLOWER'])
+
 export default function Shop() {
   const navigate = useNavigate()
-  const { gold, addGold, unlockedDesigns: unlockedDesignIds = [], unlockDesign } = useUserStore()
-  const { activeGridStyle, setGridStyle, ownGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked, designRollCount, incrementDesignRollCount } = useShopStore()
+  const { gold, addGold, unlockedDesigns: unlockedDesignIds = [], unlockDesign, discoveredSynergies = [], revealSynergy } = useUserStore()
+  const { activeGridStyle, setGridStyle, ownGridStyle, unlockedBlocks, unlockBlock, purchasedSpeeds, purchaseSpeed, isBlockTypeUnlocked, designRollCount, incrementDesignRollCount, synergyScrollCount, incrementSynergyScrollCount } = useShopStore()
   const [toast, setToast] = useState(null)
   const [rolledDesign, setRolledDesign] = useState(null)
   const [rollFlash, setRollFlash] = useState(null)
   const [showRollModal, setShowRollModal] = useState(false)
-  const [rollModalData, setRollModalData] = useState(null)  // { design, type: 'design' }
+  const [rollModalData, setRollModalData] = useState(null)
+  const [revealedSynergy, setRevealedSynergy] = useState(null)  // synergy ID shown after scroll
 
   function buy(cost, label, onSuccess) {
     if (gold < cost) return
@@ -56,6 +65,24 @@ export default function Shop() {
     setRollModalData({ design, type: 'design' })
     setShowRollModal(true)
     setTimeout(() => setRollFlash(null), 1500)
+  }
+
+  // Synergy scroll
+  const knownSynergyIds   = new Set([...BASIC_SYNERGY_IDS, ...discoveredSynergies])
+  const unknownSynergyIds = Object.keys(SYNERGY_DEFS).filter(id => !knownSynergyIds.has(id))
+  const scrollCost        = getSynergyScrollCost(synergyScrollCount)
+  const nextScrollCost    = getSynergyScrollCost(synergyScrollCount + 1)
+  const scrollAllRevealed = unknownSynergyIds.length === 0
+
+  function handleSynergyScroll() {
+    if (gold < scrollCost || scrollAllRevealed) return
+    const id = unknownSynergyIds[Math.floor(Math.random() * unknownSynergyIds.length)]
+    addGold(-scrollCost)
+    revealSynergy(id)
+    incrementSynergyScrollCount()
+    setRevealedSynergy(id)
+    setToast('Synergy revealed!')
+    setTimeout(() => setToast(null), 2500)
   }
 
   const shopDesigns = getShopDesigns()
@@ -136,6 +163,62 @@ export default function Shop() {
                   onClick={handleDesignRoll}
                   disabled={gold < rollCost}
                   className={`btn text-sm px-5 py-2 ${gold >= rollCost ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
+                >
+                  Roll
+                </button>
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* Synergy Compendium */}
+        <Section title="Synergy Compendium">
+          <p className="text-xs font-semibold mb-3" style={{ color: '#7b78a8' }}>
+            Spend gold to reveal the details of one random undiscovered synergy.
+            Synergies you activate in-game are discovered automatically.
+          </p>
+
+          {/* Progress */}
+          <div className="flex items-center gap-2 mb-3 text-xs font-bold" style={{ color: '#7b78a8' }}>
+            <span>{knownSynergyIds.size} / {Object.keys(SYNERGY_DEFS).length} discovered</span>
+            <div className="flex-1 progress-track" style={{ height: 6 }}>
+              <div className="progress-fill" style={{ transform: `scaleX(${knownSynergyIds.size / Object.keys(SYNERGY_DEFS).length})` }} />
+            </div>
+          </div>
+
+          {/* Last revealed synergy preview */}
+          {revealedSynergy && SYNERGY_DEFS[revealedSynergy] && (
+            <div className="rounded-xl p-3 mb-3 border" style={{ background: '#0c0c28', borderColor: '#a78bfa44', borderLeft: '4px solid #a78bfa' }}>
+              <div className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: '#a78bfa' }}>Just Revealed</div>
+              <div className="text-sm font-black" style={{ color: '#ddd8f8' }}>{SYNERGY_DEFS[revealedSynergy].name}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#7b78a8' }}>{TYPE_LABELS[SYNERGY_DEFS[revealedSynergy].type] ?? ''}</div>
+            </div>
+          )}
+
+          <div className="card flex items-center justify-between gap-4" style={{ padding: '1rem 1.25rem' }}>
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📜</div>
+              <div>
+                <div className="font-black text-sm" style={{ color: '#ddd8f8' }}>Synergy Scroll</div>
+                <div className="text-xs" style={{ color: '#7b78a8' }}>
+                  {scrollAllRevealed ? 'All synergies discovered!' : `${unknownSynergyIds.length} synergies still hidden`}
+                </div>
+                {!scrollAllRevealed && nextScrollCost !== scrollCost && (
+                  <div className="text-[9px]" style={{ color: '#3c3c72' }}>next: {nextScrollCost}g</div>
+                )}
+              </div>
+            </div>
+            {scrollAllRevealed ? (
+              <div className="text-xs font-black" style={{ color: '#34d399' }}>Complete ✓</div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="font-black text-lg" style={{ color: gold >= scrollCost ? '#fbbf24' : '#3c3c72' }}>
+                  {scrollCost}g
+                </div>
+                <button
+                  onClick={handleSynergyScroll}
+                  disabled={gold < scrollCost}
+                  className={`btn text-sm px-4 py-2 ${gold >= scrollCost ? 'btn-primary' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
                 >
                   Roll
                 </button>

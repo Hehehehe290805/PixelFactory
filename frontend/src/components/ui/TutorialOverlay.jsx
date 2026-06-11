@@ -188,8 +188,8 @@ const STEPS_BY_LEVEL = {
     },
     {
       id: 'series_synergy',
-      title: 'Series Synergies',
-      body: "You have 5 flower designs! The GARDEN synergy activates when you place 7 unique flower designs. Check the Active Effects panel — see the 5/7 progress? Buy 2 more flowers from the shop to activate it!",
+      title: 'Cross-Family & Adjacency Synergies',
+      body: "All your designs are flowers. Place specific pairs next to each other — Rose + Peony, or Bee + Daisy — to trigger powerful adjacency synergies! Check the Active Effects panel to see which pairs are in range.",
       waitFor: null,
       targetSel: null,
     },

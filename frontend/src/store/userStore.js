@@ -10,8 +10,9 @@ export const useUserStore = create((set, get) => ({
   campaignProgress: {},
   cumulativeGreedyGold: 0,
   quizStats: { correct: 0, total: 0 },
-  unlockedDesigns: [],    // array of designId strings, persisted to DB
-  endlessMinutes: 0,      // accumulated endless mode minutes (for 20-min unlock)
+  unlockedDesigns: [],      // array of designId strings, persisted to DB
+  discoveredSynergies: [],  // array of synergy IDs, persisted to DB
+  endlessMinutes: 0,
   loading: false,
   error: null,
   toastQueue: [],
@@ -49,8 +50,8 @@ export const useUserStore = create((set, get) => ({
       progress[row.level_number] = { stars: row.stars, best_time_seconds: row.best_time_seconds }
     }
 
-    // Load unlocked designs from DB (stored as JSON array in profiles.unlocked_designs)
-    const unlockedDesigns = profileRes.data.unlocked_designs ?? []
+    const unlockedDesigns    = profileRes.data.unlocked_designs     ?? []
+    const discoveredSynergies = profileRes.data.discovered_synergies ?? []
 
     set({
       profile: profileRes.data,
@@ -59,6 +60,7 @@ export const useUserStore = create((set, get) => ({
       campaignProgress: progress,
       quizStats: { correct: profileRes.data.quiz_correct ?? 0, total: profileRes.data.quiz_total ?? 0 },
       unlockedDesigns,
+      discoveredSynergies,
       endlessMinutes: profileRes.data.endless_minutes ?? 0,
       loading: false,
     })
@@ -243,6 +245,22 @@ export const useUserStore = create((set, get) => ({
     if (state.user) {
       await supabase.from('profiles').update({ unlocked_designs: next }).eq('id', state.user.id)
     }
+  },
+
+  // Mark a synergy as discovered (triggered in-game for the first time)
+  async discoverSynergy(synergyId) {
+    const state = get()
+    if (state.discoveredSynergies.includes(synergyId)) return
+    const next = [...state.discoveredSynergies, synergyId]
+    set({ discoveredSynergies: next })
+    if (state.user) {
+      await supabase.from('profiles').update({ discovered_synergies: next }).eq('id', state.user.id)
+    }
+  },
+
+  // Reveal a synergy via shop scroll (same result as discover)
+  async revealSynergy(synergyId) {
+    return get().discoverSynergy(synergyId)
   },
 
   // Track endless minutes for 20-min design unlock

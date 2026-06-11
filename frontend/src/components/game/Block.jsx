@@ -55,7 +55,7 @@ export default function Block({ block, size = 48, showPulse = false, onClick, ra
     }
   }
 
-  const WAVE_CYCLE_S  = 2.0   // fixed pulse cycle — slower, gives more pixels per float
+  const WAVE_CYCLE_S  = 4.0   // 4s pulse cycle — one satisfying pulse every 4s, showing ~4px at base rate
 
   // Series-based fill ratio (visual only — no longer tied to pixelCount)
   const PREMIUM_SERIES = new Set(['space', 'celestial'])
