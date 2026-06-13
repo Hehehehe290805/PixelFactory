@@ -420,7 +420,8 @@ export default function Shop() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+      </div>
     </div>
   )
 }
