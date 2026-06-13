@@ -52,7 +52,7 @@ export default function Endless() {
   const { unlockedBlocks, purchasedSpeeds } = useShopStore()
 
   const [wave, setWave]             = useState(1)
-  const [phase, setPhase]           = useState('loading') // 'loading'|'deck'|'resume'|'playing'|'between'|'ended'
+  const [phase, setPhase]           = useState('loading') // 'loading'|'intro'|'deck'|'resume'|'playing'|'between'|'ended'
   const [elapsed, setElapsed]       = useState(0)
   const [grandTotal, setGrandTotal] = useState(0)
   const [runResult, setRunResult]   = useState(null)
@@ -99,11 +99,10 @@ export default function Endless() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startFreshRun() {
-    // Show deck selector before starting — wave/total reset happens in handleDeckConfirmed
     setWave(1)
     setGrandTotal(0)
     setElapsed(0)
-    setPhase('deck')
+    setPhase('intro')
   }
 
   function handleDeckConfirmed({ designIds }) {
@@ -255,6 +254,46 @@ export default function Endless() {
   // ── Loading / resume screen ──────────────────────────────────────────────────
   if (phase === 'loading') return null
 
+  // ── Endless mode intro ────────────────────────────────────────────────────────
+  if (phase === 'intro') {
+    return (
+      <div className="min-h-screen bg-game-bg flex items-center justify-center px-4">
+        <div className="card w-full max-w-md" style={{ padding: '2rem' }}>
+          <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#1499cc' }}>Mode</div>
+          <h2 className="text-2xl font-black text-white pixel-heading mb-4">Endless</h2>
+
+          <div className="flex flex-col gap-3 mb-6">
+            <InfoRow icon="∞" title="Infinite Waves" color="#1499cc"
+              body="Produce pixels to clear each wave. Every wave requires more output than the last — there's no time limit, just keep building!" />
+            <InfoRow icon="?" title="Wave Challenges" color="#a066f0"
+              body="Between waves, answer a parallel computing trivia question. Correct answers award bonus designs and gold for the next wave." />
+            <InfoRow icon="🎲" title="Random Shop" color="#f59342"
+              body="The shop offers random blocks each wave. Pick designs for your starting deck now — you'll find new surprises in the shop as you play." />
+            <InfoRow icon="★" title="Leaderboard" color="#ffd166"
+              body={user
+                ? "Your score is saved automatically when you end a run. Check the Leaderboard to see how you rank globally!"
+                : "Log in to save your score and appear on the Leaderboard. Guests can still play but scores won't be recorded."} />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="btn btn-secondary flex-1 text-sm"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => setPhase('deck')}
+              className="btn btn-primary flex-1 text-base"
+            >
+              Pick Deck →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Deck selection — first thing before a fresh run ─────────────────────────
   if (phase === 'deck') {
     return (
@@ -263,7 +302,7 @@ export default function Endless() {
         unlockedDesigns={unlockedDesigns}
         bargain={false}
         onConfirm={handleDeckConfirmed}
-        onBack={() => navigate('/')}
+        onBack={() => setPhase('intro')}
       />
     )
   }
@@ -499,6 +538,22 @@ export default function Endless() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function InfoRow({ icon, title, body, color }) {
+  return (
+    <div className="flex gap-3 rounded-xl border p-3" style={{ background: '#0c0c28', borderColor: '#1e1e48' }}>
+      <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base font-black"
+        style={{ background: color + '18', color }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-black mb-0.5" style={{ color }}>{title}</div>
+        <div className="text-[11px] text-gray-400 leading-snug">{body}</div>
+      </div>
     </div>
   )
 }

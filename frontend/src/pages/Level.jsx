@@ -36,7 +36,7 @@ function getTutorialStartingBlocks(levelNum) {
     1: ['daisy', 'tulip', 'lily', 'poppy'],
     2: ['daisy', 'rose', 'tulip', 'lily', 'lotus', 'marigold'],
     3: ['daisy', 'rose'],
-    4: ['daisy', 'rose', 'tulip'],
+    4: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus'],
     5: ['daisy', 'rose', 'tulip', 'lily', 'hibiscus', 'lotus', 'poppy'],
   }[levelNum] ?? ['daisy', 'tulip', 'lily', 'poppy']
   return ids.map(id => createBlock(id)).filter(Boolean)

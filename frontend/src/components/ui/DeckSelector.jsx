@@ -227,28 +227,13 @@ const COLOR_HEX = {
 }
 
 // ── Shared tooltip body ───────────────────────────────────────────────────────
-export function DesignTooltipBody({ design, cost, blockType }) {
+export function DesignTooltipBody({ design, cost }) {
   const synergies = getDesignSynergies(design)
-  // blockType prop = the randomly-assigned type for this instance (if known)
-  const displayType = blockType ?? design.blockType
-  const typeInfo    = BLOCK_TYPES[displayType]
   return (
     <>
       <DesignMiniThumb design={design} size={72} centered />
       <div className="text-sm font-black text-white leading-tight">{design.name}</div>
-      <div className="flex items-center justify-between gap-1">
-        <div className="text-xs font-bold capitalize" style={{ color: BLOCK_TYPE_VISUAL?.[displayType]?.color ?? '#1499cc' }}>
-          {typeInfo?.label ?? displayType.replace(/_/g, ' ')}
-        </div>
-        <div className="text-xs text-gray-600 capitalize">{design.series}</div>
-      </div>
-
-      {/* Block type effect description */}
-      {typeInfo?.desc && (
-        <div className="text-[10px] text-gray-300 leading-snug py-1 px-1.5 rounded-lg" style={{ background: '#ffffff08' }}>
-          {typeInfo.desc}
-        </div>
-      )}
+      <div className="text-xs text-gray-600 capitalize">{design.series}</div>
 
       {synergies.length > 0 && (
         <div className="pt-1 border-t border-game-border">
@@ -261,11 +246,9 @@ export function DesignTooltipBody({ design, cost, blockType }) {
       {cost != null && (
         <div className="text-xs text-pixel-yellow font-bold pt-0.5">{cost}px in shop</div>
       )}
-      {!blockType && (
-        <div className="text-[9px] text-gray-700 border-t border-game-border pt-1 italic">
-          Actual type assigned randomly on purchase
-        </div>
-      )}
+      <div className="text-[9px] text-gray-700 border-t border-game-border pt-1 italic">
+        Type assigned randomly on purchase
+      </div>
     </>
   )
 }

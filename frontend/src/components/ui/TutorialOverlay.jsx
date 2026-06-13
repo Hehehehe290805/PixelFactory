@@ -129,9 +129,9 @@ const STEPS_BY_LEVEL = {
       id: 'first_blocks',
       title: 'Place Your Starters',
       body: 'Put your 2 starting blocks on the grid to begin producing pixels. You need pixel income flowing before you can afford anything from the shop!',
-      waitFor: 'blockPlaced',
+      waitFor: 'blocks2',
       targetSel: '[data-tutorial="grid"]',
-      hint: 'Place your starting blocks on the grid',
+      hint: 'Place both starting blocks on the grid',
     },
     {
       id: 'shop_intro',
@@ -147,13 +147,6 @@ const STEPS_BY_LEVEL = {
       waitFor: 'shop_purchase',
       targetSel: '[data-tutorial="shop-sidebar"]',
       hint: 'Produce some pixels, then click a design to buy it',
-    },
-    {
-      id: 'random_block',
-      title: 'Random Block',
-      body: 'At the bottom of the shop is a Random Block button — it gives a surprise design for 200px. The price DOUBLES every time you buy it, so plan your purchases carefully!',
-      waitFor: null,
-      targetSel: '[data-tutorial="shop-sidebar"]',
     },
     {
       id: 'sell_zone',
@@ -196,7 +189,7 @@ const STEPS_BY_LEVEL = {
     {
       id: 'place_synergy',
       title: 'Place Your Flowers',
-      body: 'Start placing flower designs on the grid. Watch the synergy progress bar tick up in the panel with each one! Getting all 7 on the grid activates the GARDEN bonus.',
+      body: 'Start placing flower designs on the grid. Watch the synergy progress bar tick up as you place more! Trigger adjacency synergies like Bee & Flower or Sunblossom for massive bonuses.',
       waitFor: 'blocks5',
       targetSel: '[data-tutorial="grid"]',
       hint: 'Place 5 or more designs on the grid',
@@ -342,6 +335,7 @@ export default function TutorialOverlay({ active, inventoryOpen, onDone, tutoria
   useEffect(() => {
     if (!active || !showTutorial || !step) return
     if (step.waitFor === 'blockPlaced'     && blocksOnGrid >= 1) advance()
+    if (step.waitFor === 'blocks2'         && blocksOnGrid >= 2) advance()
     if (step.waitFor === 'producing'       && totalPixelsProduced > 0) advance()
     if (step.waitFor === 'blocks4'         && blocksOnGrid >= 4) advance()
     if (step.waitFor === 'blocks5'         && blocksOnGrid >= 5) advance()

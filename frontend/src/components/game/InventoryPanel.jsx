@@ -176,8 +176,7 @@ export default function InventoryPanel({ onOpenStateChange }) {
           style={{ position: 'fixed', left: tipX, top: tipY, width: tipW, zIndex: 100, pointerEvents: 'none', background: '#0d0d22' }}
           className="rounded-xl border-2 border-game-border p-3 flex flex-col gap-2"
         >
-          {/* Pass the instance's actual random type so tooltip shows the correct effect */}
-          <DesignTooltipBody design={hoveredDesign} blockType={hovered?.type} />
+          <DesignTooltipBody design={hoveredDesign} />
           {hovered?.activeSynergy && (
             <div className="text-xs text-pixel-green font-bold border-t border-game-border pt-1">
               ✦ {hovered.activeSynergy.replace(/_/g, ' ')} active
@@ -217,14 +216,6 @@ function InventoryCard({ block, blockSize, inInventory, total, deployed, hovered
       {/* Pixel art block */}
       <div className="rounded overflow-hidden flex-shrink-0">
         <Block block={block} size={blockSize} />
-      </div>
-
-      {/* Type label — bottom-left */}
-      <div
-        className="absolute bottom-1 left-1 font-black leading-none rounded-sm"
-        style={{ fontSize: 7, color: typeColor, background: typeColor + '22', padding: '1px 3px' }}
-      >
-        {vis?.label ?? block.type.slice(0, 3).toUpperCase()}
       </div>
 
       {/* In-hand / total count — bottom-right */}

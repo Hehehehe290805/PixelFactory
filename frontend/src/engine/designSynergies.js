@@ -545,7 +545,7 @@ export function buildSynergyData(grid, neuralGridStyle = false) {
       const bCount   = Math.min(designCount[def.designB] ?? 0, 1)
       const progress = anyFound ? pairCount + 1 : aCount + bCount  // offset so 1 pair shows as 2/2
 
-      const level = pushEntry(synergyId, def, anyFound, anyFound ? 2 : progress, pairCount, 1)
+      const level = pushEntry(synergyId, def, anyFound, anyFound ? 2 : progress, pairCount, 2)
       if (!anyFound) continue
       const mult = LEVEL_MULTS[level]
 

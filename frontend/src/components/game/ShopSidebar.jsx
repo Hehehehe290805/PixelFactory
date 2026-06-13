@@ -109,8 +109,8 @@ export default function ShopSidebar({ deckDesignIds = [] }) {
                 <DesignThumb design={design} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] font-black text-white leading-tight truncate">{design.name}</div>
-                  <div className="text-[9px] font-bold capitalize leading-none" style={{ color: typeColor }}>
-                    {BLOCK_TYPES[design.blockType]?.label ?? design.blockType.replace(/_/g, ' ')}
+                  <div className="text-[9px] font-bold capitalize leading-none text-gray-600">
+                    {design.series}
                   </div>
                 </div>
               </div>
