@@ -280,6 +280,26 @@ export default function Level() {
     navigate('/campaign')
   }
 
+  function handleDirectRestart() {
+    setPaused(false)
+    setResultShown(false)
+    setElapsedSeconds(0)
+    setDesignChoicePair(null)
+    setUnlockedThisLevel([])
+    setShowUnlocked(false)
+    setPreLevelBonus(0)
+    resetLevel()
+    if (isTutorial) {
+      const tutorialBlocks = getTutorialStartingBlocks(levelNum)
+      startLevel(tutorialBlocks)
+      const tutDeck = getTutorialDeck(levelNum)
+      if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
+      setTimeRemaining(effectiveTimeLimit)
+    } else {
+      startLevelWithStarters(config.presetDeck ?? [])
+    }
+  }
+
   function handleRetry() {
     setResultShown(false)
     setElapsedSeconds(0)
@@ -362,7 +382,7 @@ export default function Level() {
             <div className="text-sm text-gray-500 font-semibold mb-6">Level {config.number} — {config.name}</div>
             <div className="flex flex-col gap-3">
               <button onClick={() => setPaused(false)} className="btn btn-primary text-base">▶ Continue</button>
-              <button onClick={() => { setPaused(false); handleRetry() }} className="btn btn-secondary text-base">↺ Restart</button>
+              <button onClick={handleDirectRestart} className="btn btn-secondary text-base">↺ Restart</button>
               <Link to="/settings" onClick={() => setPaused(false)} className="btn btn-secondary text-base">Settings</Link>
               <button onClick={() => navigate('/campaign')} className="btn btn-danger text-base">Exit Level</button>
             </div>

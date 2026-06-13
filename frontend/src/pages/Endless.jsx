@@ -122,8 +122,11 @@ export default function Endless() {
     const save = savedRun
     setWave(save.wave)
     setGrandTotal(save.grand_total)
-    // Restore grid & inventory from saved state
     restoreGrid(save.grid, save.inventory)
+    // Restore random buy count so block costs don't reset
+    if (save.randomBuyCount != null) {
+      useGameStore.setState({ randomBuyCount: save.randomBuyCount })
+    }
     setPhase('playing')
     setElapsed(0)
     setSavedRun(null)
@@ -137,12 +140,14 @@ export default function Endless() {
   }
 
   async function handleSaveAndExit() {
+    const { randomBuyCount } = useGameStore.getState()
     setSaving(true)
     await saveEndlessRun({
       wave,
       grandTotal: grandTotal + Math.floor(totalPixelsProduced),
       grid,
       inventory: useGameStore.getState().inventory,
+      randomBuyCount,
     })
     setSaving(false)
     navigate('/')
@@ -187,7 +192,7 @@ export default function Endless() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
-  // Wave complete
+  // Wave complete — auto-save after each wave so Restart can recover it
   useEffect(() => {
     if (!levelComplete) return
     const newTotal = grandTotal + Math.floor(totalPixelsProduced)
@@ -197,6 +202,18 @@ export default function Endless() {
     setQuizAnswered(null)
     const waveKeys = checkEndlessWave({ wave, unlockedKeys: achievements })
     if (waveKeys.length) unlockAchievements(waveKeys)
+
+    // Auto-save grid state after each completed wave (user-visible saves)
+    if (user) {
+      const { randomBuyCount, grid: savedGrid, inventory: savedInv } = useGameStore.getState()
+      saveEndlessRun({
+        wave: wave + 1,     // next wave number (this wave is complete)
+        grandTotal: newTotal,
+        grid: savedGrid,
+        inventory: savedInv,
+        randomBuyCount,
+      })
+    }
   }, [levelComplete]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleQuizAnswer(idx) {
@@ -365,7 +382,7 @@ export default function Endless() {
 
       {/* Main play area — ShopSidebar has no deck, shows only Random slot */}
       <div className="flex flex-1 gap-0 overflow-hidden min-h-0">
-        <ShopSidebar deckDesignIds={[]} />
+        <ShopSidebar deckDesignIds={[]} isEndless />
         <div className="flex-1 flex items-start justify-center overflow-hidden px-2 py-2">
           <Grid />
         </div>

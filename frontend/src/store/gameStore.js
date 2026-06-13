@@ -322,7 +322,12 @@ export const useGameStore = create((set, get) => ({
 
   startNextWave(bonusBlocks) {
     const state = get()
+    // Reset pauseTimers so all grid blocks pulse immediately on next wave
+    const newGrid = state.grid.map(row =>
+      row.map(cell => cell ? { ...cell, pauseTimer: 0 } : null)
+    )
     set({
+      grid:                newGrid,
       inventory:           [...(state.inventory ?? []), ...(bonusBlocks ?? [])],
       designBuyCounts:     {},
       totalPixelsProduced: 0,
@@ -335,6 +340,34 @@ export const useGameStore = create((set, get) => ({
       randomBuyCount:      state.randomBuyCount,
       gameSpeed:           state.gameSpeed,
     })
+  },
+
+  extractBlock(blockId) {
+    const state = get()
+    const invIdx = state.inventory.findIndex(b => b.id === blockId)
+    if (invIdx !== -1) {
+      const block = state.inventory[invIdx]
+      set({ inventory: state.inventory.filter(b => b.id !== blockId) })
+      return block
+    }
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cell = state.grid[r][c]
+        if (cell?.id === blockId) {
+          const newGrid = state.grid.map(row => [...row])
+          newGrid[r][c] = null
+          set({ grid: newGrid })
+          return cell
+        }
+      }
+    }
+    return null
+  },
+
+  returnBlocksToInventory(blocks) {
+    const valid = (blocks ?? []).filter(Boolean)
+    if (!valid.length) return
+    set(s => ({ inventory: [...s.inventory, ...valid] }))
   },
 
   restoreGrid(savedGrid, savedInventory) {

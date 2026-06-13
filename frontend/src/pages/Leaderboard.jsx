@@ -14,30 +14,33 @@ export default function Leaderboard() {
   const { quizStats } = useUserStore()
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-4 mb-3">
+            <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
+            <h1 className="text-3xl font-black text-white pixel-heading">Highscores</h1>
+          </div>
+          <div className="flex gap-2">
+            {[['global', 'Global Top 100'], ['personal', 'Personal Best'], ['quiz', 'Quiz Score']].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`flex-1 py-1.5 rounded-xl text-xs font-black border-2 transition
+                  ${tab === key ? 'border-pixel-blue text-pixel-blue bg-pixel-blue/10' : 'border-game-border text-gray-500 hover:border-gray-500'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="px-4 py-6">
       <div className="max-w-lg mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
-          <h1 className="text-4xl font-black text-white pixel-heading">Highscores</h1>
-        </div>
-
-        {/* Tab selector */}
-        <div className="flex gap-2 mb-6">
-          {[['global', 'Global Top 100'], ['personal', 'Personal Best'], ['quiz', 'Quiz Score']].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition
-                ${tab === key ? 'border-pixel-blue text-pixel-blue bg-pixel-blue/10' : 'border-game-border text-gray-500 hover:border-gray-500'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         {tab === 'global'   && <GlobalBoard currentUserId={user?.id} />}
         {tab === 'personal' && <PersonalBoard user={user} profile={profile} />}
         {tab === 'quiz'     && <QuizBoard user={user} profile={profile} quizStats={quizStats} />}
+      </div>
       </div>
     </div>
   )
