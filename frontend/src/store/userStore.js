@@ -311,15 +311,17 @@ export const useUserStore = create((set, get) => ({
 
   // ── Endless run save/resume ─────────────────────────────────────────────────
 
-  async saveEndlessRun({ wave, grandTotal, grid, inventory }) {
+  async saveEndlessRun({ wave, grandTotal, grid, inventory, randomBuyCount }) {
     const { user } = get()
     if (!user) return
+    // Pack randomBuyCount into inventory wrapper so we don't need a schema change
+    const invPayload = { _rbc: randomBuyCount ?? 0, blocks: inventory }
     await supabase.from('endless_saves').upsert({
       user_id:    user.id,
       wave,
       grand_total: grandTotal,
       grid:        JSON.stringify(grid),
-      inventory:   JSON.stringify(inventory),
+      inventory:   JSON.stringify(invPayload),
       saved_at:    new Date().toISOString(),
     }, { onConflict: 'user_id' })
   },
@@ -333,11 +335,16 @@ export const useUserStore = create((set, get) => ({
       .eq('user_id', user.id)
       .maybeSingle()
     if (!data) return null
+    const rawInv = typeof data.inventory === 'string' ? JSON.parse(data.inventory) : data.inventory
+    // Support both old format (plain array) and new format ({ _rbc, blocks })
+    const inventory      = Array.isArray(rawInv) ? rawInv : (rawInv?.blocks ?? [])
+    const randomBuyCount = Array.isArray(rawInv) ? 0      : (rawInv?._rbc  ?? 0)
     return {
       wave:        data.wave,
       grand_total: data.grand_total,
       grid:        typeof data.grid === 'string' ? JSON.parse(data.grid) : data.grid,
-      inventory:   typeof data.inventory === 'string' ? JSON.parse(data.inventory) : data.inventory,
+      inventory,
+      randomBuyCount,
     }
   },
 

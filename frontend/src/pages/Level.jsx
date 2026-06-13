@@ -115,6 +115,7 @@ export default function Level() {
   const preLevelContent = !isTutorial ? getLevelContent(levelNum) : null
   const [preLevelPhase, setPreLevelPhase] = useState(false)
   const [preLevelBonus, setPreLevelBonus] = useState(0)
+  const [preLevelAnsweredCorrect, setPreLevelAnsweredCorrect] = useState(null)
 
   const effectiveRequired = config
     ? (activeGridStyle === 'efficiency'
@@ -139,11 +140,10 @@ export default function Level() {
   }
 
   // Start the level using the level's preset starter designs as free starting blocks
-  function startLevelWithStarters(starterIds) {
+  function startLevelWithStarters(starterIds, skipQuestion = false) {
     const { unlockedBlocks } = useShopStore.getState()
     const typePool = getOwnedBlockTypes(unlockedDesigns, unlockedBlocks ?? [])
 
-    // Give 2 copies of each unique starter design
     const uniqueStarters = [...new Set(starterIds)]
     const startingBlocks = []
     for (const id of uniqueStarters) {
@@ -157,12 +157,13 @@ export default function Level() {
     setTimeRemaining(effectiveTimeLimit)
     setElapsedSeconds(0)
 
-    if (showLearning && preLevelContent) {
+    if (!skipQuestion && showLearning && preLevelContent) {
       setPreLevelPhase(true)
     }
   }
 
   function handlePreLevelContinue(wasCorrect) {
+    setPreLevelAnsweredCorrect(wasCorrect ?? null)
     if (wasCorrect === true && preLevelContent?.type === 'quiz') {
       const bonus = Math.floor(effectiveRequired * 0.15)
       setPreLevelBonus(bonus)
@@ -296,11 +297,17 @@ export default function Level() {
       if (tutDeck.length > 0) { setActiveDeck(tutDeck); setDeckSelection(tutDeck) }
       setTimeRemaining(effectiveTimeLimit)
     } else {
-      startLevelWithStarters(config.presetDeck ?? [])
+      startLevelWithStarters(config.presetDeck ?? [], true)
+      if (preLevelAnsweredCorrect === true && preLevelContent?.type === 'quiz') {
+        const bonus = Math.floor(effectiveRequired * 0.15)
+        setPreLevelBonus(bonus)
+        addPixels(bonus)
+      }
     }
   }
 
   function handleRetry() {
+    setPreLevelAnsweredCorrect(null)
     setResultShown(false)
     setElapsedSeconds(0)
     setDesignChoicePair(null)
