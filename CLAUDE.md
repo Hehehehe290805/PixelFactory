@@ -49,7 +49,8 @@ PixelFactory/
 │   │   │   │   └── ShopSidebar.jsx        # Deck shop + random block + sell zone (drag to sell 20%)
 │   │   │   ├── ui/
 │   │   │   │   ├── AchievementToast.jsx
-│   │   │   │   ├── DeckSelector.jsx       # Pre-level: pick 3 designs (max 2× same)
+│   │   │   │   ├── DeckSelector.jsx       # NOT rendered in-game; exports DesignMiniThumb + DesignTooltipBody helpers used by ShopDeckSelector
+│   │   │   │   ├── ShopDeckSelector.jsx   # Pre-level: pick up to 8 designs from collection for the in-level shop
 │   │   │   │   ├── LearningCard.jsx       # Post-level fact card (L1–12) or quiz (L13+)
 │   │   │   │   ├── StarResult.jsx         # No stars on tutorial; green ✓ checkmark instead
 │   │   │   │   └── TutorialOverlay.jsx    # Spotlight tutorial (clip-path grayout + pulsing ring)
@@ -59,7 +60,7 @@ PixelFactory/
 │   │   ├── pages/
 │   │   │   ├── Home.jsx
 │   │   │   ├── Campaign.jsx        # Level select; design choice modal at levels 5,10,15,...
-│   │   │   ├── Level.jsx           # DeckSelector → game
+│   │   │   ├── Level.jsx           # ShopDeckSelector → game (tutorial levels 1–5 skip the selector)
 │   │   │   ├── Endless.jsx         # End Run flow; endless design unlock tracking
 │   │   │   ├── Profile.jsx         # Design collection: unlocked + locked designs
 │   │   │   ├── Shop.jsx            # Permanent shop: grid styles, 30 shop-only designs, speed boosts
@@ -69,7 +70,7 @@ PixelFactory/
 │   │   ├── store/
 │   │   │   ├── gameStore.js      # Grid, inventory, deckSelection, randomBuyCount, sellBlock, grantRandomBlock
 │   │   │   ├── userStore.js      # Auth, gold, progress, achievements, quizStats, CRUD
-│   │   │   ├── shopStore.js      # Persistent unlocks: activeGridStyle, unlockedBlocks, purchasedSpeeds
+│   │   │   ├── shopStore.js      # Persistent unlocks: activeGridStyle, unlockedBlocks, purchasedSpeeds, purchasedGridStyles, designRollCount, synergyScrollCount
 │   │   │   └── settingsStore.js  # showTutorial, showLearning, musicEnabled/Volume, sfxEnabled/Volume (persisted)
 │   │   ├── engine/
 │   │   │   ├── productionEngine.js   # Full tick: base + design synergy + block effects
@@ -101,8 +102,8 @@ PixelFactory/
 
 ## Core Game Loop
 
-1. **Pre-level**: Player opens DeckSelector → picks up to 3 designs from their collection (same design can appear up to 2× in the deck)
-2. **Level starts**: inventory is empty; deck designs appear in ShopSidebar for purchase with produced pixels
+1. **Pre-level**: Non-tutorial levels show `ShopDeckSelector` → player picks up to 8 designs from their collection to populate the in-level shop. Tutorial levels (1–5) skip this and give preset flower blocks directly.
+2. **Level starts**: inventory contains preset free blocks (from `config.presetDeck`); chosen shop-deck designs are available in ShopSidebar for purchase with produced pixels
 3. **Tick** (every 100ms): `ProductionEngine` calls `computeTick(grid, opts)` → scaled by `gameSpeed` → updates `totalPixelsProduced`
 4. **Tick skipped** when `gamePaused === true`
 5. **Level complete** when `totalPixelsProduced >= config.requiredOutput`
@@ -164,22 +165,20 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
 
 ## Design Synergy System (`engine/designSynergies.js`)
 
-**~75 synergies across 10 types.** Synergies activate when designs are arranged in specific spatial patterns. Stronger synergies require more designs and some grant one-time rewards on first activation.
+**~35 synergies across 6 active types.** Synergies activate when designs are arranged in specific spatial patterns. All synergies have **3 levels** — bonus scales at L1×1.0, L2×1.6, L3×2.2. Some grant one-time rewards on first activation.
+
+> **Removed types** (old, no longer in code): `series_count`, `row_series`, `column_series`.
 
 ### Synergy Types
 
 | Type | Trigger | Example |
 |---|---|---|
-| `series_count` | N **unique** designs of same series anywhere | GARDEN: 7 flower designs → +35% |
-| `exact_count` | N copies of the exact same design id | ROSE PARADE: 3 Roses → +30% those blocks |
-| `adjacency_pair` | Two **specific** design ids placed orthogonally adjacent | SUN & MOON: Sun adjacent to Moon → +55% both |
-| `row_series` | N designs of same series in the same horizontal row | CITY BLOCK: 5 buildings in one row → +45% |
-| `column_series` | N designs of same series in the same vertical column | FLOWER COLUMN: 4 flowers in one column → +40% |
-| `long_range` | Two qualifying designs ≥ `minDist` Manhattan cells apart | DISTANT STARS: 2 space ≥6 apart → +45% both |
-| `core_radius` | Core design + N satellites within `radius` cells | SOLAR SYSTEM: Sun + 3 space within 2 → Sun +65%, ring +38% |
-| `block_type_count` | N blocks of the same `blockType` anywhere | SPECIALIST: 5 of same type → +45% |
-| `cross_family` | Specific designs AND/OR series from **different** families all on grid | CHRISTMAS_TREE: Star + Snowflake + any tree → +55%, grants random block |
-| `meta_synergy` | Two or more other synergy IDs both currently active | PRIMORDIAL_GROVE: GARDEN + FOREST both active → +35% to all synergy cells |
+| `adjacency_pair` | Two **specific** design IDs placed orthogonally adjacent | SUN_AND_MOON: Sun adjacent to Moon → +100% both |
+| `long_range` | Two qualifying designs ≥ `minDist` Manhattan cells apart | DISTANT_STARS: 2 space ≥7 apart → +90% · +20% all-8 |
+| `core_radius` | Core design + N satellites within `radius` cells | SOLAR_SYSTEM: Sun + 3 space within 2 → core +120%, sats +75% |
+| `block_type_count` | N blocks of the same `blockType` anywhere | SPECIALIST: 5 of same type → +90% · +20% all-8 |
+| `cross_family` | Specific designs AND/OR series in a zone (`maxSpan`) or adjacent; mega (maxSpan:12) spans the whole grid | CHRISTMAS_TREE: Star+Snowflake+any tree in 4×4 → +100%, bonus block |
+| `meta_synergy` | Two or more other synergy IDs both currently active | COSMIC_NEXUS: DEEP_SPACE+PRIMORDIAL_GROVE+BEAST_EMPIRE → +60% ALL cells |
 
 ### Synergy Definition Fields
 
@@ -187,37 +186,33 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
 // Common to all types:
 {
   name, type, desc,
-  own,               // additive output bonus for qualifying blocks (e.g. 0.20 = +20%)
+  own,               // additive output bonus for qualifying blocks (e.g. 0.90 = +90%)
   radiation: {       // optional — bonus that spreads to neighbors
     type: 'ortho' | 'diag' | 'all8',
     amount,          // additive bonus to radiation targets
   },
+  reward: { type: 'pixels' | 'gold' | 'random_block', amount?: number },
+  // reward fired once by ActiveEffectsPanel on first activation
 }
 
-// series_count / row_series:
-{ series, required }
-
-// exact_count:
-{ designId, required }
-
-// adjacency_pair — both must be specific design IDs (no generic series):
-{ designA, designB }
+// adjacency_pair:
+{ designA, designB }   // both must be specific design IDs, orthogonally adjacent
 
 // long_range — same-series pair:
 { series, minDist }
-// long_range — cross-series or cross-design pair:
-{ seriesA, seriesB, minDist }   // or: { designA, designB, minDist }
+// long_range — cross-series or mixed:
+{ seriesA, seriesB, minDist }
 
 // core_radius:
 {
-  coreDesignId,        // specific design id for the anchor (OR use coreSeries)
+  coreDesignId,        // specific anchor design id (OR use coreSeries)
   coreSeries,          // any design of this series can be the core
-  satelliteSeries,     // qualifying satellite designs must be of this series
-  requiredSatellites,  // how many satellites must be within radius
-  radius,              // max Manhattan distance from core to satellite (≤ 2)
+  satelliteSeries,     // satellite designs must be of this series
+  requiredSatellites,  // min satellites within radius
+  radius,              // max Manhattan distance from core to satellite (≤ 3)
   ownCore,             // bonus for the core block
-  ownSatellite,        // bonus for each qualifying satellite block
-  own,                 // = ownCore, used for synergyMap priority comparison
+  ownSatellite,        // bonus for each satellite block
+  own,                 // = ownCore, used for synergyMap priority
 }
 
 // cross_family:
@@ -226,22 +221,109 @@ Some designs are cosmetic skins (change appearance only, same block effect). Unl
     { designId: 'x' },          // specific design must be on grid
     { series: 'x', count: N },  // N designs of this series must be on grid
   ],
-  requireAdjacent: true,  // optional: the two named designIds must be orthogonally adjacent
+  maxSpan: N,            // all pieces must fit in an N×N zone (12 = whole grid)
+  requireAdjacent: true, // optional: the two named designIds must be orthogonally adjacent
 }
 
 // meta_synergy — MUST appear last in SYNERGY_DEFS:
 {
   requires: ['SYNERGY_ID_A', 'SYNERGY_ID_B'],  // all must be currently active
-  affectsAll: true,  // optional: bonus applies to every occupied cell (not just synergy cells)
+  affectsAll: true,  // optional: bonus applies to every occupied cell
 }
 
-// reward field (any type):
-{ reward: { type: 'pixels' | 'gold' | 'random_block', amount?: number } }
-// Fired once by ActiveEffectsPanel when the synergy first transitions to active
-
 // block_type_count:
-{ blockType, required }  // blockType matches block.type (e.g. 'reactor', 'echo')
+{ blockType, required }  // matches block.type; omit blockType for SPECIALIST (any type)
 ```
+
+### Adjacency Pair Synergies (10)
+
+Both designs must be orthogonally adjacent. L2 = 2 pairs, L3 = 3 pairs.
+
+| ID | Name | Designs | Bonus |
+|---|---|---|---|
+| SUN_AND_MOON | Sun & Moon | sun + moon | +100% both |
+| HUNTER_AND_PREY | Hunter & Prey | fox + rabbit | +95% both |
+| FIRE_AND_ICE | Fire & Ice | flame_sym + ice_crystal | +110% both |
+| CROWN_AND_SWORD | Crown & Sword | crown + sword | +100% both |
+| OWL_AND_MOON | Night Watch | owl + moon | +95% both; +18% all-8 radiation |
+| ROSE_AND_HEART | Rose & Heart | rose + heart | +105% both |
+| ANCHOR_AND_WAVE | Anchor & Wave | anchor + ocean_wave | +100% both; +18% ortho radiation |
+| KEY_AND_LOCK | Key & Lock | key + lock | +120% both |
+| ROCKET_AND_STAR | Rocket & Star | rocket + star | +95% both; +18% all-8 radiation |
+| BEE_AND_FLOWER | Bee & Flower | bee + daisy | +100% both; +16% ortho radiation |
+
+### Long-Range Synergies (7)
+
+Manhattan distance between the pair must be ≥ `minDist`. L2 = 4 qualifying blocks, L3 = 6.
+
+| ID | Name | Condition | Bonus |
+|---|---|---|---|
+| DISTANT_STARS | Distant Stars | 2 space ≥7 apart | +90% · +20% all-8 |
+| ANTIPODES | Antipodes | 2 landscapes ≥8 apart | +85% · +18% ortho |
+| POLAR_WINDS | Polar Winds | weather + landscape ≥6 apart | +100% both |
+| TRANSCONTINENTAL | Transcontinental | 2 buildings ≥7 apart | +80% · +18% ortho |
+| WILD_MIGRATION | Wild Migration | 2 animals ≥6 apart | +85% · +18% ortho |
+| STAR_SCATTER | Star Scatter | 2 celestial ≥8 apart | +105% · +22% all-8 |
+| ABSTRACT_SPREAD | Abstract Spread | 2 abstract ≥6 apart | +80% · +20% all-8 |
+
+### Core-Radius Synergies (5)
+
+One anchor block + N satellites within a Manhattan radius. Core and satellites get separate bonuses. L2 = satRequired+1, L3 = satRequired+2.
+
+| ID | Name | Core | Satellites | Radius | Core Bonus | Sat Bonus |
+|---|---|---|---|---|---|---|
+| SOLAR_SYSTEM | Solar System | sun design | 3 space | 2 | +120% | +75% |
+| ROYAL_COURT | Royal Court | crown design | 3 symbols | 2 | +110% | +70% |
+| ECOSYSTEM | Ecosystem | any tree | 3 animals | 2 | +105% | +65% |
+| MOUNTAIN_KINGDOM | Mountain Kingdom | mountain design | 3 landscapes | 2 | +110% | +70% |
+| BLOOMING_CORE | Blooming Core | any flower | 4 flowers | 2 | +120% | +70% |
+
+### Block-Type Synergies (4)
+
+Works across all series — only the block effect type matters.
+
+| ID | Name | Block Type | Required | Bonus |
+|---|---|---|---|---|
+| DOUBLE_DOWN | Double Down | doubler | 3 | +50% · +16% ortho |
+| REACTOR_NETWORK | Reactor Network | reactor | 2 | +60% · +20% all-8 |
+| ECHO_CHAMBER | Echo Chamber | echo | 3 | +45% · +15% ortho |
+| SPECIALIST | Specialist | any (5 of same) | 5 | +90% · +20% all-8 |
+
+### Cross-Family Synergies (15)
+
+Qualifying pieces must fit within a `maxSpan × maxSpan` zone (or `requireAdjacent` for exact adjacency). Mega synergies use `maxSpan: 12` (whole grid).
+
+| ID | Name | Requires | Zone | Bonus | Reward |
+|---|---|---|---|---|---|
+| ORCHARD | Orchard | apple + 1 tree | 5×5 | +80% · +18% ortho | +40 gold |
+| CHRISTMAS_TREE | Christmas Tree | star + snowflake + 1 tree | 4×4 | +100% · +20% all-8 | bonus block |
+| SUNBLOSSOM | Sunblossom | sun + 3 flowers | 5×5 | +90% · +20% ortho | +250px |
+| DUNGEON_KEEPER | Dungeon Keeper | dragon + 2 buildings | 5×5 | +95% · +20% diag | — |
+| HOWLING_MOON | Howling Moon | moon + wolf (adjacent) | adj | +110% both | — |
+| PHOENIX_RISE | Phoenix Rise | phoenix + volcano (adjacent) | adj | +120% · +22% all-8 | +500px |
+| ALIEN_CITY | Alien City | 2 space + 3 buildings | 6×6 | +85% · +18% all-8 | — |
+| CELESTIAL_GARDEN | Celestial Garden | 2 celestial + 2 flowers | 5×5 | +80% · +18% all-8 | +25 gold |
+| WINTER_PEAK | Winter Peak | mountain + 2 weather | 5×5 | +90% · +18% ortho | — |
+| TIDE_POOL | Tide Pool | 2 animals + 2 landscapes | 6×6 | +75% · +18% ortho | — |
+| STORM_CASTLE | Storm Castle | 2 weather + 2 buildings | 5×5 | +80% · +18% diag | — |
+| GRAND_TAPESTRY | Grand Tapestry | 3 flowers+2 trees+2 animals+2 buildings+1 landscape | grid | +140% · +40% all-8 | +2000px |
+| COSMIC_BLOOM | Cosmic Bloom | 4 flowers+3 celestial+2 space+sun | grid | +160% · +50% ortho | bonus block |
+| PRIMAL_MACHINE | Primal Machine | 3 abstract+3 symbols+2 buildings+2 space | grid | +150% · +45% all-8 | +300 gold |
+| WORLD_SPIRIT | World Spirit | 3 animals+3 landscapes+3 weather+mountain | grid | +145% · +45% ortho | +2500px |
+
+### Meta-Synergies (7)
+
+Require other synergies to be simultaneously active. MUST be last in SYNERGY_DEFS. `affectsAll: true` means bonus applies to all occupied cells.
+
+| ID | Name | Requires | Bonus | Reward |
+|---|---|---|---|---|
+| PRIMORDIAL_GROVE | Primordial Grove | BLOOMING_CORE + ECOSYSTEM | +75% synergy cells | bonus block |
+| DEEP_SPACE | Deep Space | SOLAR_SYSTEM + DISTANT_STARS | +80% synergy cells | — |
+| STORM_KINGDOM | Storm Kingdom | WINTER_PEAK + POLAR_WINDS | +70% synergy cells | — |
+| BEAST_EMPIRE | Beast Empire | ECOSYSTEM + WILD_MIGRATION | +75% synergy cells | +80 gold |
+| BATTLE_COURT | Battle Court | ROYAL_COURT + CROWN_AND_SWORD | +80% synergy cells | +800px |
+| BLOOD_MOON | Blood Moon | OWL_AND_MOON + HOWLING_MOON | +90% synergy cells | — |
+| COSMIC_NEXUS | Cosmic Nexus | DEEP_SPACE + PRIMORDIAL_GROVE + BEAST_EMPIRE | +60% ALL cells | +1500px |
 
 ### Active Synergy Bonuses
 
@@ -249,59 +331,27 @@ Each synergy contributes additively to `bonusMap[r][c]`. A cell may receive:
 - Its own `own` bonus (if it qualifies for that synergy)
 - Radiation from neighbors that qualify for that synergy
 - For `core_radius`: `ownCore` if it is the core, `ownSatellite` if it is a satellite
+- All bonuses are then multiplied by `LEVEL_MULTS[level]` (1.0 / 1.6 / 2.2)
 
-### Long-Range Synergies (5 synergies)
+### Implicit Adjacency Synergy
 
-Rewards spreading designs across the full grid. Manhattan distance between the pair must be ≥ `minDist`.
-
-| ID | Name | Condition | Bonus |
-|---|---|---|---|
-| DISTANT_STARS | Distant Stars | 2 space ≥5 | +25% · +8% all-8 |
-| ANTIPODES | Antipodes | 2 landscapes ≥6 | +22% · +6% ortho |
-| POLAR_WINDS | Polar Winds | weather + landscape ≥5 | +28% both |
-| TRANSCONTINENTAL | Transcontinental | 2 buildings ≥5 | +20% · +7% ortho |
-| WILD_MIGRATION | Wild Migration | 2 animals ≥5 | +22% · +6% ortho |
-
-### Core-Radius Synergies (5 synergies)
-
-One anchor block + N satellites within a Manhattan radius. Core and satellites get separate bonuses.
-
-| ID | Name | Core | Satellites | Radius | Core | Sat |
-|---|---|---|---|---|---|---|
-| SOLAR_SYSTEM | Solar System | sun design | 3 space | 3 | +40% | +20% |
-| ROYAL_COURT | Royal Court | crown design | 3 symbols | 2 | +35% | +20% |
-| ECOSYSTEM | Ecosystem | any tree | 3 animals | 2 | +25% | +18% |
-| MOUNTAIN_KINGDOM | Mountain Kingdom | mountain design | 3 landscapes | 2 | +30% | +18% |
-| BLOOMING_CORE | Blooming Core | any flower | 4 flowers | 3 | +35% | +15% |
-
-### Block-Type Synergies (3 synergies)
-
-Works across all series — only the block effect type matters.
-
-| ID | Name | Block Type | Required | Bonus |
-|---|---|---|---|---|
-| DOUBLE_DOWN | Double Down | doubler | 3 | +25% · +8% ortho |
-| REACTOR_NETWORK | Reactor Network | reactor | 2 | +30% · +10% all-8 |
-| ECHO_CHAMBER | Echo Chamber | echo | 3 | +20% · +7% ortho |
+Every block gets a free +15% bonus if any orthogonal neighbor shares its series. This is separate from the named synergies and is handled by `getAdjacencySynergyBonus()` in the production engine.
 
 ### Synergy Detection API
 
 ```js
 // Returns:
 //   synergyMap[r][c] — id of highest-priority active synergy for that cell (or null)
-//   bonusMap[r][c]   — total additive bonus for that cell (own + received radiation)
-//   activeList       — [{ id, name, desc, active, progress, required }] for ActiveEffectsPanel
+//   bonusMap[r][c]   — total additive bonus for that cell (own + received radiation, pre-level-mult)
+//   activeList       — [{ id, name, desc, active, progress, required, level, l2, l3, reward }]
 buildSynergyData(grid, neuralGridStyle = false)
 
-getSynergyMultiplier(r, c, bonusMap)        // → 1 + bonusMap[r][c]
-getBestNeighborSynergyBonus(r, c, grid, bonusMap)  // used by Conductor
+getSynergyMultiplier(r, c, bonusMap)              // → 1 + bonusMap[r][c]
+getAdjacencySynergyBonus(r, c, grid)              // → 1.15 if same-series ortho neighbor, else 1
+getBestNeighborSynergyBonus(r, c, grid, bonusMap) // used by Conductor
 ```
 
-Priority for `synergyMap[r][c]`: the synergy whose `ownCore ?? own` is largest wins the cell (so the most impactful active synergy is displayed per block).
-
-### Conductor Block
-
-Borrows the highest `bonusMap` value from any of the 8 adjacent cells.
+Priority for `synergyMap[r][c]`: the synergy whose `ownCore ?? own` is largest wins the cell.
 
 ---
 
@@ -311,22 +361,25 @@ All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design
 
 ### Block Effect Notes
 
-- **Base**: `pixelCount / 37.5` px/s — pixelCount is fixed per design (~80–120 typical)
+- **Base**: `SERIES_RATE[series]` px/s — space/celestial: 0.7, most series: 1.0, trees/food/landscapes/abstract: 1.3. pixelCount is NOT used in the base rate formula.
+- **Doubler**: ×2 when **no orthogonal neighbor shares the same series** (series-isolated). Moving to a non-series-adjacent spot immediately doubles output.
+- **CrossAmp**: flat **+0.5 px/s** to each diagonal neighbor per active cross_amp block. Does not scale with pixelCount.
 - **Color Checker**: `dominantColor` is precomputed from the design's pixel art; triggers immediately on placement if dominant color ≥50% of design
-- **Focus**: `focusColor` = design's `dominantColor`; multiplier = `1 + dominantColorRatio` (fixed per design, ~1.6–1.9×)
-- **Prism**: counts unique non-white/silver colors in the design's fixed pixel art
-- **Conductor**: borrows highest active synergy bonus from adjacent blocks' `activeSynergy` field
-- **Greedy/Forge**: use `pixelCount` for their calculations
+- **Focus**: flat **×1.5 output multiplier** (simple bonus, not ratio-based)
+- **Prism**: counts unique non-white/silver colors in the design's fixed pixel art (+5% per color, max +30% at 6 colors)
+- **Conductor**: borrows highest active synergy bonus from any of the 8 adjacent blocks' `bonusMap` value
+- **Greedy**: on level end — `(myRate − avgNeighborRate) × 20` gold when above average (uses rateMap, not pixelCount)
+- **Forge**: on level end — `rate × 6` gold (min 5g), based on production rate at end (uses rateMap, not pixelCount)
 - All timing-based effects (Reactor, Echo, Overflow) work independently of design
 
 ### Base Set (intro with starters)
 | Block | Effect |
 |---|---|
-| **Base** | `floor(pixelCount / 37.5)` px/s |
-| **Doubler** | ×2 if all 4 ortho neighbors have < half its pixelCount |
-| **Cross Amp** | Adds `floor(pixelCount/10)` px/s to each diagonal neighbor |
+| **Base** | `SERIES_RATE[series]` px/s (space/celestial: 0.7, most: 1.0, trees/food/landscapes/abstract: 1.3) |
+| **Doubler** | ×2 when no orthogonal neighbor shares this block's series |
+| **Cross Amp** | Adds +0.5 px/s flat to each diagonal neighbor |
 | **Color Checker** | dominantColor ≥50% → −5% required output (one-time, on placement) |
-| **Greedy** | On complete: `(myPixelCount − Σneighbor.pixelCount) × 10` gold |
+| **Greedy** | On complete: `(myRate − avgNeighborRate) × 20` gold when above average |
 
 ### Campaign-Unlocked Specials
 | Block | Effect |
@@ -338,9 +391,9 @@ All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design
 | Prism | +5% per unique non-white color in design (max +30%) |
 | Conductor | Borrows highest synergy bonus from adjacent blocks |
 | Splitter | Gives ortho neighbors +20% of own rate |
-| Focus | Output = `pixelCount / 37.5 × (1 + dominantColorRatio)` — fixed per design |
+| Focus | Flat ×1.5 output multiplier |
 | Cluster | +12% per occupied neighbor (excl. void) |
-| Forge | On complete: +3 gold per pixel held |
+| Forge | On complete: `rate × 6` gold (min 5g) based on production rate |
 
 ### Shop-Only (permanent shop)
 | Block | Shop Cost | Effect |
@@ -359,7 +412,10 @@ All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design
   // Grid & blocks
   grid,               // 12×12 array of block instance | null
   inventory,          // design instances in hand (not yet placed)
-  deckSelection,      // [designId × 3] — chosen before each level
+  deckSelection,      // [designId × up to MAX_DECK]
+  designBuyCounts,    // { designId: count } — capped at 2 per design per level
+  randomBuyCount,     // tracks random block purchases (cost doubles each time)
+  blockRateMap,       // 12×12 array of per-block px/s rates (updated each tick)
 
   // Production
   totalPixelsProduced, // append-only; win condition
@@ -369,18 +425,30 @@ All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design
   // Level state
   levelActive, levelComplete,
   gameSpeed, gamePaused,
+  selectedBlockId,
 
   // Actions
   placeBlock(blockId, row, col),
   removeBlock(row, col),
   moveBlock(fromRow, fromCol, toRow, toCol),
-  buyDesignFromShop(designId, cost),  // adds instance to inventory; deducts pixelsSpentInShop
+  replaceBlock(row, col, blockId),           // swap grid block with inventory block
+  sellBlock(blockId),                        // returns pixel refund (20% of purchaseCost)
+  buyDesignFromShop(designId, cost, typePool), // adds instance; deducts pixelsSpentInShop
+  buyRandomDesign(unlockedDesignIds, deckIds, typePool),
+  grantRandomBlock(unlockedDesignIds, typePool), // free block (synergy reward)
+  extractBlock(blockId),                     // remove from grid or inventory; returns block
+  returnBlocksToInventory(blocks),
+  restoreGrid(savedGrid, savedInventory),
   setWaveDir(blockId, dir),
-  buyShopItem(cost),     // deducts from pixelsSpentInShop budget; returns bool
+  buyShopItem(cost),                         // deducts from pixelsSpentInShop; returns bool
   setGameSpeed(speed),
   setPaused(bool),
   startLevel(levelBlocks),
+  startNextWave(bonusBlocks),
   resetLevel(), completeLevel(),
+  tickCooldowns(deltaMs),
+  updateBlockSynergies(synergyMap),
+  updateBlockRates(rateMap),
 }
 ```
 
@@ -427,44 +495,45 @@ All effects are computed from the fixed `pixelLayout`/`pixelCount` of the design
 
 ### Starter Designs (10, given at tutorial completion)
 
+All starters are flowers (`unlockSource: 'starter'`). Former cross-series starters (oak, house, star, cat, circle, apple, heart, snowflake, mountain) are now `campaign_family` designs earned via family choice milestones.
+
 | Design | Series | Block Type |
 |---|---|---|
 | Daisy | flowers | base |
-| Oak | trees | base |
-| House | buildings | base |
-| Star | celestial | base |
-| Cat | animals | base |
-| Heart | symbols | base |
-| Snowflake | weather | base |
-| Mountain | landscapes | base |
-| Circle | shapes | base |
-| Apple | food | greedy |
+| Rose | flowers | doubler |
+| Tulip | flowers | base |
+| Lily | flowers | base |
+| Hibiscus | flowers | base |
+| Lotus | flowers | base |
+| Poppy | flowers | base |
+| Marigold | flowers | base |
+| Lavender | flowers | base |
+| Peony | flowers | base |
 
 ### Campaign Choice Milestones
 
-At levels 5, 10, 15, 20, 25, 30 (and every 5 levels after), a design choice modal appears after level completion. Player chooses 1 of 2 pre-set designs. These choices introduce effect block types progressively.
+At levels 10, 15, 20, 25, 30 (and every 5 levels after), a **FamilyChoiceModal** appears after level completion. Player picks 1 of 2 series and receives all 10 core designs from that family. `shouldShowFamilyChoice(levelNumber, unlockedDesignIds)` in `designUnlocks.js` returns the choice entry or null. `getFamilyChoiceForLevel()` and `getFamilyPackDesigns()` in `designLibrary.js` define the pairs and packs.
 
 ---
 
 ## Deck System (Pre-Level)
 
-1. **DeckSelector** screen opens before each level
-2. Player picks up to **3 designs** from their collection — same design can appear up to **2×** in one deck
-3. Level starts with an empty inventory; deck designs are available in the `ShopSidebar`
-4. **Mid-level shop**: buy copies of deck designs using produced pixels; each purchase assigns a **random block type** from the unlocked pool
-5. **Random block**: always available in the shop at `200px × 2^purchaseCount` (doubles every buy)
+1. **ShopDeckSelector** screen opens before each non-tutorial level (up to **8 designs** from collection)
+2. Confirmed designs populate the `ShopSidebar` during the level
+3. Level starts with **preset free blocks** from `config.presetDeck` already in inventory
+4. **Mid-level shop**: buy copies of shop-deck designs using produced pixels; each purchase assigns a **random block type** from the unlocked pool
+5. No random block button in the shop (removed in Phase 5)
 
-`MAX_DECK = 3` and `MAX_DECK_COPIES = 2` are constants in `lib/constants.js`.
+`MAX_DECK_COPIES = 2` (per design per level) in `lib/constants.js`. `MAX_SHOP_DECK = 8` in `ShopDeckSelector.jsx`.
 
 ### In-Level Shop (ShopSidebar)
 
-- Shows unique deck designs (deduplicated — each design appears once)
+- Shows designs from the player's confirmed shop deck (deduplicated)
 - Each has a pixel cost based on the design's default block type (Bargain grid style −20%)
 - Block type shown as "type: random" — the actual effect is only known after purchase
 - Can drag directly from shop → grid if affordable
 - Purchase limit: 2 copies of any one design per level
 - **Sell zone** at the bottom: drag any block here to sell for 20% of its `purchaseCost`
-- **Random block** at the bottom: cost starts at 200px and doubles each time it's bought
 
 ### Approximate In-Level Design Costs
 
@@ -517,7 +586,7 @@ Displayed on the right side of the play area, below `PixelCounter`.
 | Efficiency | 600g | +20% time, −10% required |
 | Bargain | 700g | In-level shop 20% cheaper |
 | Quantum | 1000g | 2× burst every 30s for 5s |
-| Neural | 700g | Design synergy thresholds −1 (e.g. 5→4 for series_count) |
+| Neural | 700g | Design synergy thresholds −1 (e.g. SPECIALIST needs 4 instead of 5) |
 | Industrial | 600g | +3% per 10 placed blocks |
 | Synergy+ | 900g | Design synergy bonuses +25% stronger |
 | Cascade | 750g | Rows 6–11: +4% per row below row 5 |
@@ -551,7 +620,7 @@ function computeTick(grid, { activeGridStyle, gridTick }) {
 }
 ```
 
-Base rate formula: `pixelCount / 37.5` px/s (pixelCount fixed per design)
+Base rate: `SERIES_RATE[block.series]` px/s — space/celestial: 0.7, most: 1.0, trees/food/landscapes/abstract: 1.3. Also returns `{ bonusMap, activeList }` now (not just synergyMap).
 
 ---
 
@@ -630,7 +699,7 @@ setSfxVolume(0–1)            // updates sfxMasterGain immediately
 
 ## Wave Animation (Block.jsx)
 
-`block.waveDir` (default `'up'`) — 8 directions. Duration = `37.5 / pixelCount` seconds.
+`block.waveDir` (default `'up'`) — 8 directions. `WAVE_CYCLE_S = 4.0s` fixed cycle (not pixelCount-derived). `fillRatio` is series-based (premium series space/celestial: 0.55, others: 0.70).
 
 Radial wheel on occupied cell: Move, Replace, Wave (sub-wheel), Synergy (shows synergy list panel for that block), Remove. No right-click — the Synergy option replaces it. When selecting a design to place from an empty-cell wheel, the inventory is first deduplicated by `designId` so each design shows at most once.
 
@@ -638,7 +707,7 @@ Radial wheel on occupied cell: Move, Replace, Wave (sub-wheel), Synergy (shows s
 
 ## Tutorial System (TutorialOverlay.jsx)
 
-Level 1 only. Spotlight tutorial using clip-path grayout + pulsing ring.
+Levels 1–5 (`config.tutorial === true`). Spotlight tutorial using clip-path grayout + pulsing ring. Tutorial levels use only flower-family blocks and skip the ShopDeckSelector pre-level phase.
 
 **Steps:**
 1. `welcome` — manual
@@ -679,11 +748,13 @@ Buying a shop-only block type (e.g. "Overflow") unlocks the ability to add that 
 
 ## Profile Page (`Profile.jsx`)
 
-Shows the full **Design Collection**:
+Shows the full **Design Collection** and **Synergies tab**:
 - All 200+ designs shown in a grid
 - Unlocked: full color, shows name + series
 - Locked: grayscale silhouette with "???" name + unlock hint
 - Series filter tabs
+- **Synergies tab**: progress bar, type filter, card list. Discovered synergies show type badge + bonus; undiscovered show "??? Unknown Synergy". Live count in tab label (X/Y).
+- `discoveredSynergies` persisted in `userStore` → `profiles.discovered_synergies` JSONB
 
 ---
 
@@ -731,17 +802,18 @@ CREATE TRIGGER on_auth_user_created
 ### User CRUD
 
 All user data lives in `userStore.js`:
-- `gold`, `achievements` (Set), `campaignProgress`, `quizStats`, `unlockedDesigns[]`, `endlessMinutes`
-- `loadProfile()` — reads from `profiles` table on init/login
+- `gold`, `achievements` (Set), `campaignProgress`, `quizStats`, `unlockedDesigns[]`, `discoveredSynergies[]`, `endlessMinutes`
+- `loadProfile()` — reads from `profiles` table on init/login (including `discovered_synergies` JSONB)
 - `saveCampaignProgress(levelNum, stars, elapsed)` — upserts `campaign_progress` JSONB
 - `unlockAchievements(keys[])` — upserts `achievements` rows (no-op for guests)
 - `addGold(amount)` — updates `profiles.gold`
+- `discoverSynergy(id)` — adds synergy ID to `discoveredSynergies`; auto-called by `ActiveEffectsPanel` on first activation
 
 ---
 
 ## Supabase Schema
 
-See `supabase/schema.sql`. Key columns on the `profiles` table: `id`, `gold`, `campaign_progress` (JSONB), `achievements`, `unlocked_designs` (JSONB), `endless_minutes` (float).
+See `supabase/schema.sql`. Key columns on the `profiles` table: `id`, `gold`, `campaign_progress` (JSONB), `achievements`, `unlocked_designs` (JSONB), `discovered_synergies` (JSONB), `endless_minutes` (float), `quiz_correct`, `quiz_total`.
 
 ---
 
@@ -754,7 +826,7 @@ See `supabase/schema.sql`. Key columns on the `profiles` table: `id`, `gold`, `c
 5. **Design pixel art is immutable** — `pixelLayout` is always read from the design library, never from user edits.
 6. **`pixelCount` and `dominantColor` are precomputed** in the design library — do not recompute at runtime.
 7. **`buildSynergyData(grid)`** returns `synergyMap`, `bonusMap`, and `activeList` — used by `productionEngine` and `ActiveEffectsPanel`.
-8. **Focus effect is deterministic** — `focusColor = dominantColor`, multiplier = `1 + (dominantColorCount / pixelCount)`, fixed per design.
+8. **Focus effect is a flat multiplier** — `getFocusMultiplier()` returns `1.5` for all focus blocks regardless of design.
 9. **Color Checker always triggers on placement** — the design's dominant color is precomputed at ≥50%, so placing a color_checker design always reduces required output by 5%.
 10. **Speed boosts are permanent** — `shopStore.purchasedSpeeds`; affect both production AND timer.
 11. **Text selection disabled globally** — `user-select: none` on `body`; re-enabled for `input`/`textarea`.

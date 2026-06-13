@@ -14,7 +14,7 @@ Live at: **https://Hehehehe290805.github.io/PixelFactory/**
 
 ### Core Loop
 
-1. **Pick your deck** — Before each level, choose up to 3 designs from your unlocked collection
+1. **Pick your shop deck** — Before each non-tutorial level, choose up to 8 designs from your collection to populate the in-level shop. Tutorial levels (1–5) give preset flower blocks directly.
 2. **Play** — Buy designs from the in-level shop using produced pixels, place them on the grid; the engine ticks every 100 ms producing pixels in parallel
 3. **Win** — Reach the required pixel total before time runs out (or in Endless: survive as long as possible)
 
@@ -26,11 +26,11 @@ Every block on the grid is a **design** — a fixed 16×16 pixel artwork that co
 
 | Block | Effect |
 |---|---|
-| **Base** | `floor(pixelCount / 37.5)` px/s |
-| **Doubler** | ×2 if all 4 ortho neighbors have < half its pixelCount |
-| **Cross Amp** | Adds flat px/s to each diagonal neighbor |
+| **Base** | `SERIES_RATE[series]` px/s — space/celestial: 0.7, most series: 1.0, trees/food/landscapes/abstract: 1.3 |
+| **Doubler** | ×2 when no orthogonal neighbor shares this block's series |
+| **Cross Amp** | Adds +0.5 px/s flat to each diagonal neighbor |
 | **Color Checker** | Dominant color ≥50% → −5% required output (once, on placement) |
-| **Greedy** | On complete: gold based on pixel surplus vs. neighbors |
+| **Greedy** | On complete: `(myRate − avgNeighborRate) × 20` gold when above average |
 | **Amplifier** | +8% per occupied neighbor (all 8) |
 | **Resonator** | +50% if any ortho neighbor is same block type |
 | **Reactor** | Ramps 50%→200% over 15 s; resets on move |
@@ -38,9 +38,9 @@ Every block on the grid is a **design** — a fixed 16×16 pixel artwork that co
 | **Prism** | +5% per unique non-white color in design's pixel art (max +30%) |
 | **Conductor** | Borrows highest synergy bonus from adjacent blocks |
 | **Splitter** | Gives ortho neighbors +20% of own rate |
-| **Focus** | Output = `pixelCount/37.5 × (1 + dominantColorRatio)` |
+| **Focus** | Flat ×1.5 output multiplier |
 | **Cluster** | +12% per occupied neighbor (excl. void) |
-| **Forge** | On complete: +3 gold per pixel held |
+| **Forge** | On complete: `rate × 6` gold (min 5g) based on production rate |
 | **Overflow** | 3× burst for 5 s every 10 s (shop-only) |
 | **Mirror** | Copies best ortho neighbor rate (shop-only) |
 | **Catalyst** | Synergy bonuses in same row ×1.5 (shop-only) |
@@ -50,72 +50,54 @@ Every block on the grid is a **design** — a fixed 16×16 pixel artwork that co
 
 ## Design Synergy System
 
-Synergies activate when designs are arranged in specific spatial patterns. There are **10 synergy types**:
+Synergies activate when designs are arranged in specific spatial patterns. There are **6 synergy types** and ~35 named synergies. All synergies have **3 levels** — bonuses scale at ×1.0 / ×1.6 / ×2.2 as you build more qualifying pairs.
 
-### 1. Series Count — place N of the same series anywhere
-> Example: 5 flower designs anywhere on the grid → **Garden** (+20% each, +8% ortho radiation)
+### Synergy Types
 
-All 12 series have both a full-tier (4–5 designs) and a mini-tier (2 designs) synergy. Once enough designs of a series are on the grid the bonus applies regardless of where they sit.
+**Adjacency Pair** — Two specific designs placed orthogonally adjacent.
+> Example: Sun touching Moon → **Sun & Moon** (+100% both)
 
-### 2. Exact Count — place N copies of the exact same design
-> Example: 3 Rose designs → **Rose Parade** (+25% each)
+**Long Range** — Two qualifying designs at least N cells apart (Manhattan distance).
+> Example: 2 space designs ≥7 apart → **Distant Stars** (+90% both, radiates +20% all-8)
 
-### 3. Adjacency Pair — place two specific designs side by side
-> Example: Sun touching Moon → **Sun & Moon** (+30% both). Must be orthogonally adjacent (no diagonal).
-
-### 4. Row Series — place N of the same series in the same horizontal row
-> Example: 4 buildings in one row → **City Block** (+28% that row)
-
-### 5. Column Series — place N of the same series in the same vertical column
-> Example: 4 animal designs in one column → **Animal Column** (+38%)
-
-### 6. Long Range — place two designs at least N cells apart
-> Example: 2 space designs ≥5 cells apart → **Distant Stars** (+25% both, radiates +8%)
-
-Rewards spreading designs across the full grid. The Manhattan distance between the two qualifying blocks must meet or exceed `minDist`.
-
-| Synergy | Condition | Bonus |
+| Synergy | Condition | L1 Bonus |
 |---|---|---|
-| Distant Stars | 2 space designs ≥5 apart | +25% · +8% all-8 radiation |
-| Antipodes | 2 landscapes ≥6 apart | +22% · +6% ortho |
-| Polar Winds | weather + landscape ≥5 apart | +28% both |
-| Transcontinental | 2 buildings ≥5 apart | +20% · +7% ortho |
-| Wild Migration | 2 animals ≥5 apart | +22% · +6% ortho |
+| Distant Stars | 2 space ≥7 apart | +90% · +20% all-8 |
+| Antipodes | 2 landscapes ≥8 apart | +85% · +18% ortho |
+| Polar Winds | weather + landscape ≥6 apart | +100% both |
+| Wild Migration | 2 animals ≥6 apart | +85% · +18% ortho |
+| Star Scatter | 2 celestial ≥8 apart | +105% · +22% all-8 |
 
-### 7. Core Radius — place an anchor design, then surround it with satellites
-> Example: Place Sun on the grid, then put 3+ space designs within 3 cells → **Solar System** (Sun +40%, satellites +20%)
+**Core Radius** — One anchor block plus N satellites within a Manhattan radius.
+> Example: Sun + 3 space designs within 2 cells → **Solar System** (Sun +120%, satellites +75%)
 
-One "core" block acts as an anchor. The bonus activates when enough "satellite" designs are placed within a radius (Manhattan distance) of the core. Core and satellites get different bonus values.
-
-| Synergy | Core | Satellites | Radius | Core bonus | Satellite bonus |
+| Synergy | Core | Satellites | Radius | Core Bonus | Sat Bonus |
 |---|---|---|---|---|---|
-| Solar System | Sun | 3 space designs | 3 | +40% | +20% |
-| Royal Court | Crown | 3 symbol designs | 2 | +35% | +20% |
-| Ecosystem | any tree | 3 animal designs | 2 | +25% | +18% |
-| Mountain Kingdom | Mountain | 3 landscape designs | 2 | +30% | +18% |
-| Blooming Core | any flower | 4 flower designs | 3 | +35% | +15% |
+| Solar System | Sun | 3 space | 2 | +120% | +75% |
+| Royal Court | Crown | 3 symbols | 2 | +110% | +70% |
+| Ecosystem | any tree | 3 animals | 2 | +105% | +65% |
+| Mountain Kingdom | Mountain | 3 landscapes | 2 | +110% | +70% |
+| Blooming Core | any flower | 4 flowers | 2 | +120% | +70% |
 
-### 8. Cross-Family — place specific designs from different series on the grid
-> Example: Apple + 2 tree designs → **Orchard** (+45%, +40 gold reward). Star + Snowflake + any tree → **Christmas Tree** (+55%, grants a free random block!)
+**Cross-Family** — Specific designs from different series in a spatial zone. Some require adjacency; **Mega synergies** span the whole grid (10 designs).
+> Example: Star + Snowflake + any tree → **Christmas Tree** (+100%, free random block!). 3 flowers + 3 celestial + 2 space + Sun anywhere → **Cosmic Bloom** (+160%, free random block!)
 
-Some cross-family synergies require the named designs to be **adjacent**.
+**Block Type Count** — N blocks of the same effect type anywhere.
+> Example: 5 of the same effect type → **Specialist** (+90%, radiates +20% all-8). 3 echo blocks → **Echo Chamber** (+45%).
 
-### 9. Meta Synergy — activate two or more other synergies simultaneously
-> Example: GARDEN + FOREST both active → **Primordial Grove** (+35% to all synergy cells, grants a free random block!)
+**Meta Synergy** — Requires two or more other synergies to be simultaneously active.
+> Example: Blooming Core + Ecosystem both active → **Primordial Grove** (+75% to all synergy cells, free block!). All three of Deep Space + Primordial Grove + Beast Empire → **Cosmic Nexus** (+60% to ALL occupied cells!)
 
-### 10. Block Type Count — place N blocks sharing the same effect type
-> Example: 5 of the same block type → **Specialist** (+45%, radiates all-8). Requires 5 — hard to pull off.
+### Also: Implicit Adjacency Bonus
 
-| Synergy | Condition | Bonus |
-|---|---|---|
-| Specialist | 5 blocks of same type | +45% · +12% all-8 |
+Any block with a same-series orthogonal neighbor gets a free **+15%** — separate from named synergies.
 
 ### Reading the Active Effects Panel
 
 During a level, the right-side panel lists every synergy that is active or in progress. Click any entry to expand it and see:
-- A **type badge** (ADJACENT, LONG RANGE, RADIUS, BLOCK TYPE, etc.) — tells you the spatial pattern required
-- The current **bonus** if active
-- **How to activate** — plain-language setup instructions specific to that synergy type
+- A **type badge** (ADJACENCY, LONG RANGE, CORE/RING, BLOCK TYPE, CROSS-FAMILY, META) — tells you the spatial pattern
+- The current **bonus** and **level** (L1/L2/L3) if active
+- **How to activate** — plain-language setup instructions
 - **How many more** designs are needed
 
 ---
@@ -123,15 +105,14 @@ During a level, the right-side panel lists every synergy that is active or in pr
 ## Deck System
 
 ### Before Each Level
-1. **DeckSelector** opens — pick up to **3 designs** from your collection
-2. Same design can appear **up to 2×** in one deck — e.g. [Rose, Rose, Oak]
-3. Level starts with an empty inventory; your chosen designs appear in the in-level shop
+1. **ShopDeckSelector** opens — pick up to **8 designs** from your collection to populate the in-level shop. Tutorial levels (1–5) skip this.
+2. Level starts with **preset free blocks** from the level's `presetDeck` config already in your inventory
+3. Your chosen shop-deck designs appear in the in-level shop for purchase
 
 ### In-Level Shop
-- Shows your unique deck designs; each purchase assigns a **random block type** from your unlocked pool
+- Shows your selected shop-deck designs (deduplicated); each purchase assigns a **random block type** from your unlocked pool
 - Drag directly from the shop to the grid when you can afford it
 - **2 copies max** per design per level
-- **Random block** — surprise design outside your deck; starts at **200px**, cost **doubles** each time you buy one
 - **Sell zone** at the bottom of the shop — drag any block here to sell it for **20% of what you paid**
 - **Bargain** grid style reduces all in-level costs by 20%
 
@@ -154,15 +135,15 @@ During a level, the right-side panel lists every synergy that is active or in pr
 
 | Source | Reward |
 |---|---|
-| Complete Level 1 (tutorial) | 10 starter designs — one per main series |
-| Every 5th campaign level | Choose 1 of 2 specific designs |
+| Complete tutorial (levels 1–5) | 10 starter flower designs |
+| Every 5th campaign level (10, 15, 20…) | Pick 1 of 2 series → receive all 10 core designs from that family |
 | Permanent shop | 30 exclusive shop-only designs |
 | Endless: survive 20 min total | Rainbow Prism design |
 | Campaign: 25 correct quiz answers | Crystal Star design |
 | Campaign: 50 correct quiz answers | Nebula design |
 | Specific achievements | Cosmetic visual-only designs |
 
-**Starter designs (given after tutorial):** Daisy · Oak · House · Star · Cat · Heart · Snowflake · Mountain · Circle · Apple
+**Starter designs (all flowers, given after tutorial):** Daisy · Rose · Tulip · Lily · Hibiscus · Lotus · Poppy · Marigold · Lavender · Peony
 
 ---
 
@@ -187,17 +168,16 @@ During a level, the right-side panel lists every synergy that is active or in pr
 
 ## Game Modes
 
-- **Campaign** — 200 levels, 6 tiers (Tutorial → Grandmaster). Hand-crafted levels 1–10, procedurally generated 11–200. Design choice modals unlock new designs every 5 levels.
+- **Campaign** — 200 levels, 6 tiers (Tutorial → Grandmaster). Tutorial levels 1–5 (flower-only), hand-crafted 6–10, procedurally generated 11–200. Family choice modals unlock 10 designs every 5 levels (starting level 10).
 - **Endless** — No time limit. Waves scale at ×1.6. Leaderboard on Supabase. Survive 20 total minutes to unlock the Rainbow Prism design.
 
 ---
 
 ## Profile
 
-The **Profile** page shows your full design collection (200+ designs):
-- **Unlocked**: full color with name, series, and effect
-- **Locked**: grayscale silhouette with unlock hint
-- Filter by series using the tabs at the top
+The **Profile** page shows your full design collection and synergy compendium:
+- **Designs tab**: 200+ designs — unlocked in full color, locked as grayscale silhouettes with unlock hint; filter by series
+- **Synergies tab**: all ~35 synergies — discovered ones show type badge + bonus; undiscovered show "??? Unknown Synergy". Synergies auto-discover when first activated in a level; you can also spend gold in the permanent shop to roll a reveal.
 
 ---
 
