@@ -88,18 +88,21 @@ export default function Shop() {
   const shopDesigns = getShopDesigns()
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
-            <h1 className="text-4xl font-black text-white pixel-heading">Shop</h1>
+            <h1 className="text-3xl font-black text-white pixel-heading">Shop</h1>
           </div>
           <div className="card-sm text-right px-4 py-2">
             <div className="text-pixel-yellow font-black text-xl">{gold.toLocaleString()}</div>
             <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">gold</div>
           </div>
         </div>
+      </div>
+      <div className="px-4 py-6">
+      <div className="max-w-xl mx-auto">
 
         {/* Design Roll */}
         <Section title="Design Roll">
@@ -417,6 +420,7 @@ export default function Shop() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   )
 }

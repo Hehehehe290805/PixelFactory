@@ -362,6 +362,7 @@ export default function Level() {
             <div className="text-sm text-gray-500 font-semibold mb-6">Level {config.number} — {config.name}</div>
             <div className="flex flex-col gap-3">
               <button onClick={() => setPaused(false)} className="btn btn-primary text-base">▶ Continue</button>
+              <button onClick={() => { setPaused(false); handleRetry() }} className="btn btn-secondary text-base">↺ Restart</button>
               <Link to="/settings" onClick={() => setPaused(false)} className="btn btn-secondary text-base">Settings</Link>
               <button onClick={() => navigate('/campaign')} className="btn btn-danger text-base">Exit Level</button>
             </div>
@@ -376,6 +377,7 @@ export default function Level() {
           unlockedDesigns={unlockedDesigns}
           levelNumber={levelNum}
           onConfirm={handleShopDeckConfirmed}
+          onCancel={() => navigate('/campaign')}
         />
       )}
 
@@ -467,7 +469,7 @@ function FamilyChoiceModal({ entry, onChoose }) {
                   )}
                 </div>
                 <div className="text-xs text-gray-500 leading-snug">
-                  {pack.slice(0, 3).map(d => d.blockType.replace(/_/g, ' ')).join(' · ')}…
+                  {pack.slice(0, 3).map(d => d.name).join(' · ')}…
                 </div>
               </button>
             )

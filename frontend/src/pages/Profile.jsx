@@ -103,40 +103,45 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
-            <h1 className="text-3xl font-black text-white pixel-heading">Collection</h1>
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
+              <h1 className="text-3xl font-black text-white pixel-heading">Collection</h1>
+            </div>
+            <div className="card-sm px-4 py-2 text-right">
+              <div className="text-xl font-black text-white">{unlockedCount}</div>
+              <div className="text-xs text-gray-600 uppercase font-bold">templates</div>
+            </div>
           </div>
-          <div className="card-sm px-4 py-2 text-right">
-            <div className="text-xl font-black text-white">{unlockedCount}</div>
-            <div className="text-xs text-gray-600 uppercase font-bold">templates</div>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-5 flex-wrap">
-          {TABS.map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`text-xs font-black px-4 py-1.5 rounded-lg border transition capitalize
-                ${tab === t
-                  ? 'bg-neon-indigo/20 border-neon-indigo text-neon-indigo'
-                  : 'border-void-border text-gray-500 hover:text-white'}`}
-            >
-              {t}
-              {t === 'synergies' && (
-                <span className="ml-1 opacity-60">
-                  {knownSynergies.size}/{ALL_SYNERGY_IDS.length}
-                </span>
-              )}
-            </button>
-          ))}
+          {/* Tabs */}
+          <div className="flex gap-2 flex-wrap">
+            {TABS.map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`text-xs font-black px-4 py-1.5 rounded-lg border transition capitalize
+                  ${tab === t
+                    ? 'bg-neon-indigo/20 border-neon-indigo text-neon-indigo'
+                    : 'border-void-border text-gray-500 hover:text-white'}`}
+              >
+                {t}
+                {t === 'synergies' && (
+                  <span className="ml-1 opacity-60">
+                    {knownSynergies.size}/{ALL_SYNERGY_IDS.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+      <div className="px-4 py-6">
+      <div className="max-w-4xl mx-auto">
 
         {/* ── TEMPLATES TAB ──────────────────────────────────────────────────── */}
         {tab === 'templates' && (
@@ -449,6 +454,7 @@ export default function Profile() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

@@ -20,12 +20,15 @@ export default function AccountSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-lg mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-lg mx-auto flex items-center gap-4">
           <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
-          <h1 className="text-4xl font-black text-white pixel-heading">Account</h1>
+          <h1 className="text-3xl font-black text-white pixel-heading">Account</h1>
         </div>
+      </div>
+      <div className="px-4 py-6">
+      <div className="max-w-lg mx-auto">
 
         {/* Current info */}
         <div className="card mb-6" style={{ padding: '1.25rem' }}>
@@ -41,6 +44,7 @@ export default function AccountSettings() {
         <UpdatePasswordSection />
         <ForgotPasswordSection email={user.email} />
         <DangerZone />
+      </div>
       </div>
     </div>
   )

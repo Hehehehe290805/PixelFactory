@@ -3200,7 +3200,7 @@ export function getLevelContent(levelNumber) {
     if (!pool.length) return null
     // Rotate through pool based on level so each level gets a different question
     const idx = (levelNumber - 13) % pool.length
-    return { type: 'question', ...pool[idx] }
+    return { type: 'quiz', ...pool[idx] }
   }
   return null
 }

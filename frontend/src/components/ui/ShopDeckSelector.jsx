@@ -6,7 +6,7 @@ import { DesignMiniThumb, DesignTooltipBody } from './DeckSelector'
 
 const MAX_SHOP_DECK = 8
 
-export default function ShopDeckSelector({ unlockedDesigns, onConfirm, levelNumber }) {
+export default function ShopDeckSelector({ unlockedDesigns, onConfirm, onCancel, levelNumber }) {
   const [selected, setSelected]     = useState([])
   const [seriesFilter, setFilter]   = useState('all')
   const [hoveredId, setHoveredId]   = useState(null)
@@ -125,8 +125,8 @@ export default function ShopDeckSelector({ unlockedDesigns, onConfirm, levelNumb
                   <div className="text-[9px] font-black text-center leading-tight" style={{ color: '#ddd8f8' }}>
                     {design.name}
                   </div>
-                  <div className="text-[8px] font-bold capitalize" style={{ color: typeColor }}>
-                    {BLOCK_TYPES[design.blockType]?.label ?? design.blockType}
+                  <div className="text-[8px] font-bold capitalize" style={{ color: '#3c3c72' }}>
+                    {design.series}
                   </div>
                 </button>
               )
@@ -136,6 +136,16 @@ export default function ShopDeckSelector({ unlockedDesigns, onConfirm, levelNumb
 
         {/* Footer */}
         <div className="flex gap-3 mt-4 pt-4 border-t" style={{ borderColor: '#1e1e48' }}>
+          {onCancel && (
+            <button onClick={onCancel} className="btn btn-secondary text-sm px-4">
+              ← Cancel
+            </button>
+          )}
+          {selected.length > 0 && (
+            <button onClick={() => setSelected([])} className="btn btn-secondary text-sm px-4">
+              Clear
+            </button>
+          )}
           <button
             onClick={() => onConfirm(selected)}
             disabled={selected.length === 0}
@@ -144,14 +154,6 @@ export default function ShopDeckSelector({ unlockedDesigns, onConfirm, levelNumb
           >
             Start Level →
           </button>
-          {selected.length > 0 && (
-            <button
-              onClick={() => setSelected([])}
-              className="btn btn-secondary text-sm px-4"
-            >
-              Clear
-            </button>
-          )}
         </div>
       </div>
 

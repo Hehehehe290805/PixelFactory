@@ -31,7 +31,19 @@ function fmtOutput(n) {
 
 export default function Campaign() {
   const { campaignProgress, user } = useUserStore()
-  const [openTier, setOpenTier] = useState(0) // index of expanded tier
+  const [openTier, setOpenTier] = useState(() => {
+    const completedLevels = Object.keys(campaignProgress)
+      .filter(k => (campaignProgress[k]?.stars ?? 0) > 0)
+      .map(Number)
+      .sort((a, b) => a - b)
+    if (completedLevels.length === 0) return 0
+    const lastCompleted = completedLevels[completedLevels.length - 1]
+    const tierIdx = TIERS.findIndex(t => lastCompleted >= t.range[0] && lastCompleted <= t.range[1])
+    if (tierIdx === -1) return 0
+    // If last completed was the last level of its tier, open the next tier
+    if (lastCompleted >= TIERS[tierIdx].range[1] && tierIdx + 1 < TIERS.length) return tierIdx + 1
+    return tierIdx
+  })
 
   if (!user) {
     return (
@@ -60,20 +72,21 @@ export default function Campaign() {
   }
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="btn btn-secondary text-sm px-4 py-2">← Back</Link>
-            <h1 className="text-4xl font-black text-white pixel-heading">Campaign</h1>
+            <h1 className="text-3xl font-black text-white pixel-heading">Campaign</h1>
           </div>
           <div className="text-right">
             <div className="text-pixel-yellow font-black text-xl">{totalStars}</div>
             <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">/ {maxStars} stars</div>
           </div>
         </div>
+      </div>
+      <div className="px-4 py-6">
+      <div className="max-w-2xl mx-auto">
 
         {/* Tier accordions */}
         <div className="space-y-3">
@@ -162,6 +175,7 @@ export default function Campaign() {
             )
           })}
         </div>
+      </div>
       </div>
     </div>
   )

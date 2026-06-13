@@ -42,12 +42,15 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-game-bg px-4 py-8">
-      <div className="max-w-lg mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-game-bg">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-game-border" style={{ background: '#06061a' }}>
+        <div className="max-w-lg mx-auto flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="btn btn-secondary text-sm px-4 py-2">← Back</button>
-          <h1 className="text-4xl font-black text-white pixel-heading">Settings</h1>
+          <h1 className="text-3xl font-black text-white pixel-heading">Settings</h1>
         </div>
+      </div>
+      <div className="px-4 py-6">
+      <div className="max-w-lg mx-auto">
 
         {/* Audio */}
         <Section title="Audio">
@@ -179,6 +182,7 @@ function VolumeRow({ label, desc, enabled, onToggle, volume, onVolume }) {
         <span className="text-[10px] text-gray-700 font-bold w-4">🔊</span>
         <span className="text-[10px] font-black text-gray-500 w-7 text-right">{Math.round(volume * 100)}%</span>
       </div>
+    </div>
     </div>
   )
 }
