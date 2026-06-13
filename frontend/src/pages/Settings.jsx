@@ -184,7 +184,6 @@ function VolumeRow({ label, desc, enabled, onToggle, volume, onVolume }) {
         <span className="text-[10px] font-black text-gray-500 w-7 text-right">{Math.round(volume * 100)}%</span>
       </div>
     </div>
-    </div>
   )
 }
 
